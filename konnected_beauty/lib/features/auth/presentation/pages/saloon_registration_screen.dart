@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
 import '../../../../core/bloc/welcome/welcome_bloc.dart';
@@ -289,9 +288,8 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           print('Building OTP Verification step');
           return _buildOtpVerificationStep(context, state);
         case 2:
-          print('Building Salon Profile step (skipped info)');
-          // Skip to Salon Profile since we're bypassing Salon Information
-          return _buildSaloonProfileStep(context, state);
+          print('Building Salon Information step');
+          return _buildSaloonInformationStep(context, state);
         case 3:
           print('Building Salon Profile step');
           return _buildSaloonProfileStep(context, state);
@@ -451,11 +449,10 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           ),
           const SizedBox(height: 24),
           CustomTextField(
-            label: AppTranslations.getString(context, 'salon_name'),
-            placeholder:
-                AppTranslations.getString(context, 'salon_name_placeholder'),
+            label: AppTranslations.getString(context, 'name'),
+            placeholder: AppTranslations.getString(context, 'name_placeholder'),
             controller: saloonNameController,
-            validator: (value) => Validators.validateSalonName(value, context),
+            validator: (value) => Validators.validateName(value, context),
             autovalidateMode: true,
             formFieldKey: saloonNameFormKey,
           ),
@@ -463,23 +460,20 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           CustomTextField(
             label: AppTranslations.getString(context, 'salon_address'),
             placeholder:
-                AppTranslations.getString(context, 'salon_address_placeholder'),
+                AppTranslations.getString(context, 'email_placeholder'),
             controller: saloonAddressController,
-            keyboardType: TextInputType.streetAddress,
-            validator: (value) =>
-                Validators.validateSalonAddress(value, context),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) => Validators.validateEmail(value, context),
             autovalidateMode: true,
             formFieldKey: saloonAddressFormKey,
           ),
           const SizedBox(height: 20),
           CustomTextField(
-            label: AppTranslations.getString(context, 'activity_domain'),
-            placeholder: AppTranslations.getString(
-                context, 'activity_domain_placeholder'),
+            label: AppTranslations.getString(context, 'salon_domain_activity'),
+            placeholder: '+33-XX-XX-XX-XX',
             controller: saloonDomainController,
-            keyboardType: TextInputType.text,
-            validator: (value) =>
-                Validators.validateSalonDomain(value, context),
+            keyboardType: TextInputType.phone,
+            validator: (value) => Validators.validatePhone(value, context),
             autovalidateMode: true,
             formFieldKey: saloonDomainFormKey,
           ),
@@ -731,7 +725,8 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       case 2:
         return saloonNameController.text.isNotEmpty &&
             saloonAddressController.text.isNotEmpty &&
-            saloonDomainController.text.isNotEmpty;
+            saloonDomainController.text.isNotEmpty &&
+            _isValidEmail(saloonAddressController.text);
       case 3:
         return state.openHour.isNotEmpty &&
             state.closingHour.isNotEmpty &&

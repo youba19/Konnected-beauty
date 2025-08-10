@@ -52,6 +52,8 @@ class AppTranslations {
     'personal_information': 'Informations personnelles',
     'full_name': 'Nom complet',
     'full_name_placeholder': 'Entrez votre nom complet',
+    'name': 'Nom',
+    'name_placeholder': 'Entrez votre nom',
     'phone': 'Téléphone',
     'phone_placeholder': 'Entrez votre numéro de téléphone',
     'continue': 'Continuer',
@@ -68,6 +70,7 @@ class AppTranslations {
     'salon_name_placeholder': 'Entrez le nom de votre salon',
     'salon_address': 'Adresse du salon',
     'salon_address_placeholder': 'Entrez l\'adresse de votre salon',
+    'salon_domain_activity': 'Domaine d\'activité du salon',
     'activity_domain': 'Domaine d\'activité',
     'activity_domain_placeholder': 'Ex: Coiffure, Esthétique, etc.',
 
@@ -157,6 +160,8 @@ class AppTranslations {
     'personal_information': 'Personal Information',
     'full_name': 'Full Name',
     'full_name_placeholder': 'Enter your full name',
+    'name': 'Name',
+    'name_placeholder': 'Enter your name',
     'phone': 'Phone',
     'phone_placeholder': 'Enter your phone number',
     'continue': 'Continue',
@@ -173,6 +178,7 @@ class AppTranslations {
     'salon_name_placeholder': 'Enter your salon name',
     'salon_address': 'Salon Address',
     'salon_address_placeholder': 'Enter your salon address',
+    'salon_domain_activity': 'Salon Activity Domain',
     'activity_domain': 'Activity Domain',
     'activity_domain_placeholder': 'Ex: Hairdressing, Aesthetics, etc.',
 
