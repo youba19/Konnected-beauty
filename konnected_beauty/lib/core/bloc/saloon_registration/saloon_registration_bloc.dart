@@ -657,9 +657,9 @@ class SaloonRegistrationBloc
   }
 
   void _onSubmitOtp(SubmitOtp event, Emitter<SaloonRegistrationState> emit) {
-    // Skip to Salon Profile (step 3) after OTP verification
+    // Go to Salon Information (step 2) after OTP verification
     emit(SaloonRegistrationState(
-      currentStep: 3,
+      currentStep: 2,
       isLoading: state.isLoading,
       name: state.name,
       email: state.email,

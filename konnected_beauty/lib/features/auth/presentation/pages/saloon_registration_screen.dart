@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
 import '../../../../core/bloc/welcome/welcome_bloc.dart';
@@ -208,9 +209,8 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: AppTheme.textPrimaryColor),
-            onPressed: () {},
+          BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
+            builder: (context, state) => _buildStepper(context, state),
           ),
         ],
       ),
@@ -230,21 +230,30 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
 
                       // Content
                       Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Column(
-                            children: [
-                              // Step Content
-                              _buildStepContent(context, state),
-                              // Add extra padding for keyboard
-                              const SizedBox(height: 20),
-                            ],
-                          ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight,
+                                ),
+                                child: IntrinsicHeight(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      _buildStepContent(context, state),
+                                      const SizedBox(height: 20),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
 
                       // Bottom Button
-                      const SizedBox(height: 24),
                       _buildBottomButton(context, state),
                       // Add extra padding for keyboard
                       const SizedBox(height: 20),
@@ -449,10 +458,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           ),
           const SizedBox(height: 24),
           CustomTextField(
-            label: AppTranslations.getString(context, 'name'),
-            placeholder: AppTranslations.getString(context, 'name_placeholder'),
+            label: AppTranslations.getString(context, 'salon_name'),
+            placeholder:
+                AppTranslations.getString(context, 'salon_name_placeholder'),
             controller: saloonNameController,
-            validator: (value) => Validators.validateName(value, context),
+            validator: (value) => Validators.validateSalonName(value, context),
             autovalidateMode: true,
             formFieldKey: saloonNameFormKey,
           ),
@@ -460,25 +470,26 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           CustomTextField(
             label: AppTranslations.getString(context, 'salon_address'),
             placeholder:
-                AppTranslations.getString(context, 'email_placeholder'),
+                AppTranslations.getString(context, 'salon_address_placeholder'),
             controller: saloonAddressController,
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) => Validators.validateEmail(value, context),
+            keyboardType: TextInputType.streetAddress,
+            validator: (value) =>
+                Validators.validateSalonAddress(value, context),
             autovalidateMode: true,
             formFieldKey: saloonAddressFormKey,
           ),
           const SizedBox(height: 20),
           CustomTextField(
-            label: AppTranslations.getString(context, 'salon_domain_activity'),
-            placeholder: '+33-XX-XX-XX-XX',
+            label: AppTranslations.getString(context, 'activity_domain'),
+            placeholder: AppTranslations.getString(
+                context, 'activity_domain_placeholder'),
             controller: saloonDomainController,
             keyboardType: TextInputType.phone,
             validator: (value) => Validators.validatePhone(value, context),
             autovalidateMode: true,
             formFieldKey: saloonDomainFormKey,
           ),
-          // Add extra space for keyboard
-          const SizedBox(height: 100),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -486,175 +497,169 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
 
   Widget _buildSaloonProfileStep(
       BuildContext context, SaloonRegistrationState state) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppTranslations.getString(context, 'salon_profile'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppTranslations.getString(context, 'salon_profile'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 24),
+        ),
+        const SizedBox(height: 24),
 
-          // Saloon Pictures Section
-          Text(
-            AppTranslations.getString(context, 'salon_photos'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+        // Saloon Pictures Section
+        Text(
+          AppTranslations.getString(context, 'salon_photos'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(height: 12),
+        ),
+        const SizedBox(height: 12),
 
-          GestureDetector(
-            onTap: () {
-              context.read<SaloonRegistrationBloc>().add(UploadImage());
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.borderColor, width: 1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  AppTranslations.getString(context, 'upload_photos'),
-                  style: const TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 16,
-                  ),
+        GestureDetector(
+          onTap: () {
+            context.read<SaloonRegistrationBloc>().add(UploadImage());
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppTheme.borderColor, width: 1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                AppTranslations.getString(context, 'upload_photos'),
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 16,
                 ),
               ),
             ),
           ),
+        ),
 
-          // Uploaded Images
-          if (state.uploadedImages.isNotEmpty)
-            Column(
-              children: [
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 80,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: state.uploadedImages.length,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        width: 80,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondaryColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.borderColor),
-                        ),
-                        child: Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                state.uploadedImages[index],
-                                width: 80,
-                                height: 80,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: AppTheme.secondaryColor,
-                                    child: const Icon(
-                                      Icons.error,
-                                      color: Colors.red,
-                                      size: 24,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: GestureDetector(
-                                onTap: () {
-                                  context
-                                      .read<SaloonRegistrationBloc>()
-                                      .add(RemoveImage(index));
-                                },
-                                child: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-          const SizedBox(height: 24),
-
-          // Hours Section
-          Row(
+        // Uploaded Images
+        if (state.uploadedImages.isNotEmpty)
+          Column(
             children: [
-              Expanded(
-                child: CustomDropdown(
-                  label: AppTranslations.getString(context, 'opening_hour'),
-                  placeholder: AppTranslations.getString(context, 'select'),
-                  items: timeOptions,
-                  selectedValue: state.openHour,
-                  onChanged: (value) {
-                    context
-                        .read<SaloonRegistrationBloc>()
-                        .add(UpdateOpenHour(value ?? ''));
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: CustomDropdown(
-                  label: AppTranslations.getString(context, 'closing_hour'),
-                  placeholder: AppTranslations.getString(context, 'select'),
-                  items: timeOptions,
-                  selectedValue: state.closingHour,
-                  onChanged: (value) {
-                    context
-                        .read<SaloonRegistrationBloc>()
-                        .add(UpdateClosingHour(value ?? ''));
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 80,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: state.uploadedImages.length,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      width: 80,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderColor),
+                      ),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              state.uploadedImages[index],
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 80,
+                                  height: 80,
+                                  color: AppTheme.secondaryColor,
+                                  child: const Icon(
+                                    Icons.error,
+                                    color: Colors.red,
+                                    size: 24,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () {
+                                context
+                                    .read<SaloonRegistrationBloc>()
+                                    .add(RemoveImage(index));
+                              },
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.red,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
-          // Description Section
-          CustomTextField(
-            label: AppTranslations.getString(context, 'salon_description'),
-            placeholder: AppTranslations.getString(
-                context, 'describe_salon_placeholder'),
-            controller: saloonDescriptionController,
-            validator: (value) =>
-                Validators.validateDescription(value, context),
-            autovalidateMode: true,
-            maxLines: 4,
-            formFieldKey: saloonDescriptionFormKey,
-          ),
-          // Add extra space for keyboard
-          const SizedBox(height: 100),
-        ],
-      ),
+        // Hours Section
+        Row(
+          children: [
+            Expanded(
+              child: CustomDropdown(
+                label: AppTranslations.getString(context, 'opening_hour'),
+                placeholder: AppTranslations.getString(context, 'select'),
+                items: timeOptions,
+                selectedValue: state.openHour,
+                onChanged: (value) {
+                  context
+                      .read<SaloonRegistrationBloc>()
+                      .add(UpdateOpenHour(value ?? ''));
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: CustomDropdown(
+                label: AppTranslations.getString(context, 'closing_hour'),
+                placeholder: AppTranslations.getString(context, 'select'),
+                items: timeOptions,
+                selectedValue: state.closingHour,
+                onChanged: (value) {
+                  context
+                      .read<SaloonRegistrationBloc>()
+                      .add(UpdateClosingHour(value ?? ''));
+                },
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 20),
+
+        // Description Section
+        CustomTextField(
+          label: AppTranslations.getString(context, 'salon_description'),
+          placeholder:
+              AppTranslations.getString(context, 'describe_salon_placeholder'),
+          controller: saloonDescriptionController,
+          validator: (value) => Validators.validateDescription(value, context),
+          autovalidateMode: true,
+          maxLines: 4,
+          formFieldKey: saloonDescriptionFormKey,
+        ),
+      ],
     );
   }
 
@@ -726,7 +731,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
         return saloonNameController.text.isNotEmpty &&
             saloonAddressController.text.isNotEmpty &&
             saloonDomainController.text.isNotEmpty &&
-            _isValidEmail(saloonAddressController.text);
+            _isValidPhone(saloonDomainController.text);
       case 3:
         return state.openHour.isNotEmpty &&
             state.closingHour.isNotEmpty &&
@@ -760,5 +765,43 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
 
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  bool _isValidPhone(String phone) {
+    String cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    return RegExp(r'^[0-9]{10}$').hasMatch(cleanPhone);
+  }
+
+  Widget _buildStepper(BuildContext context, SaloonRegistrationState state) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildStepIndicator(
+              context, 0, state.currentStep >= 0, state.currentStep == 0),
+          const SizedBox(width: 8),
+          _buildStepIndicator(
+              context, 1, state.currentStep >= 1, state.currentStep == 1),
+          const SizedBox(width: 8),
+          _buildStepIndicator(
+              context, 2, state.currentStep >= 2, state.currentStep == 2),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator(
+      BuildContext context, int stepNumber, bool isCompleted, bool isCurrent) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isCurrent || isCompleted
+            ? Colors.white
+            : Colors.white.withOpacity(0.3),
+      ),
+    );
   }
 }
