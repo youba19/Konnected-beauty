@@ -47,6 +47,10 @@ dependencies:
   # Image picker for selecting images from gallery/camera
   image_picker: ^1.0.7
 
+  # HTTP client for API calls
+  http: ^1.1.0
+  dio: ^5.4.0
+
   # Flutter localizations for MaterialLocalizations
   flutter_localizations:
     sdk: flutter

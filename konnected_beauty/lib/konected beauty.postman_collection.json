@@ -1,0 +1,711 @@
+{
+	"info": {
+		"_postman_id": "55520cd3-3f78-4edc-a988-4b9fcb7461ef",
+		"name": "konected beauty",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "15711884"
+	},
+	"item": [
+		{
+			"name": "salon",
+			"item": [
+				{
+					"name": "auth",
+					"item": [
+						{
+							"name": "complete registration",
+							"item": [
+								{
+									"name": "add salon info",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Dev salon\",\r\n    \"address\": \"Bab Ezzouar\",\r\n    \"domain\": \"development\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/salon/add-info",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon",
+												"add-info"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "success",
+											"originalRequest": {
+												"method": "POST",
+												"header": [],
+												"body": {
+													"mode": "raw",
+													"raw": "{\r\n    \"name\": \"Dev salon\",\r\n    \"address\": \"Bab Ezzouar\",\r\n    \"domain\": \"development\"\r\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/salon/add-info",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"salon",
+														"add-info"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "X-Powered-By",
+													"value": "Express"
+												},
+												{
+													"key": "Content-Type",
+													"value": "application/json",
+													"description": "",
+													"type": "text"
+												},
+												{
+													"key": "Content-Length",
+													"value": "60"
+												},
+												{
+													"key": "ETag",
+													"value": "W/\"3c-5QRvZudNZpXNikaLvA7bufPH+KA\""
+												},
+												{
+													"key": "Date",
+													"value": "Sun, 10 Aug 2025 20:02:15 GMT"
+												},
+												{
+													"key": "Connection",
+													"value": "keep-alive"
+												},
+												{
+													"key": "Keep-Alive",
+													"value": "timeout=5"
+												}
+											],
+											"cookie": [],
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Salon info added successfully\"\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "signup",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"name\": \"Zereg Assem\",\r\n    \"phoneNumber\": \"+33666850072\",\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"password\": \"Assem1_Z\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/salon-auth/signup",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"salon-auth",
+										"signup"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "invalid password",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Zereg Assem\",\r\n    \"phoneNumber\": \"+33666850072\",\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"password\": \"assem\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/salon-auth/signup",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon-auth",
+												"signup"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": null,
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "189"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"bd-EZO0e+fqjA5oiR8tLDrudA6i0tk\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 10 Aug 2025 18:46:36 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"message\": [\n        \"Password must be at least 8 characters long, contain at least 1 uppercase letter, at least 1 number, and at least 1 special character.\"\n    ],\n    \"error\": \"Bad Request\",\n    \"statusCode\": 400\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"name\": \"Zereg Assem\",\r\n    \"phoneNumber\": \"+33666850072\",\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"password\": \"Assem1_Z\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/salon-auth/signup",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon-auth",
+												"signup"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": null,
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "83"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"53-aZkqGVRTdujPMshSTQATChJ+V0w\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 10 Aug 2025 19:10:46 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"message\": \"Salon created successfully, please verify your email\",\n    \"statusCode\": 201\n}"
+								}
+							]
+						},
+						{
+							"name": "resend otp",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"assem.zereg0@gmail.com\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/salon-auth/resend-otp",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"salon-auth",
+										"resend-otp"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"assem.zereg0@gmail.com\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/salon-auth/resend-otp",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon-auth",
+												"resend-otp"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": null,
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "54"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"36-OMS0oJ8ebNTOzhNaAv/ropPb2II\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 10 Aug 2025 19:11:27 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"message\": \"OTP resent successfully\",\n    \"statusCode\": 200\n}"
+								}
+							]
+						},
+						{
+							"name": "validate otp",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"otp\": \"310533\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/salon-auth/validate-otp",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"salon-auth",
+										"validate-otp"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"otp\": \"310533\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/salon-auth/validate-otp",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon-auth",
+												"validate-otp"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": null,
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "605"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"25d-/rCzm8vaPslYnfagxOKukAOKAbw\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 10 Aug 2025 19:13:33 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"message\": \"OTP validated successfully\",\n    \"data\": {\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMWNjZTc1LWI1MzMtNDQxMi1hZjU0LTY5OWQ0N2UxYjYxOSIsImVtYWlsIjoiYXNzZW0uemVyZWcwQGdtYWlsLmNvbSIsInJvbGUiOiJzYWxvbiIsImlhdCI6MTc1NDg1MzIxMywiZXhwIjoxNzU0ODU0MTEzfQ.QJ9wIFUyQRhHawcX1O8-ec-hKGQbPuMp1xE8W8C4q1k\",\n        \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMWNjZTc1LWI1MzMtNDQxMi1hZjU0LTY5OWQ0N2UxYjYxOSIsImVtYWlsIjoiYXNzZW0uemVyZWcwQGdtYWlsLmNvbSIsInJvbGUiOiJzYWxvbiIsImlhdCI6MTc1NDg1MzIxMywiZXhwIjoxNzU1NDU4MDEzfQ.QVYZ-bxIWF0AAKH_szZaOJvuKIdbIxoPA3unAcladS0\"\n    },\n    \"statusCode\": 200\n}"
+								}
+							]
+						},
+						{
+							"name": "login",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"password\": \"Assem1_Z\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/salon-auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"salon-auth",
+										"login"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"assem.zereg0@gmail.com\",\r\n    \"password\": \"Assem1_Z\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/salon-auth/login",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon-auth",
+												"login"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json",
+											"description": "",
+											"type": "text"
+										},
+										{
+											"key": "Content-Length",
+											"value": "610"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"262-qzN5wTW3tpsgHrdTUMd07SaYahE\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 10 Aug 2025 19:26:43 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"message\": \"Login successful\",\n    \"data\": {\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMWNjZTc1LWI1MzMtNDQxMi1hZjU0LTY5OWQ0N2UxYjYxOSIsImVtYWlsIjoiYXNzZW0uemVyZWcwQGdtYWlsLmNvbSIsInJvbGUiOiJzYWxvbiIsImlhdCI6MTc1NDg1NDAwMywiZXhwIjoxNzU0OTQwNDAzfQ.HQap2SAOE_uYaeOBOJtvGAkkeytb1XYmBWG0FIHPC5E\",\n        \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMWNjZTc1LWI1MzMtNDQxMi1hZjU0LTY5OWQ0N2UxYjYxOSIsImVtYWlsIjoiYXNzZW0uemVyZWcwQGdtYWlsLmNvbSIsInJvbGUiOiJzYWxvbiIsImlhdCI6MTc1NDg1NDAwMywiZXhwIjoxNzU1NDU4ODAzfQ.vfdDN85h9yWxCfKdzJnnUcojnvxtaMBV4em_qw5NgeY\",\n        \"status\": \"otp\"\n    },\n    \"statusCode\": 200\n}"
+								}
+							]
+						},
+						{
+							"name": "refresh token",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{refresh_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/salon-auth/refresh-token",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"salon-auth",
+										"refresh-token"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/salon-auth/refresh-token",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"salon-auth",
+												"refresh-token"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json",
+											"description": "",
+											"type": "text"
+										},
+										{
+											"key": "Content-Length",
+											"value": "608"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"260-z7raxw4DhchoE4o2iEMq+PUb8sk\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 10 Aug 2025 19:42:04 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"message\": \"Tokens refreshed successfully\",\n    \"data\": {\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMWNjZTc1LWI1MzMtNDQxMi1hZjU0LTY5OWQ0N2UxYjYxOSIsImVtYWlsIjoiYXNzZW0uemVyZWcwQGdtYWlsLmNvbSIsInJvbGUiOiJzYWxvbiIsImlhdCI6MTc1NDg1NDkyNCwiZXhwIjoxNzU0OTQxMzI0fQ.W7n-9CLwZfkIgd7xZxzmFaBISH_X_h4YCV_zGLnFCb0\"\n    },\n    \"statusCode\": 200\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/salon/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"salon",
+								"profile"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/salon/profile",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"salon",
+										"profile"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"description": "",
+									"type": "text"
+								},
+								{
+									"key": "Content-Length",
+									"value": "565"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"235-y95MiGCJeytQCZ16wvtpehGfrck\""
+								},
+								{
+									"key": "Date",
+									"value": "Sun, 10 Aug 2025 20:14:17 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Salon profile retrieved successfully\",\n    \"data\": {\n        \"id\": \"121cce75-b533-4412-af54-699d47e1b619\",\n        \"createdAt\": \"2025-08-10T18:10:43.567Z\",\n        \"updatedAt\": \"2025-08-10T19:02:15.864Z\",\n        \"deletedAt\": null,\n        \"name\": \"Zereg Assem\",\n        \"phoneNumber\": \"+33666850072\",\n        \"email\": \"assem.zereg0@gmail.com\",\n        \"status\": \"salon-info-added\",\n        \"salonInfo\": {\n            \"id\": \"bd0f808f-de3b-4021-a08d-560ea20b6035\",\n            \"createdAt\": \"2025-08-10T19:02:15.864Z\",\n            \"updatedAt\": \"2025-08-10T19:02:15.864Z\",\n            \"deletedAt\": null,\n            \"name\": \"Dev salon\",\n            \"domain\": \"development\",\n            \"address\": \"Bab Ezzouar\"\n        },\n        \"salonProfile\": null\n    }\n}"
+						}
+					]
+				}
+			]
+		}
+	]
+}

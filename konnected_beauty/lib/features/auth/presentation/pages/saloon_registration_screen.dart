@@ -215,54 +215,97 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
         ],
       ),
       body: SafeArea(
-        child: BlocBuilder<LanguageBloc, LanguageState>(
-          builder: (context, languageState) {
-            return BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
-              builder: (context, state) {
-                return Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      _buildHeader(),
-                      const SizedBox(height: 32),
-
-                      // Content
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: constraints.maxHeight,
-                                ),
-                                child: IntrinsicHeight(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      _buildStepContent(context, state),
-                                      const SizedBox(height: 20),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      // Bottom Button
-                      _buildBottomButton(context, state),
-                      // Add extra padding for keyboard
-                      const SizedBox(height: 20),
-                    ],
+        child: BlocListener<SaloonRegistrationBloc, SaloonRegistrationState>(
+          listener: (context, state) {
+            // Handle error messages
+            if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+              // Check if it's a success message (contains "successfully" or "already verified")
+              if (state.errorMessage!.toLowerCase().contains('successfully') ||
+                  state.errorMessage!
+                      .toLowerCase()
+                      .contains('already verified')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.errorMessage!),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 3),
                   ),
                 );
-              },
-            );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.errorMessage!),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              }
+            }
+
+            // Handle success messages for OTP validation
+            if (state.currentStep == 2 &&
+                !state.isLoading &&
+                state.errorMessage == null) {
+              // This means we successfully moved from OTP verification to Salon Information
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('OTP verified successfully!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
           },
+          child: BlocBuilder<LanguageBloc, LanguageState>(
+            builder: (context, languageState) {
+              return BlocBuilder<SaloonRegistrationBloc,
+                  SaloonRegistrationState>(
+                builder: (context, state) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header
+                        _buildHeader(),
+                        const SizedBox(height: 32),
+
+                        // Content
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: constraints.maxHeight,
+                                  ),
+                                  child: IntrinsicHeight(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        _buildStepContent(context, state),
+                                        const SizedBox(height: 20),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        // Bottom Button
+                        _buildBottomButton(context, state),
+                        // Add extra padding for keyboard
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -400,6 +443,35 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
               color: AppTheme.textPrimaryColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Success message for signup
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Account created successfully! Please check your email for the verification code.',
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -669,27 +741,33 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       case 0:
         return CustomButton(
           text: AppTranslations.getString(context, 'continue'),
-          onPressed: () {
-            print('Continue button pressed for step 0');
-            _validateCurrentStep(state);
-            if (_canProceedToNextStep(state)) {
-              print('Calling nextStep');
-              context.read<SaloonRegistrationBloc>().add(NextStep());
-            } else {
-              print('Validation failed');
-            }
-          },
+          onPressed: state.isLoading
+              ? () {}
+              : () {
+                  print('Continue button pressed for step 0');
+                  _validateCurrentStep(state);
+                  if (_canProceedToNextStep(state)) {
+                    print('Calling submitSignup');
+                    context.read<SaloonRegistrationBloc>().add(SubmitSignup());
+                  } else {
+                    print('Validation failed');
+                  }
+                },
           leadingIcon: Icons.arrow_forward_ios,
+          isLoading: state.isLoading,
         );
       case 1:
         return CustomButton(
           text: AppTranslations.getString(context, 'submit_continue'),
-          onPressed: () {
-            _validateCurrentStep(state);
-            if (_canProceedToNextStep(state)) {
-              context.read<SaloonRegistrationBloc>().add(SubmitOtp());
-            }
-          },
+          onPressed: state.isLoading
+              ? () {}
+              : () {
+                  _validateCurrentStep(state);
+                  if (_canProceedToNextStep(state)) {
+                    context.read<SaloonRegistrationBloc>().add(SubmitOtp());
+                  }
+                },
+          isLoading: state.isLoading,
         );
       case 2:
         return CustomButton(
@@ -704,12 +782,16 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       case 3:
         return CustomButton(
           text: AppTranslations.getString(context, 'continue'),
-          onPressed: () {
-            _validateCurrentStep(state);
-            if (_canProceedToNextStep(state)) {
-              context.read<SaloonRegistrationBloc>().add(SubmitRegistration());
-            }
-          },
+          onPressed: state.isLoading
+              ? () {}
+              : () {
+                  _validateCurrentStep(state);
+                  if (_canProceedToNextStep(state)) {
+                    context
+                        .read<SaloonRegistrationBloc>()
+                        .add(SubmitRegistration());
+                  }
+                },
           isLoading: state.isLoading,
         );
       default:

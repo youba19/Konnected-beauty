@@ -58,146 +58,166 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      body: SafeArea(
-        child: BlocBuilder<LanguageBloc, LanguageState>(
-          builder: (context, languageState) {
-            return BlocBuilder<LoginBloc, LoginState>(
-              builder: (context, state) {
-                return SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        // Back Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: AppTheme.textPrimaryColor,
-                          ),
-                          onPressed: () {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => const WelcomeScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Logo
-                        SvgPicture.asset(
-                          'assets/images/Konected beauty - Logo white.svg',
-                          width: 80,
-                          height: 80,
-                          allowDrawingOutsideViewBox: true,
-                          colorFilter: const ColorFilter.mode(
-                            Colors.white,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // Welcome Back Title
-                        Text(
-                          AppTranslations.getString(context, 'welcome_back'),
-                          style: AppTheme.headingStyle,
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // Role Selection
-                        _buildRoleSelection(state),
-                        const SizedBox(height: 32),
-
-                        // Error Banner
-                        if (state.hasError)
-                          _buildErrorBanner(state.errorMessage),
-                        if (state.hasError) const SizedBox(height: 16),
-
-                        // Email Field
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'email'),
-                          placeholder: AppTranslations.getString(
-                              context, 'email_placeholder'),
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          isError: state.hasError,
-                          validator: (value) =>
-                              Validators.validateEmail(value, context),
-                          autovalidateMode: true,
-                          formFieldKey: emailFormKey,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Password Field
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'password'),
-                          placeholder: AppTranslations.getString(
-                              context, 'password_placeholder'),
-                          controller: passwordController,
-                          isPassword: true,
-                          isError: state.hasError,
-                          validator: (value) =>
-                              Validators.validatePassword(value, context),
-                          autovalidateMode: true,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              isPasswordVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                isPasswordVisible = !isPasswordVisible;
-                              });
-                            },
-                          ),
-                          formFieldKey: passwordFormKey,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Forget Password Link
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: GestureDetector(
-                            onTap: () {
-                              // TODO: Navigate to forget password screen
-                            },
-                            child: Text(
-                              AppTranslations.getString(
-                                  context, 'forget_password'),
-                              style: TextStyle(
-                                color: AppTheme.accentColor,
-                                fontSize: 16,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 100),
-
-                        // Login Button
-                        CustomButton(
-                          text: AppTranslations.getString(
-                              context, 'login_to_your_account'),
-                          onPressed: _onLogin,
-                          isLoading: state.isLoading,
-                        ),
-                      ],
-                    ),
+        backgroundColor: AppTheme.primaryColor,
+        body: SafeArea(
+          child: BlocListener<LoginBloc, LoginState>(
+            listener: (context, state) {
+              // Handle login success
+              if (state is LoginSuccess) {
+                // Show success message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Login successful!'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
                   ),
                 );
+
+                // TODO: Navigate to appropriate home screen based on role
+                // For now, just show a success message
+              }
+            },
+            child: BlocBuilder<LanguageBloc, LanguageState>(
+              builder: (context, languageState) {
+                return BlocBuilder<LoginBloc, LoginState>(
+                  builder: (context, state) {
+                    return SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            // Back Button
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => const WelcomeScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 32),
+
+                            // Logo
+                            SvgPicture.asset(
+                              'assets/images/Konected beauty - Logo white.svg',
+                              width: 80,
+                              height: 80,
+                              allowDrawingOutsideViewBox: true,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // Welcome Back Title
+                            Text(
+                              AppTranslations.getString(
+                                  context, 'welcome_back'),
+                              style: AppTheme.headingStyle,
+                            ),
+
+                            const SizedBox(height: 32),
+
+                            // Role Selection
+                            _buildRoleSelection(state),
+                            const SizedBox(height: 32),
+
+                            // Error Banner
+                            if (state.hasError)
+                              _buildErrorBanner(state.errorMessage),
+                            if (state.hasError) const SizedBox(height: 16),
+
+                            // Email Field
+                            CustomTextField(
+                              label:
+                                  AppTranslations.getString(context, 'email'),
+                              placeholder: AppTranslations.getString(
+                                  context, 'email_placeholder'),
+                              controller: emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              isError: state.hasError,
+                              validator: (value) =>
+                                  Validators.validateEmail(value, context),
+                              autovalidateMode: true,
+                              formFieldKey: emailFormKey,
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Password Field
+                            CustomTextField(
+                              label: AppTranslations.getString(
+                                  context, 'password'),
+                              placeholder: AppTranslations.getString(
+                                  context, 'password_placeholder'),
+                              controller: passwordController,
+                              isPassword: true,
+                              isError: state.hasError,
+                              validator: (value) =>
+                                  Validators.validatePassword(value, context),
+                              autovalidateMode: true,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  isPasswordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: AppTheme.textSecondaryColor,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    isPasswordVisible = !isPasswordVisible;
+                                  });
+                                },
+                              ),
+                              formFieldKey: passwordFormKey,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Forget Password Link
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: GestureDetector(
+                                onTap: () {
+                                  // TODO: Navigate to forget password screen
+                                },
+                                child: Text(
+                                  AppTranslations.getString(
+                                      context, 'forget_password'),
+                                  style: TextStyle(
+                                    color: AppTheme.accentColor,
+                                    fontSize: 16,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 100),
+
+                            // Login Button
+                            CustomButton(
+                              text: AppTranslations.getString(
+                                  context, 'login_to_your_account'),
+                              onPressed: _onLogin,
+                              isLoading: state.isLoading,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
               },
-            );
-          },
-        ),
-      ),
-    );
+            ),
+          ),
+        ));
   }
 
   Widget _buildRoleSelection(LoginState state) {

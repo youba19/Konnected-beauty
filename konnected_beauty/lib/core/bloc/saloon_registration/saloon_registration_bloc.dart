@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../../services/api/salon_auth_service.dart';
 
 // Events
 abstract class SaloonRegistrationEvent {}
@@ -76,6 +77,8 @@ class SubmitOtp extends SaloonRegistrationEvent {}
 class ResendOtp extends SaloonRegistrationEvent {}
 
 class SubmitRegistration extends SaloonRegistrationEvent {}
+
+class SubmitSignup extends SaloonRegistrationEvent {}
 
 class ResetRegistration extends SaloonRegistrationEvent {}
 
@@ -288,6 +291,7 @@ class SaloonRegistrationBloc
     on<SubmitOtp>(_onSubmitOtp);
     on<ResendOtp>(_onResendOtp);
     on<SubmitRegistration>(_onSubmitRegistration);
+    on<SubmitSignup>(_onSubmitSignup);
     on<ResetRegistration>(_onResetRegistration);
   }
 
@@ -562,35 +566,89 @@ class SaloonRegistrationBloc
     ));
   }
 
-  void _onNextStep(NextStep event, Emitter<SaloonRegistrationState> emit) {
+  void _onNextStep(
+      NextStep event, Emitter<SaloonRegistrationState> emit) async {
     if (_canProceedToNextStep()) {
-      final nextStep = state.currentStep + 1;
-      emit(SaloonRegistrationState(
-        currentStep: nextStep,
-        isLoading: state.isLoading,
-        name: state.name,
-        email: state.email,
-        phone: state.phone,
-        password: state.password,
-        isNameValid: state.isNameValid,
-        isEmailValid: state.isEmailValid,
-        isPhoneValid: state.isPhoneValid,
-        isPasswordValid: state.isPasswordValid,
-        otp: state.otp,
-        isOtpValid: state.isOtpValid,
-        isOtpError: state.isOtpError,
-        saloonName: state.saloonName,
-        saloonAddress: state.saloonAddress,
-        saloonDomain: state.saloonDomain,
-        isSaloonNameValid: state.isSaloonNameValid,
-        isSaloonAddressValid: state.isSaloonAddressValid,
-        isSaloonDomainValid: state.isSaloonDomainValid,
-        description: state.description,
-        openHour: state.openHour,
-        closingHour: state.closingHour,
-        uploadedImages: state.uploadedImages,
-        timeOptions: state.timeOptions,
-      ));
+      // If moving from personal information to OTP verification, call signup API
+      if (state.currentStep == 0) {
+        emit(SaloonRegistrationLoading(state));
+
+        try {
+          final result = await SalonAuthService.signup(
+            name: state.name,
+            phoneNumber: state.phone,
+            email: state.email,
+            password: state.password,
+          );
+
+          if (result['success']) {
+            // Signup successful, proceed to OTP verification
+            final nextStep = state.currentStep + 1;
+            emit(SaloonRegistrationState(
+              currentStep: nextStep,
+              isLoading: false,
+              name: state.name,
+              email: state.email,
+              phone: state.phone,
+              password: state.password,
+              isNameValid: state.isNameValid,
+              isEmailValid: state.isEmailValid,
+              isPhoneValid: state.isPhoneValid,
+              isPasswordValid: state.isPasswordValid,
+              otp: state.otp,
+              isOtpValid: state.isOtpValid,
+              isOtpError: state.isOtpError,
+              saloonName: state.saloonName,
+              saloonAddress: state.saloonAddress,
+              saloonDomain: state.saloonDomain,
+              isSaloonNameValid: state.isSaloonNameValid,
+              isSaloonAddressValid: state.isSaloonAddressValid,
+              isSaloonDomainValid: state.isSaloonDomainValid,
+              description: state.description,
+              openHour: state.openHour,
+              closingHour: state.closingHour,
+              uploadedImages: state.uploadedImages,
+              timeOptions: state.timeOptions,
+            ));
+          } else {
+            // Signup failed
+            emit(SaloonRegistrationError(
+                state, result['message'] ?? 'Signup failed'));
+          }
+        } catch (e) {
+          emit(
+              SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
+        }
+      } else {
+        // For other steps, just proceed normally
+        final nextStep = state.currentStep + 1;
+        emit(SaloonRegistrationState(
+          currentStep: nextStep,
+          isLoading: state.isLoading,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+        ));
+      }
     }
   }
 
@@ -656,38 +714,154 @@ class SaloonRegistrationBloc
     ));
   }
 
-  void _onSubmitOtp(SubmitOtp event, Emitter<SaloonRegistrationState> emit) {
-    // Go to Salon Information (step 2) after OTP verification
-    emit(SaloonRegistrationState(
-      currentStep: 2,
-      isLoading: state.isLoading,
-      name: state.name,
-      email: state.email,
-      phone: state.phone,
-      password: state.password,
-      isNameValid: state.isNameValid,
-      isEmailValid: state.isEmailValid,
-      isPhoneValid: state.isPhoneValid,
-      isPasswordValid: state.isPasswordValid,
-      otp: state.otp,
-      isOtpValid: state.isOtpValid,
-      isOtpError: false,
-      saloonName: state.saloonName,
-      saloonAddress: state.saloonAddress,
-      saloonDomain: state.saloonDomain,
-      isSaloonNameValid: state.isSaloonNameValid,
-      isSaloonAddressValid: state.isSaloonAddressValid,
-      isSaloonDomainValid: state.isSaloonDomainValid,
-      description: state.description,
-      openHour: state.openHour,
-      closingHour: state.closingHour,
-      uploadedImages: state.uploadedImages,
-      timeOptions: state.timeOptions,
-    ));
+  void _onSubmitOtp(
+      SubmitOtp event, Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    try {
+      final result = await SalonAuthService.validateOtp(
+        email: state.email,
+        otp: state.otp,
+      );
+
+      if (result['success']) {
+        // OTP validation successful, proceed to Salon Information step
+        emit(SaloonRegistrationState(
+          currentStep: 2,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: false,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+        ));
+      } else {
+        // OTP validation failed
+        emit(SaloonRegistrationError(
+            state, result['message'] ?? 'OTP validation failed'));
+      }
+    } catch (e) {
+      emit(SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
+    }
   }
 
-  void _onResendOtp(ResendOtp event, Emitter<SaloonRegistrationState> emit) {
-    // TODO: Implement OTP resend logic
+  void _onResendOtp(
+      ResendOtp event, Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    try {
+      final result = await SalonAuthService.resendOtp(
+        email: state.email,
+      );
+
+      if (result['success']) {
+        // OTP resent successfully - emit with success message
+        emit(SaloonRegistrationError(
+            state, 'OTP resent successfully! Please check your email.'));
+
+        // Clear the success message after a short delay
+        await Future.delayed(const Duration(seconds: 3));
+        emit(SaloonRegistrationState(
+          currentStep: state.currentStep,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: false,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+        ));
+      } else {
+        // OTP resend failed
+        emit(SaloonRegistrationError(
+            state, result['message'] ?? 'Failed to resend OTP'));
+      }
+    } catch (e) {
+      emit(SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
+    }
+  }
+
+  void _onSubmitSignup(
+      SubmitSignup event, Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    try {
+      final result = await SalonAuthService.signup(
+        name: state.name,
+        phoneNumber: state.phone,
+        email: state.email,
+        password: state.password,
+      );
+
+      if (result['success']) {
+        // Signup successful, proceed to OTP step
+        emit(SaloonRegistrationState(
+          currentStep: 1,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: false,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+        ));
+      } else {
+        // Signup failed
+        emit(SaloonRegistrationError(
+            state, result['message'] ?? 'Signup failed'));
+      }
+    } catch (e) {
+      emit(SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
+    }
   }
 
   void _onSubmitRegistration(

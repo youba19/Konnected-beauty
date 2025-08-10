@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import '../../translations/app_translations.dart';
+import '../../services/api/salon_auth_service.dart';
+import '../../services/storage/token_storage_service.dart';
 
 // Events
 abstract class LoginEvent {}
@@ -153,9 +155,6 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   Future<void> _onLogin(Login event, Emitter<LoginState> emit) async {
     emit(LoginLoading(state));
 
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 2));
-
     try {
       // Validate inputs
       if (event.email.isEmpty || event.password.isEmpty) {
@@ -163,16 +162,45 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         return;
       }
 
-      // Simulate login logic
-      if (event.email == 'test@test.com' && event.password == 'password') {
-        emit(LoginSuccess(state));
-        // TODO: Navigate to home screen
+      // Call the appropriate API based on role
+      Map<String, dynamic> result;
+
+      if (event.role == LoginRole.saloon) {
+        // Call salon login API
+        result = await SalonAuthService.login(
+          email: event.email,
+          password: event.password,
+        );
       } else {
-        emit(LoginError(
-            state, 'Wrong Credentials! Enter your correct information please'));
+        // For now, handle influencer login (you can add influencer API later)
+        emit(LoginError(state, 'Influencer login not implemented yet'));
+        return;
+      }
+
+      if (result['success']) {
+        // Login successful
+        final data = result['data'];
+
+        // Extract tokens from response
+        final accessToken = data['access_token'];
+        final refreshToken = data['refresh_token'];
+
+        // Save authentication data
+        await TokenStorageService.saveAuthData(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          email: event.email,
+          role: event.role.name,
+        );
+
+        emit(LoginSuccess(state));
+        // TODO: Navigate to home screen based on role
+      } else {
+        // Login failed
+        emit(LoginError(state, result['message'] ?? 'Login failed'));
       }
     } catch (e) {
-      emit(LoginError(state, 'An error occurred. Please try again.'));
+      emit(LoginError(state, 'Network error: ${e.toString()}'));
     }
   }
 }
