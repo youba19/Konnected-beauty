@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Camera and photo library permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos for salon profile</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to select images for salon profile</string>
 </dict>
 </plist>

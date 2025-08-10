@@ -11,20 +11,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:konnected_beauty/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Welcome screen smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const KonnectedBeautyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that welcome screen loads
+    expect(find.text('Bienvenue sur Konected'), findsOneWidget);
+    expect(find.text('S\'inscrire en tant que Salon'), findsOneWidget);
+    expect(find.text('S\'inscrire en tant qu\'Influenceur'), findsOneWidget);
   });
 }
