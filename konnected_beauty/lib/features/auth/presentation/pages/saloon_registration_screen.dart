@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
 import 'welcome_screen.dart';
+import 'login_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 
 class SaloonRegistrationScreen extends StatefulWidget {
@@ -21,7 +23,8 @@ class SaloonRegistrationScreen extends StatefulWidget {
       _SaloonRegistrationScreenState();
 }
 
-class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
+class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
+    with TickerProviderStateMixin {
   // Local TextEditingControllers
   late TextEditingController nameController;
   late TextEditingController emailController;
@@ -47,6 +50,12 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       GlobalKey<FormFieldState>();
   final GlobalKey<FormFieldState> saloonDescriptionFormKey =
       GlobalKey<FormFieldState>();
+
+  // Password visibility state
+  bool isPasswordVisible = false;
+
+  // Timer for debouncing description updates
+  Timer? _descriptionDebounceTimer;
 
   // Time options for dropdown
   final List<String> timeOptions = [
@@ -162,18 +171,55 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
             saloonDomain: saloonDomainController.text,
           ));
     });
+  }
 
-    saloonDescriptionController.addListener(() {
-      context.read<SaloonRegistrationBloc>().add(UpdateSalonProfile(
-            description: saloonDescriptionController.text,
-            openHour: '', // Will be updated separately
-            closingHour: '', // Will be updated separately
-          ));
-    });
+  void _showTopDropBanner(String message, Color color) {
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    final entry = OverlayEntry(
+      builder: (context) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                margin: const EdgeInsets.only(top: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  message,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(entry);
+    Future.delayed(const Duration(seconds: 2), () => entry.remove());
+  }
+
+  void _syncDescriptionController(SaloonRegistrationState state) {
+    // Only sync if the controller is empty and state has description, or if we're initializing
+    if (saloonDescriptionController.text.isEmpty &&
+        state.description.isNotEmpty) {
+      saloonDescriptionController.text = state.description;
+    }
   }
 
   @override
   void dispose() {
+    // Dispose timer
+    _descriptionDebounceTimer?.cancel();
+
     // Dispose controllers
     nameController.dispose();
     emailController.dispose();
@@ -195,16 +241,28 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimaryColor),
-          onPressed: () async {
-            // Dismiss keyboard before going back
-            FocusScope.of(context).unfocus();
-            await Future.delayed(const Duration(milliseconds: 100));
-            // Navigate back to welcome screen with animation skipped
-            context.read<WelcomeBloc>().add(SkipLogoAnimation());
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+        leading: BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
+          builder: (context, state) {
+            return IconButton(
+              icon: const Icon(Icons.arrow_back,
+                  color: AppTheme.textPrimaryColor),
+              onPressed: () async {
+                // Dismiss keyboard before going back
+                FocusScope.of(context).unfocus();
+                await Future.delayed(const Duration(milliseconds: 100));
+
+                if (state.currentStep > 0) {
+                  // Go to previous step within registration flow
+                  context.read<SaloonRegistrationBloc>().add(PreviousStep());
+                } else {
+                  // Go back to welcome screen if we're on the first step
+                  context.read<WelcomeBloc>().add(SkipLogoAnimation());
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                        builder: (context) => const WelcomeScreen()),
+                  );
+                }
+              },
             );
           },
         ),
@@ -217,6 +275,20 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       body: SafeArea(
         child: BlocListener<SaloonRegistrationBloc, SaloonRegistrationState>(
           listener: (context, state) {
+            // On full success: navigate to Login and show top green banner
+            if (state is SaloonRegistrationSuccess) {
+              _showTopDropBanner(state.successMessage, Colors.green);
+              // Navigate to Login screen after a short delay
+              Future.delayed(const Duration(milliseconds: 500), () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  ),
+                  (route) => false,
+                );
+              });
+              return;
+            }
             // Handle error messages
             if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
               // Check if it's a success message (contains "successfully" or "already verified")
@@ -243,17 +315,22 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
             }
 
             // Handle success messages for OTP validation
+            // Only show this message if we actually came from OTP verification (not direct navigation)
             if (state.currentStep == 2 &&
                 !state.isLoading &&
-                state.errorMessage == null) {
-              // This means we successfully moved from OTP verification to Salon Information
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('OTP verified successfully!'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 3),
-                ),
-              );
+                state.errorMessage == null &&
+                !state.isOtpError &&
+                !state.isDirectNavigation) {
+              // Check if we have OTP data (indicating we came from OTP verification)
+              if (state.otp.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('OTP verified successfully!'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
             }
           },
           child: BlocBuilder<LanguageBloc, LanguageState>(
@@ -363,70 +440,75 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
 
   Widget _buildPersonalInformationStep(
       BuildContext context, SaloonRegistrationState state) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppTranslations.getString(context, 'personal_information'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppTranslations.getString(context, 'personal_information'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 24),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'full_name'),
-            placeholder:
-                AppTranslations.getString(context, 'full_name_placeholder'),
-            controller: nameController,
-            validator: (value) => Validators.validateName(value, context),
-            autovalidateMode: true,
-            formFieldKey: nameFormKey,
-          ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'email'),
-            placeholder:
-                AppTranslations.getString(context, 'email_placeholder'),
-            controller: emailController,
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) => Validators.validateEmail(value, context),
-            autovalidateMode: true,
-            formFieldKey: emailFormKey,
-          ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'phone'),
-            placeholder:
-                AppTranslations.getString(context, 'phone_placeholder'),
-            controller: phoneController,
-            keyboardType: TextInputType.phone,
-            validator: (value) => Validators.validatePhone(value, context),
-            autovalidateMode: true,
-            formFieldKey: phoneFormKey,
-          ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'password'),
-            placeholder:
-                AppTranslations.getString(context, 'password_placeholder'),
-            controller: passwordController,
-            isPassword: true,
-            validator: (value) => Validators.validatePassword(value, context),
-            autovalidateMode: true,
-            formFieldKey: passwordFormKey,
-            suffixIcon: const Icon(
-              Icons.visibility_off,
+        ),
+        const SizedBox(height: 24), // Normal spacing between title and fields
+        CustomTextField(
+          label: AppTranslations.getString(context, 'full_name'),
+          placeholder:
+              AppTranslations.getString(context, 'full_name_placeholder'),
+          controller: nameController,
+          validator: (value) => Validators.validateName(value, context),
+          autovalidateMode: true,
+          formFieldKey: nameFormKey,
+        ),
+        const SizedBox(height: 20),
+        CustomTextField(
+          label: AppTranslations.getString(context, 'email'),
+          placeholder: AppTranslations.getString(context, 'email_placeholder'),
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          validator: (value) => Validators.validateEmail(value, context),
+          autovalidateMode: true,
+          formFieldKey: emailFormKey,
+        ),
+        const SizedBox(height: 20),
+        CustomTextField(
+          label: AppTranslations.getString(context, 'phone'),
+          placeholder: AppTranslations.getString(context, 'phone_placeholder'),
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          validator: (value) => Validators.validatePhone(value, context),
+          autovalidateMode: true,
+          formFieldKey: phoneFormKey,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+            LengthLimitingTextInputFormatter(13), // +33 + 9 digits
+          ],
+        ),
+        const SizedBox(height: 20),
+        CustomTextField(
+          label: AppTranslations.getString(context, 'password'),
+          placeholder:
+              AppTranslations.getString(context, 'password_placeholder'),
+          controller: passwordController,
+          isPassword: true,
+          validator: (value) => Validators.validatePassword(value, context),
+          autovalidateMode: true,
+          formFieldKey: passwordFormKey,
+          suffixIcon: IconButton(
+            icon: Icon(
+              isPasswordVisible ? Icons.visibility : Icons.visibility_off,
               color: AppTheme.textSecondaryColor,
             ),
+            onPressed: () {
+              setState(() {
+                isPasswordVisible = !isPasswordVisible;
+              });
+            },
           ),
-          // Add extra space for keyboard
-          const SizedBox(height: 100),
-        ],
-      ),
+        ),
+        const SizedBox(height: 100), // Extra space for keyboard
+      ],
     );
   }
 
@@ -556,8 +638,9 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
             placeholder: AppTranslations.getString(
                 context, 'activity_domain_placeholder'),
             controller: saloonDomainController,
-            keyboardType: TextInputType.phone,
-            validator: (value) => Validators.validatePhone(value, context),
+            keyboardType: TextInputType.text,
+            validator: (value) =>
+                Validators.validateSalonDomain(value, context),
             autovalidateMode: true,
             formFieldKey: saloonDomainFormKey,
           ),
@@ -694,10 +777,18 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
                 placeholder: AppTranslations.getString(context, 'select'),
                 items: timeOptions,
                 selectedValue: state.openHour,
+                compact: true,
                 onChanged: (value) {
-                  context
-                      .read<SaloonRegistrationBloc>()
-                      .add(UpdateOpenHour(value ?? ''));
+                  print('🕐 Opening Hour Changed to: "${value ?? ''}"');
+                  print(
+                      '📝 Current Description: "${saloonDescriptionController.text}"');
+                  print('🕐 Current Closing Hour: "${state.closingHour}"');
+                  // Update local description controller into bloc to prevent overriding hours
+                  context.read<SaloonRegistrationBloc>().add(UpdateSalonProfile(
+                        description: saloonDescriptionController.text,
+                        openHour: value ?? '',
+                        closingHour: state.closingHour,
+                      ));
                 },
               ),
             ),
@@ -708,10 +799,17 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
                 placeholder: AppTranslations.getString(context, 'select'),
                 items: timeOptions,
                 selectedValue: state.closingHour,
+                compact: true,
                 onChanged: (value) {
-                  context
-                      .read<SaloonRegistrationBloc>()
-                      .add(UpdateClosingHour(value ?? ''));
+                  print('🕐 Closing Hour Changed to: "${value ?? ''}"');
+                  print(
+                      '📝 Current Description: "${saloonDescriptionController.text}"');
+                  print('🕐 Current Opening Hour: "${state.openHour}"');
+                  context.read<SaloonRegistrationBloc>().add(UpdateSalonProfile(
+                        description: saloonDescriptionController.text,
+                        openHour: state.openHour,
+                        closingHour: value ?? '',
+                      ));
                 },
               ),
             ),
@@ -730,6 +828,19 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
           autovalidateMode: true,
           maxLines: 4,
           formFieldKey: saloonDescriptionFormKey,
+          onChanged: (value) {
+            print('🎯 TextField onChanged: "${value ?? ''}"');
+            print('🕐 State openHour: "${state.openHour}"');
+            print('🕐 State closingHour: "${state.closingHour}"');
+            // Cancel any pending debounced update
+            _descriptionDebounceTimer?.cancel();
+            // Update immediately to preserve hours
+            context.read<SaloonRegistrationBloc>().add(UpdateSalonProfile(
+                  description: value ?? '',
+                  openHour: state.openHour,
+                  closingHour: state.closingHour,
+                ));
+          },
         ),
       ],
     );
@@ -772,12 +883,17 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       case 2:
         return CustomButton(
           text: AppTranslations.getString(context, 'continue'),
-          onPressed: () {
-            _validateCurrentStep(state);
-            if (_canProceedToNextStep(state)) {
-              context.read<SaloonRegistrationBloc>().add(NextStep());
-            }
-          },
+          onPressed: state.isLoading
+              ? () {}
+              : () {
+                  _validateCurrentStep(state);
+                  if (_canProceedToNextStep(state)) {
+                    context
+                        .read<SaloonRegistrationBloc>()
+                        .add(SubmitSalonInfo());
+                  }
+                },
+          isLoading: state.isLoading,
         );
       case 3:
         return CustomButton(
@@ -789,7 +905,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
                   if (_canProceedToNextStep(state)) {
                     context
                         .read<SaloonRegistrationBloc>()
-                        .add(SubmitRegistration());
+                        .add(SubmitSalonProfile());
                   }
                 },
           isLoading: state.isLoading,
@@ -812,8 +928,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen> {
       case 2:
         return saloonNameController.text.isNotEmpty &&
             saloonAddressController.text.isNotEmpty &&
-            saloonDomainController.text.isNotEmpty &&
-            _isValidPhone(saloonDomainController.text);
+            saloonDomainController.text.isNotEmpty;
       case 3:
         return state.openHour.isNotEmpty &&
             state.closingHour.isNotEmpty &&

@@ -32,9 +32,8 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_phone');
     }
-    // Remove spaces and special characters for validation
-    String cleanPhone = value.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-    if (!RegExp(r'^[0-9]{10}$').hasMatch(cleanPhone)) {
+    // Validate French phone number format: +33666850072
+    if (!RegExp(r'^\+33[0-9]{9}$').hasMatch(value.trim())) {
       return AppTranslations.getString(context, 'please_enter_valid_phone');
     }
     return null;
@@ -45,10 +44,11 @@ class Validators {
     if (value == null || value.isEmpty) {
       return AppTranslations.getString(context, 'please_enter_password');
     }
-    if (value.length < 6) {
+    if (value.length < 8) {
       return AppTranslations.getString(context, 'password_min_length');
     }
-    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
+    if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])')
+        .hasMatch(value)) {
       return AppTranslations.getString(context, 'password_requirements');
     }
     return null;

@@ -23,14 +23,14 @@ class LoginButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               'Se connecter à votre compte',
               style: AppTheme.loginButtonTextStyle,
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Icon(
               Icons.arrow_forward_ios,
               size: 16,

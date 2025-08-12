@@ -1,6 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/material.dart';
-import '../../translations/app_translations.dart';
 import '../../services/api/salon_auth_service.dart';
 import '../../services/storage/token_storage_service.dart';
 
@@ -92,7 +90,9 @@ class LoginError extends LoginState {
 }
 
 class LoginSuccess extends LoginState {
-  LoginSuccess(LoginState state)
+  final String userStatus;
+
+  LoginSuccess(LoginState state, {required this.userStatus})
       : super(
           email: state.email,
           password: state.password,
@@ -181,11 +181,37 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         // Login successful
         final data = result['data'];
 
-        // Extract tokens from response
+        print('🎉 === LOGIN SUCCESS ===');
+        print('📊 Complete Login Result: $result');
+        print('📦 Login Data: $data');
+
+        // Extract tokens directly from API response
         final accessToken = data['access_token'];
         final refreshToken = data['refresh_token'];
+        final user = data['user']; // Extract user object if present
 
-        // Save authentication data
+        // Print detailed response information
+        print('🔐 === LOGIN TOKENS ===');
+        print('📧 Email: ${event.email}');
+        print('👤 Role: ${event.role.name}');
+        print('📊 Direct Status from API: ${data['status']}');
+        print('🔍 Status from data.status: ${data['status']}');
+        print('🔍 Status from data.user?.status: ${user?['status']}');
+        print('👤 User Object: $user');
+        print('🔑 Access Token: $accessToken');
+        print('🔄 Refresh Token: $refreshToken');
+        print('🔐 === END TOKENS ===');
+        print('🎉 === END LOGIN SUCCESS ===');
+
+        // Use API response directly without any storage or variables
+        print('🎯 Using API response directly - no storage, no variables');
+
+        // Get the status directly from the API response data
+        final directStatus = data['status'];
+        print('🎯 Direct status from API: $directStatus');
+        print('🎯 Direct status type: ${directStatus.runtimeType}');
+
+        // Store tokens only for API calls
         await TokenStorageService.saveAuthData(
           accessToken: accessToken,
           refreshToken: refreshToken,
@@ -193,10 +219,16 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           role: event.role.name,
         );
 
-        emit(LoginSuccess(state));
-        // TODO: Navigate to home screen based on role
+        // Use the direct status from API response
+        emit(LoginSuccess(state, userStatus: directStatus.toString()));
       } else {
         // Login failed
+        print('❌ === LOGIN FAILED ===');
+        print('📊 Failed Login Result: $result');
+        print('📄 Error Message: ${result['message']}');
+        print('🔢 Status Code: ${result['statusCode']}');
+        print('❌ === END LOGIN FAILED ===');
+
         emit(LoginError(state, result['message'] ?? 'Login failed'));
       }
     } catch (e) {

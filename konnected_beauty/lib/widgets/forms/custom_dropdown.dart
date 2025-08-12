@@ -7,6 +7,7 @@ class CustomDropdown extends StatelessWidget {
   final List<String> items;
   final String? selectedValue;
   final Function(String?) onChanged;
+  final bool compact;
 
   const CustomDropdown({
     super.key,
@@ -15,32 +16,38 @@ class CustomDropdown extends StatelessWidget {
     required this.items,
     this.selectedValue,
     required this.onChanged,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double labelFont = compact ? 12 : 16;
+    final double spacing = compact ? 2 : 8;
+    final double innerHeight = compact ? 34 : 40;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: AppTheme.textPrimaryColor,
-            fontSize: 16,
+            fontSize: labelFont,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: spacing),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding:
+              EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 4 : 8),
           decoration: BoxDecoration(
             color: AppTheme.secondaryColor,
             border: Border.all(color: AppTheme.borderColor, width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: SizedBox(
-            height: 40,
+            height: innerHeight,
             child: DropdownButton<String>(
               value: selectedValue != null && items.contains(selectedValue)
                   ? selectedValue
@@ -49,12 +56,13 @@ class CustomDropdown extends StatelessWidget {
                 selectedValue ?? placeholder,
                 style: TextStyle(
                   color: AppTheme.textSecondaryColor,
-                  fontSize: 14,
+                  fontSize: compact ? 12 : 14,
                 ),
               ),
               underline: const SizedBox.shrink(),
               isExpanded: true,
               dropdownColor: AppTheme.secondaryColor,
+              menuMaxHeight: compact ? 250 : 300,
               style: const TextStyle(
                 color: AppTheme.textPrimaryColor,
                 fontSize: 14,
@@ -63,7 +71,7 @@ class CustomDropdown extends StatelessWidget {
                 Icons.keyboard_arrow_down,
                 color: AppTheme.textPrimaryColor,
               ),
-              iconSize: 20,
+              iconSize: compact ? 18 : 20,
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
