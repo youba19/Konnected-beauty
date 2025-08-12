@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -10,6 +9,11 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import 'welcome_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../../core/bloc/auth/auth_bloc.dart';
+import 'forgot_password_screen.dart';
+import '../../../company/presentation/pages/salon_home_screen.dart';
+import 'saloon_registration_screen.dart';
+import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,6 +26,8 @@ class _LoginScreenState extends State<LoginScreen> {
   late TextEditingController emailController;
   late TextEditingController passwordController;
   bool isPasswordVisible = false;
+  bool _isLocalLoading = false; // Local loading state for immediate UI feedback
+  bool _isLoginSuccessful = false; // Track if login was successful
 
   // Form keys for validation
   final GlobalKey<FormFieldState> emailFormKey = GlobalKey<FormFieldState>();
@@ -55,305 +61,558 @@ class _LoginScreenState extends State<LoginScreen> {
     passwordFormKey.currentState?.validate();
   }
 
+  void _navigateToHomeScreen(LoginRole role) {
+    // Add a small delay to show the success notification
+    Future.delayed(const Duration(seconds: 2), () {
+      if (role == LoginRole.saloon) {
+        // Navigate to salon home screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const SalonHomeScreen(),
+          ),
+          (route) => false, // Remove all previous routes
+        );
+      } else {
+        // TODO: Navigate to influencer home screen when implemented
+        // For now, show a message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Influencer home screen not implemented yet'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    });
+  }
+
+  void _navigateToHomeScreenImmediately(LoginRole role) {
+    // Trigger AuthBloc to check authentication status
+    // This will automatically navigate to the appropriate screen based on auth state
+    context.read<AuthBloc>().add(CheckAuthStatus());
+  }
+
+  void _navigateBasedOnUserStatus(LoginRole role, String userStatus) {
+    print('🧭 === NAVIGATION LOGIC ===');
+    print('👤 Role: ${role.name}');
+    print('📊 Status from API: $userStatus');
+    print('🔍 Status length: ${userStatus.length}');
+    print('🔍 Status bytes: ${userStatus.codeUnits}');
+    print('🔍 Status trimmed: "${userStatus.trim()}"');
+    print('🔍 Status type: ${userStatus.runtimeType}');
+
+    if (role == LoginRole.saloon) {
+      final normalizedStatus = userStatus.toLowerCase().trim();
+      print('🔍 Normalized status: "$normalizedStatus"');
+      print('🔍 Normalized status length: ${normalizedStatus.length}');
+      print('🔍 Normalized status bytes: ${normalizedStatus.codeUnits}');
+
+      // Direct comparison with expected values
+      print('🔍 === DIRECT COMPARISON ===');
+      print('🔍 Is "email-verified"? ${normalizedStatus == "email-verified"}');
+      print(
+          '🔍 Is "salon-info-added"? ${normalizedStatus == "salon-info-added"}');
+      print('🔍 Is "otp"? ${normalizedStatus == "otp"}');
+      print('🔍 === END COMPARISON ===');
+
+      // Debug: Print each character of the normalized status
+      print('🔍 === DETAILED STATUS ANALYSIS ===');
+      print('🔍 Normalized status: "$normalizedStatus"');
+      for (int i = 0; i < normalizedStatus.length; i++) {
+        print(
+            '🔍 Character $i: "${normalizedStatus[i]}" (code: ${normalizedStatus.codeUnitAt(i)})');
+      }
+      print('🔍 Expected "email-verified": "email-verified"');
+      for (int i = 0; i < "email-verified".length; i++) {
+        print(
+            '🔍 Expected char $i: "${"email-verified"[i]}" (code: ${"email-verified".codeUnitAt(i)})');
+      }
+      print('🔍 === END ANALYSIS ===');
+
+      switch (normalizedStatus) {
+        case 'email-verified':
+          print('✅ MATCHED: email-verified case');
+          print('📍 Navigating to: Add Salon Info (Registration)');
+          _navigateToSalonInfoScreen();
+          break;
+
+        case 'otp':
+          print('✅ MATCHED: otp case');
+          print('📍 Navigating to: Add Salon Info (Registration) - OTP status');
+          _navigateToSalonInfoScreen();
+          break;
+
+        case 'salon-info-added':
+          print('✅ MATCHED: salon-info-added case');
+          print('📍 Navigating to: Add Salon Profile (Registration)');
+          _navigateToSalonProfileScreen();
+          break;
+
+        default:
+          print('❌ NO MATCH: default case');
+          print('📍 Navigating to: Salon Home Screen (default case)');
+          print('🔍 Status did not match any case: "$normalizedStatus"');
+          print('🔍 Comparing with:');
+          print(
+              '   - "email-verified": ${normalizedStatus == "email-verified"}');
+          print('   - "otp": ${normalizedStatus == "otp"}');
+          print(
+              '   - "salon-info-added": ${normalizedStatus == "salon-info-added"}');
+          // Navigate to salon home screen for other statuses
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const SalonHomeScreen(),
+            ),
+            (route) => false, // Remove all previous routes
+          );
+          break;
+      }
+    } else {
+      // Handle influencer navigation
+      print('📍 Navigating to: Influencer Home Screen');
+      // TODO: Navigate to influencer home screen when implemented
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Influencer home screen not implemented yet'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  void _navigateToSalonInfoScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const SaloonRegistrationScreen(),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+    // Set the step directly to 2 (Salon Information)
+    context.read<SaloonRegistrationBloc>().add(GoToStep(2));
+  }
+
+  void _navigateToSalonProfileScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const SaloonRegistrationScreen(),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+    // Set the step directly to 3 (Salon Profile)
+    context.read<SaloonRegistrationBloc>().add(GoToStep(3));
+  }
+
+  void _showTopNotification(String message, bool isError) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isError ? Colors.red : Colors.green,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isError ? Icons.error : Icons.check_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    overlayEntry.remove();
+                  },
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    // Auto-remove after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: AppTheme.primaryColor,
-        body: SafeArea(
-          child: BlocListener<LoginBloc, LoginState>(
-            listener: (context, state) {
-              // Handle login success
-              if (state is LoginSuccess) {
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Login successful!'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+      backgroundColor: AppTheme.primaryColor,
+      body: BlocListener<LoginBloc, LoginState>(
+        listener: (context, state) {
+          if (state is LoginSuccess) {
+            // Reset local loading state
+            setState(() {
+              _isLocalLoading = false;
+              _isLoginSuccessful = true;
+            });
 
-                // TODO: Navigate to appropriate home screen based on role
-                // For now, just show a success message
-              }
-            },
-            child: BlocBuilder<LanguageBloc, LanguageState>(
-              builder: (context, languageState) {
-                return BlocBuilder<LoginBloc, LoginState>(
-                  builder: (context, state) {
-                    return SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            // Back Button
-                            IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back,
-                                color: AppTheme.textPrimaryColor,
+            // Show success notification
+            _showTopNotification(
+              AppTranslations.getString(context, 'login_success'),
+              false,
+            );
+
+            // Navigate based on user status
+            _navigateBasedOnUserStatus(state.selectedRole, state.userStatus);
+          } else if (state is LoginError) {
+            // Reset local loading state
+            setState(() {
+              _isLocalLoading = false;
+              _isLoginSuccessful = false;
+            });
+
+            // Show error notification
+            _showTopNotification(state.errorMessage ?? 'Login failed', true);
+          }
+        },
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    MediaQuery.of(context).padding.bottom,
+              ),
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
+                    const Spacer(),
+                    // Logo and Title
+                    Center(
+                      child: Column(
+                        children: [
+                          SvgPicture.asset(
+                            'assets/images/Konected beauty - Logo white.svg',
+                            height: 80,
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            AppTranslations.getString(context, 'welcome_back'),
+                            style: const TextStyle(
+                              color: AppTheme.textPrimaryColor,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Montserrat',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'login_subtitle'),
+                            style: const TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 16,
+                              fontFamily: 'Montserrat',
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    // Login Form
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          // Email Field
+                          CustomTextField(
+                            controller: emailController,
+                            label: AppTranslations.getString(context, 'email'),
+                            placeholder: AppTranslations.getString(
+                                context, 'enter_email'),
+                            keyboardType: TextInputType.emailAddress,
+                            formFieldKey: emailFormKey,
+                            enabled: !(_isLocalLoading || _isLoginSuccessful),
+                            validator: (value) =>
+                                Validators.validateEmail(value, context),
+                          ),
+                          const SizedBox(height: 16),
+                          // Password Field
+                          CustomTextField(
+                            controller: passwordController,
+                            label:
+                                AppTranslations.getString(context, 'password'),
+                            placeholder: AppTranslations.getString(
+                                context, 'enter_password'),
+                            isPassword: !isPasswordVisible,
+                            enabled: !(_isLocalLoading || _isLoginSuccessful),
+                            suffixIcon: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  isPasswordVisible = !isPasswordVisible;
+                                });
+                              },
+                              child: Icon(
+                                isPasswordVisible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: AppTheme.textSecondaryColor,
                               ),
-                              onPressed: () {
-                                Navigator.of(context).pushReplacement(
+                            ),
+                            formFieldKey: passwordFormKey,
+                            validator: (value) =>
+                                Validators.validatePassword(value, context),
+                          ),
+                          const SizedBox(height: 24),
+                          // Forgot Password Link
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const WelcomeScreen(),
+                                    builder: (context) =>
+                                        const ForgotPasswordScreen(),
                                   ),
                                 );
                               },
-                            ),
-                            const SizedBox(height: 32),
-
-                            // Logo
-                            SvgPicture.asset(
-                              'assets/images/Konected beauty - Logo white.svg',
-                              width: 80,
-                              height: 80,
-                              allowDrawingOutsideViewBox: true,
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            // Welcome Back Title
-                            Text(
-                              AppTranslations.getString(
-                                  context, 'welcome_back'),
-                              style: AppTheme.headingStyle,
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            // Role Selection
-                            _buildRoleSelection(state),
-                            const SizedBox(height: 32),
-
-                            // Error Banner
-                            if (state.hasError)
-                              _buildErrorBanner(state.errorMessage),
-                            if (state.hasError) const SizedBox(height: 16),
-
-                            // Email Field
-                            CustomTextField(
-                              label:
-                                  AppTranslations.getString(context, 'email'),
-                              placeholder: AppTranslations.getString(
-                                  context, 'email_placeholder'),
-                              controller: emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              isError: state.hasError,
-                              validator: (value) =>
-                                  Validators.validateEmail(value, context),
-                              autovalidateMode: true,
-                              formFieldKey: emailFormKey,
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Password Field
-                            CustomTextField(
-                              label: AppTranslations.getString(
-                                  context, 'password'),
-                              placeholder: AppTranslations.getString(
-                                  context, 'password_placeholder'),
-                              controller: passwordController,
-                              isPassword: true,
-                              isError: state.hasError,
-                              validator: (value) =>
-                                  Validators.validatePassword(value, context),
-                              autovalidateMode: true,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  isPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                  color: AppTheme.textSecondaryColor,
+                              child: Text(
+                                AppTranslations.getString(
+                                    context, 'forgot_password'),
+                                style: const TextStyle(
+                                  color: AppTheme.accentColor,
+                                  fontSize: 14,
+                                  fontFamily: 'Montserrat',
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    isPasswordVisible = !isPasswordVisible;
-                                  });
-                                },
                               ),
-                              formFieldKey: passwordFormKey,
                             ),
-                            const SizedBox(height: 16),
+                          ),
+                          const SizedBox(height: 32),
+                          // Role Selection
+                          BlocBuilder<LoginBloc, LoginState>(
+                            builder: (context, state) {
+                              return Column(
+                                children: [
+                                  // Influencer Option
+                                  GestureDetector(
+                                    onTap: () {
+                                      context.read<LoginBloc>().add(
+                                          SelectRole(LoginRole.influencer));
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: state.selectedRole ==
+                                                  LoginRole.influencer
+                                              ? AppTheme.accentColor
+                                              : AppTheme.borderColor,
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                        color: state.selectedRole ==
+                                                LoginRole.influencer
+                                            ? AppTheme.accentColor
+                                                .withOpacity(0.1)
+                                            : Colors.transparent,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.person,
+                                            color: state.selectedRole ==
+                                                    LoginRole.influencer
+                                                ? AppTheme.accentColor
+                                                : AppTheme.textSecondaryColor,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            AppTranslations.getString(
+                                                context, 'influencer'),
+                                            style: TextStyle(
+                                              color: state.selectedRole ==
+                                                      LoginRole.influencer
+                                                  ? AppTheme.accentColor
+                                                  : AppTheme.textPrimaryColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              fontFamily: 'Montserrat',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Saloon Option
+                                  GestureDetector(
+                                    onTap: () {
+                                      context
+                                          .read<LoginBloc>()
+                                          .add(SelectRole(LoginRole.saloon));
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: state.selectedRole ==
+                                                  LoginRole.saloon
+                                              ? AppTheme.accentColor
+                                              : AppTheme.borderColor,
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                        color: state.selectedRole ==
+                                                LoginRole.saloon
+                                            ? AppTheme.accentColor
+                                                .withOpacity(0.1)
+                                            : Colors.transparent,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.store,
+                                            color: state.selectedRole ==
+                                                    LoginRole.saloon
+                                                ? AppTheme.accentColor
+                                                : AppTheme.textSecondaryColor,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            AppTranslations.getString(
+                                                context, 'saloon'),
+                                            style: TextStyle(
+                                              color: state.selectedRole ==
+                                                      LoginRole.saloon
+                                                  ? AppTheme.accentColor
+                                                  : AppTheme.textPrimaryColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              fontFamily: 'Montserrat',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                          // Login Button
+                          CustomButton(
+                            text: AppTranslations.getString(context, 'login'),
+                            onPressed: () {
+                              // Validate fields
+                              Validators.validateEmail(
+                                  emailController.text, context);
+                              Validators.validatePassword(
+                                  passwordController.text, context);
 
-                            // Forget Password Link
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: GestureDetector(
+                              // Check if button should be enabled
+                              final shouldEnable =
+                                  emailController.text.isNotEmpty &&
+                                      passwordController.text.isNotEmpty &&
+                                      !_isLocalLoading &&
+                                      !_isLoginSuccessful;
+
+                              if (shouldEnable) {
+                                _validateFields();
+                                final currentState =
+                                    context.read<LoginBloc>().state;
+
+                                setState(() {
+                                  _isLocalLoading = true;
+                                });
+
+                                context.read<LoginBloc>().add(Login(
+                                      email: emailController.text,
+                                      password: passwordController.text,
+                                      role: currentState.selectedRole,
+                                    ));
+                              }
+                            },
+                            isLoading: _isLocalLoading || _isLoginSuccessful,
+                          ),
+                          const SizedBox(height: 24),
+                          // Sign Up Link
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                AppTranslations.getString(
+                                    context, 'dont_have_account'),
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondaryColor,
+                                  fontSize: 14,
+                                  fontFamily: 'Montserrat',
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              GestureDetector(
                                 onTap: () {
-                                  // TODO: Navigate to forget password screen
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SaloonRegistrationScreen(),
+                                    ),
+                                  );
                                 },
                                 child: Text(
-                                  AppTranslations.getString(
-                                      context, 'forget_password'),
-                                  style: TextStyle(
+                                  AppTranslations.getString(context, 'sign_up'),
+                                  style: const TextStyle(
                                     color: AppTheme.accentColor,
-                                    fontSize: 16,
-                                    decoration: TextDecoration.underline,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'Montserrat',
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 100),
-
-                            // Login Button
-                            CustomButton(
-                              text: AppTranslations.getString(
-                                  context, 'login_to_your_account'),
-                              onPressed: _onLogin,
-                              isLoading: state.isLoading,
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ));
-  }
-
-  Widget _buildRoleSelection(LoginState state) {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              context.read<LoginBloc>().add(SelectRole(LoginRole.influencer));
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: state.selectedRole == LoginRole.influencer
-                    ? AppTheme.textPrimaryColor
-                    : Colors.transparent,
-                border: Border.all(
-                  color: AppTheme.textPrimaryColor,
-                  width: 1,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.person,
-                    color: state.selectedRole == LoginRole.influencer
-                        ? AppTheme.primaryColor
-                        : AppTheme.textPrimaryColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppTranslations.getString(context, 'influencer'),
-                    style: TextStyle(
-                      color: state.selectedRole == LoginRole.influencer
-                          ? AppTheme.primaryColor
-                          : AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              context.read<LoginBloc>().add(SelectRole(LoginRole.saloon));
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: state.selectedRole == LoginRole.saloon
-                    ? AppTheme.textPrimaryColor
-                    : Colors.transparent,
-                border: Border.all(
-                  color: AppTheme.textPrimaryColor,
-                  width: 1,
+                    const Spacer(),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.business,
-                    color: state.selectedRole == LoginRole.saloon
-                        ? AppTheme.primaryColor
-                        : AppTheme.textPrimaryColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppTranslations.getString(context, 'saloon'),
-                    style: TextStyle(
-                      color: state.selectedRole == LoginRole.saloon
-                          ? AppTheme.primaryColor
-                          : AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildErrorBanner(String? errorMessage) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.red,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        errorMessage ?? AppTranslations.getString(context, 'wrong_credentials'),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
         ),
       ),
     );
-  }
-
-  bool _canLogin(LoginState state) {
-    // Check if fields are not empty and valid
-    final emailValidation =
-        Validators.validateEmail(emailController.text, context);
-    final passwordValidation =
-        Validators.validatePassword(passwordController.text, context);
-
-    return emailValidation == null &&
-        passwordValidation == null &&
-        !state.isLoading;
-  }
-
-  void _onLogin() {
-    _validateFields();
-    final currentState = context.read<LoginBloc>().state;
-    if (_canLogin(currentState)) {
-      context.read<LoginBloc>().add(Login(
-            email: emailController.text,
-            password: passwordController.text,
-            role: currentState.selectedRole,
-          ));
-    }
   }
 }

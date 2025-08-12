@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../services/api/salon_auth_service.dart';
+import '../../services/storage/token_storage_service.dart';
 
 // Events
 abstract class SaloonRegistrationEvent {}
@@ -80,6 +81,10 @@ class SubmitRegistration extends SaloonRegistrationEvent {}
 
 class SubmitSignup extends SaloonRegistrationEvent {}
 
+class SubmitSalonInfo extends SaloonRegistrationEvent {}
+
+class SubmitSalonProfile extends SaloonRegistrationEvent {}
+
 class ResetRegistration extends SaloonRegistrationEvent {}
 
 // States
@@ -87,6 +92,8 @@ class SaloonRegistrationState {
   final int currentStep;
   final bool isLoading;
   final String? errorMessage;
+  final bool
+      isDirectNavigation; // Flag to track if we came from direct navigation
 
   // Personal Info
   final String name;
@@ -122,6 +129,7 @@ class SaloonRegistrationState {
     required this.currentStep,
     required this.isLoading,
     this.errorMessage,
+    this.isDirectNavigation = false, // Default to false
     required this.name,
     required this.email,
     required this.phone,
@@ -145,6 +153,41 @@ class SaloonRegistrationState {
     required this.uploadedImages,
     required this.timeOptions,
   });
+}
+
+class SaloonRegistrationSuccess extends SaloonRegistrationState {
+  final String successMessage;
+
+  SaloonRegistrationSuccess(SaloonRegistrationState state,
+      {required this.successMessage})
+      : super(
+          currentStep: state.currentStep,
+          isLoading: false,
+          errorMessage: null,
+          isDirectNavigation: state.isDirectNavigation,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+        );
 }
 
 class SaloonRegistrationInitial extends SaloonRegistrationState {
@@ -292,6 +335,8 @@ class SaloonRegistrationBloc
     on<ResendOtp>(_onResendOtp);
     on<SubmitRegistration>(_onSubmitRegistration);
     on<SubmitSignup>(_onSubmitSignup);
+    on<SubmitSalonInfo>(_onSubmitSalonInfo);
+    on<SubmitSalonProfile>(_onSubmitSalonProfile);
     on<ResetRegistration>(_onResetRegistration);
   }
 
@@ -457,6 +502,10 @@ class SaloonRegistrationBloc
 
   void _onUpdateSalonProfile(
       UpdateSalonProfile event, Emitter<SaloonRegistrationState> emit) {
+    print('🔄 BLoC: UpdateSalonProfile called');
+    print('📝 Description: "${event.description}"');
+    print('🕐 OpenHour: "${event.openHour}"');
+    print('🕐 ClosingHour: "${event.closingHour}"');
     emit(SaloonRegistrationState(
       currentStep: state.currentStep,
       isLoading: state.isLoading,
@@ -689,6 +738,7 @@ class SaloonRegistrationBloc
     emit(SaloonRegistrationState(
       currentStep: event.step,
       isLoading: state.isLoading,
+      isDirectNavigation: true, // Set flag to true for direct navigation
       name: state.name,
       email: state.email,
       phone: state.phone,
@@ -718,11 +768,17 @@ class SaloonRegistrationBloc
       SubmitOtp event, Emitter<SaloonRegistrationState> emit) async {
     emit(SaloonRegistrationLoading(state));
 
+    print('🔄 === SUBMIT OTP EVENT ===');
+    print('📧 Email: ${state.email}');
+    print('🔢 OTP: ${state.otp}');
+
     try {
       final result = await SalonAuthService.validateOtp(
         email: state.email,
         otp: state.otp,
       );
+
+      print('📊 OTP Validation Result: $result');
 
       if (result['success']) {
         // OTP validation successful, proceed to Salon Information step
@@ -868,6 +924,138 @@ class SaloonRegistrationBloc
       SubmitRegistration event, Emitter<SaloonRegistrationState> emit) {
     emit(SaloonRegistrationLoading(state));
     // TODO: Implement registration submission logic
+  }
+
+  void _onSubmitSalonInfo(
+      SubmitSalonInfo event, Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    print('🏢 === SUBMIT SALON INFO ===');
+    print('📧 Name: ${state.saloonName}');
+    print('📍 Address: ${state.saloonAddress}');
+    print('🏷️ Domain: ${state.saloonDomain}');
+
+    // Validate required fields
+    if (state.saloonName.isEmpty ||
+        state.saloonAddress.isEmpty ||
+        state.saloonDomain.isEmpty) {
+      print('❌ Missing required fields');
+      emit(
+          SaloonRegistrationError(state, 'Please fill in all required fields'));
+      return;
+    }
+
+    try {
+      print('🚀 Calling SalonAuthService.addSalonInfo...');
+      // Get access token from login response (we need to store it temporarily for this API call)
+      final accessToken = await TokenStorageService.getAccessToken();
+
+      if (accessToken == null) {
+        emit(SaloonRegistrationError(
+            state, 'No access token available. Please login again.'));
+        return;
+      }
+
+      final result = await SalonAuthService.addSalonInfo(
+        name: state.saloonName,
+        address: state.saloonAddress,
+        domain: state.saloonDomain,
+        accessToken: accessToken,
+      );
+
+      print('📊 Add Salon Info Result: $result');
+      print('📊 Success: ${result['success']}');
+      print('📊 Message: ${result['message']}');
+      print('📊 Status Code: ${result['statusCode']}');
+
+      if (result['success']) {
+        // Salon info added successfully, proceed to Salon Profile step
+        emit(SaloonRegistrationState(
+          currentStep: 3,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+        ));
+      } else {
+        // Salon info addition failed
+        emit(SaloonRegistrationError(
+            state, result['message'] ?? 'Failed to add salon information'));
+      }
+    } catch (e) {
+      emit(SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
+    }
+  }
+
+  void _onSubmitSalonProfile(
+      SubmitSalonProfile event, Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    print('🏢 === SUBMIT SALON PROFILE ===');
+    print('🕐 Opening Hour: ${state.openHour}');
+    print('🕐 Closing Hour: ${state.closingHour}');
+    print('📝 Description: ${state.description}');
+    print('🖼️ Images Count: ${state.uploadedImages.length}');
+
+    // Validate image count (min 3, max 10)
+    if (state.uploadedImages.length < 3) {
+      emit(SaloonRegistrationError(
+          state, 'Please upload at least 3 images (minimum required)'));
+      return;
+    }
+
+    if (state.uploadedImages.length > 10) {
+      emit(SaloonRegistrationError(state, 'Please upload maximum 10 images'));
+      return;
+    }
+
+    try {
+      // Convert File objects to file paths (you might need to adjust this based on your file handling)
+      final List<String> picturePaths =
+          state.uploadedImages.map((file) => file.path).toList();
+
+      final result = await SalonAuthService.addSalonProfile(
+        openingHour: state.openHour,
+        closingHour: state.closingHour,
+        description: state.description,
+        pictures: picturePaths,
+      );
+
+      print('📊 Add Salon Profile Result: $result');
+
+      if (result['success']) {
+        // Salon profile added successfully
+        emit(SaloonRegistrationSuccess(
+          state,
+          successMessage: result['message'] ?? 'Account created successfully',
+        ));
+      } else {
+        // Salon profile addition failed
+        emit(SaloonRegistrationError(
+            state, result['message'] ?? 'Failed to add salon profile'));
+      }
+    } catch (e) {
+      emit(SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
+    }
   }
 
   void _onResetRegistration(

@@ -17,6 +17,8 @@ class CustomTextField extends StatelessWidget {
   final bool autovalidateMode;
   final int? maxLines;
   final GlobalKey<FormFieldState>? formFieldKey;
+  final bool enabled;
+  final ValueChanged<String>? onChanged;
 
   const CustomTextField({
     super.key,
@@ -34,6 +36,8 @@ class CustomTextField extends StatelessWidget {
     this.autovalidateMode = false,
     this.maxLines,
     this.formFieldKey,
+    this.enabled = true,
+    this.onChanged,
   });
 
   @override
@@ -49,7 +53,6 @@ class CustomTextField extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
         TextFormField(
           key: formFieldKey,
           controller: controller,
@@ -59,6 +62,8 @@ class CustomTextField extends StatelessWidget {
           maxLines: isPassword ? 1 : maxLines,
           inputFormatters: inputFormatters,
           validator: validator,
+          enabled: enabled,
+          onChanged: onChanged,
           autovalidateMode: autovalidateMode
               ? AutovalidateMode.onUserInteraction
               : AutovalidateMode.disabled,

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class TokenStorageService {
   static const String _accessTokenKey = 'access_token';
@@ -84,5 +85,164 @@ class TokenStorageService {
   static Future<bool> isLoggedIn() async {
     final accessToken = await getAccessToken();
     return accessToken != null && accessToken.isNotEmpty;
+  }
+
+  /// Check if access token is expired
+  static Future<bool> isAccessTokenExpired() async {
+    final accessToken = await getAccessToken();
+    if (accessToken == null) {
+      print('🔍 Token expiry check: No access token found');
+      return true;
+    }
+
+    try {
+      final parts = accessToken.split('.');
+      if (parts.length != 3) {
+        print('🔍 Token expiry check: Invalid token format');
+        return true;
+      }
+
+      final payload = parts[1];
+      final paddedPayload = payload + '=' * (4 - payload.length % 4);
+      final decodedPayload = utf8.decode(base64Url.decode(paddedPayload));
+      final payloadMap = json.decode(decodedPayload);
+
+      final expiresAt =
+          DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
+      final now = DateTime.now();
+
+      print('🔍 Token expiry check:');
+      print('   📅 Expires at: $expiresAt');
+      print('   🕐 Current time: $now');
+      print('   ⏰ Is expired: ${now.isAfter(expiresAt)}');
+
+      return now.isAfter(expiresAt);
+    } catch (e) {
+      print('❌ Error checking token expiry: $e');
+      return true;
+    }
+  }
+
+  /// Check if refresh token is expired
+  static Future<bool> isRefreshTokenExpired() async {
+    final refreshToken = await getRefreshToken();
+    if (refreshToken == null) return true;
+
+    try {
+      final parts = refreshToken.split('.');
+      if (parts.length != 3) return true;
+
+      final payload = parts[1];
+      final paddedPayload = payload + '=' * (4 - payload.length % 4);
+      final decodedPayload = utf8.decode(base64Url.decode(paddedPayload));
+      final payloadMap = json.decode(decodedPayload);
+
+      final expiresAt =
+          DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
+      final now = DateTime.now();
+
+      return now.isAfter(expiresAt);
+    } catch (e) {
+      print('❌ Error checking refresh token expiry: $e');
+      return true;
+    }
+  }
+
+  /// Print all stored tokens to console
+  static Future<void> printStoredTokens() async {
+    final accessToken = await getAccessToken();
+    final refreshToken = await getRefreshToken();
+    final userEmail = await getUserEmail();
+    final userRole = await getUserRole();
+
+    print('🔐 === STORED TOKENS ===');
+    print('📧 Email: $userEmail');
+    print('👤 Role: $userRole');
+    print('🔑 Access Token: $accessToken');
+    print('🔄 Refresh Token: $refreshToken');
+    print('🔐 === END STORED TOKENS ===');
+
+    // Decode and display token information
+    if (accessToken != null) {
+      print('🔍 === ACCESS TOKEN DECODED ===');
+      _decodeAndPrintToken(accessToken, 'Access Token');
+      print('🔍 === END ACCESS TOKEN ===');
+    }
+
+    if (refreshToken != null) {
+      print('🔍 === REFRESH TOKEN DECODED ===');
+      _decodeAndPrintToken(refreshToken, 'Refresh Token');
+      print('🔍 === END REFRESH TOKEN ===');
+    }
+
+    // Print token status summary
+    await _printTokenStatusSummary();
+  }
+
+  /// Print token status summary
+  static Future<void> _printTokenStatusSummary() async {
+    final isAccessExpired = await isAccessTokenExpired();
+    final isRefreshExpired = await isRefreshTokenExpired();
+
+    print('📊 === TOKEN STATUS SUMMARY ===');
+    print('🔑 Access Token: ${isAccessExpired ? "❌ EXPIRED" : "✅ VALID"}');
+    print('🔄 Refresh Token: ${isRefreshExpired ? "❌ EXPIRED" : "✅ VALID"}');
+
+    if (isAccessExpired && isRefreshExpired) {
+      print('⚠️  Both tokens are expired. User needs to login again.');
+    } else if (isAccessExpired && !isRefreshExpired) {
+      print(
+          '🔄 Access token expired but refresh token is valid. Can refresh access token.');
+    } else if (!isAccessExpired && !isRefreshExpired) {
+      print('✅ Both tokens are valid. User is authenticated.');
+    }
+    print('📊 === END STATUS SUMMARY ===');
+  }
+
+  /// Decode and print JWT token information
+  static void _decodeAndPrintToken(String token, String tokenType) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        print('❌ Invalid JWT token format');
+        return;
+      }
+
+      // Decode the payload (second part)
+      final payload = parts[1];
+      // Add padding if needed
+      final paddedPayload = payload + '=' * (4 - payload.length % 4);
+      final decodedPayload = utf8.decode(base64Url.decode(paddedPayload));
+      final payloadMap = json.decode(decodedPayload);
+
+      print('📋 Token Type: $tokenType');
+      print('🆔 User ID: ${payloadMap['id']}');
+      print('📧 Email: ${payloadMap['email']}');
+      print('👤 Role: ${payloadMap['role']}');
+
+      // Convert timestamps to readable dates
+      final issuedAt =
+          DateTime.fromMillisecondsSinceEpoch(payloadMap['iat'] * 1000);
+      final expiresAt =
+          DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
+      final now = DateTime.now();
+
+      print('📅 Issued At: $issuedAt');
+      print('⏰ Expires At: $expiresAt');
+      print('🕐 Current Time: $now');
+
+      // Check if token is expired
+      final isExpired = now.isAfter(expiresAt);
+      final timeUntilExpiry = expiresAt.difference(now);
+
+      if (isExpired) {
+        print('❌ Token is EXPIRED!');
+      } else {
+        print('✅ Token is VALID');
+        print('⏳ Time until expiry: ${timeUntilExpiry.inMinutes} minutes');
+      }
+    } catch (e) {
+      print('❌ Error decoding token: $e');
+    }
   }
 }

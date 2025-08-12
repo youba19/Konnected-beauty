@@ -46,6 +46,25 @@ class AppTranslations {
     'wrong_credentials':
         'Identifiants incorrects ! Entrez vos informations correctes',
 
+    // Reset Password Screen
+    'reset_password': 'Réinitialiser le mot de passe',
+    'reset_password_subtitle':
+        'Entrez votre email pour réinitialiser votre mot de passe',
+    'reset_password_button': 'Réinitialiser le mot de passe',
+    'otp_verification_title': 'Vérification du code',
+    'otp_verification_subtitle':
+        'Nous avons envoyé un code de vérification à votre email',
+    'submit_and_continue': 'Soumettre et continuer',
+    'new_password_title': 'Nouveau mot de passe',
+    'new_password_subtitle': 'Créez un nouveau mot de passe sécurisé',
+    'confirm_password': 'Confirmer le mot de passe',
+    'confirm_password_placeholder': 'Confirmez votre nouveau mot de passe',
+    'password_reset_success': 'Mot de passe réinitialisé avec succès',
+    'password_reset_error':
+        'Erreur lors de la réinitialisation du mot de passe',
+    'email_verification': 'Vérification de l\'email',
+    'email_verified': 'Email vérifié',
+
     // Registration Screen
     'create_account': 'Créer un compte',
     'join_konnected_beauty': 'Rejoignez Konnected Beauty',
@@ -53,7 +72,7 @@ class AppTranslations {
     'full_name': 'Nom complet',
     'full_name_placeholder': 'Entrez votre nom complet',
     'phone': 'Téléphone',
-    'phone_placeholder': 'Entrez votre numéro de téléphone',
+    'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continuer',
     'phone_verification': 'Vérification du téléphone',
     'verification_code': 'Code de vérification',
@@ -79,6 +98,29 @@ class AppTranslations {
     'closing_hour': 'Heure de fermeture',
     'select': 'Sélectionner',
     'salon_description': 'Description du salon',
+
+    // Service Creation
+    'service_name': 'Nom du service',
+    'enter_service_name': 'Entrez le nom de votre service',
+    'service_price': 'Prix du service (EURO)',
+    'enter_service_price': 'Entrez le prix de votre service',
+    'service_description': 'Description du service',
+    'describe_service': 'Décrivez votre service',
+    'service_details': 'Détails du service',
+    'service_created_successfully': 'Le service a été créé avec succès',
+    'delete_service': 'Supprimer le service',
+    'delete_service_confirmation':
+        'Êtes-vous sûr de vouloir supprimer ce service ? Cette action ne peut pas être annulée.',
+    'service_deleted': 'Service supprimé avec succès',
+    'edit_service': 'Modifier le service',
+    'save_changes': 'Enregistrer les modifications',
+    'service_updated': 'Service mis à jour avec succès',
+    'qr_scanning_coming_soon': 'Fonctionnalité de scan QR bientôt disponible',
+    'service_created': 'Service créé avec succès',
+    'edit_functionality_coming_soon':
+        'Fonctionnalité d\'édition bientôt disponible',
+    'cancel': 'Annuler',
+    'delete': 'Supprimer',
     'describe_salon_placeholder': 'Décrivez votre salon...',
 
     // Language Selector
@@ -99,12 +141,12 @@ class AppTranslations {
     'please_enter_valid_email': 'Veuillez entrer un email valide',
     'please_enter_phone': 'Veuillez entrer votre numéro de téléphone',
     'please_enter_valid_phone':
-        'Veuillez entrer un numéro de téléphone valide (10 chiffres)',
+        'Veuillez entrer un numéro de téléphone valide (+33-XX-XX-XX-XX)',
     'please_enter_password': 'Veuillez entrer votre mot de passe',
     'password_min_length':
-        'Le mot de passe doit contenir au moins 6 caractères',
+        'Le mot de passe doit contenir au moins 8 caractères',
     'password_requirements':
-        'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre',
+        'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial',
     'please_enter_otp': 'Veuillez entrer le code OTP',
     'otp_length': 'Le code OTP doit contenir 6 chiffres',
     'otp_numbers_only': 'Le code OTP ne doit contenir que des chiffres',
@@ -125,6 +167,18 @@ class AppTranslations {
     'please_enter_number': 'Veuillez entrer un nombre',
     'please_enter_valid_number': 'Veuillez entrer un nombre valide',
     'number_must_be_positive': 'Le nombre doit être positif',
+
+    // Salon Home Screen
+    'services': 'Services',
+    'search': 'Rechercher',
+    'create_new_service': 'Créer un nouveau service',
+    'see_more': 'Voir plus',
+    'view_details': 'Voir les détails',
+    'edit': 'Modifier',
+    'campaigns': 'Campagnes',
+    'wallet': 'Portefeuille',
+    'influencers': 'Influenceurs',
+    'settings': 'Paramètres',
   };
 
   // English translations
@@ -151,6 +205,23 @@ class AppTranslations {
     'wrong_credentials':
         'Wrong Credentials! Enter your correct information please',
 
+    // Reset Password Screen
+    'reset_password': 'Reset Password',
+    'reset_password_subtitle': 'Enter your email to reset your password',
+    'reset_password_button': 'Reset Password',
+    'otp_verification_title': 'Code Verification',
+    'otp_verification_subtitle':
+        'We have sent a verification code to your email',
+    'submit_and_continue': 'Submit & Continue',
+    'new_password_title': 'New Password',
+    'new_password_subtitle': 'Create a secure new password',
+    'confirm_password': 'Confirm Password',
+    'confirm_password_placeholder': 'Confirm your new password',
+    'password_reset_success': 'Password reset successfully',
+    'password_reset_error': 'Error resetting password',
+    'email_verification': 'Email Verification',
+    'email_verified': 'Email Verified',
+
     // Registration Screen
     'create_account': 'Create Account',
     'join_konnected_beauty': 'Join Konnected Beauty',
@@ -158,7 +229,7 @@ class AppTranslations {
     'full_name': 'Full Name',
     'full_name_placeholder': 'Enter your full name',
     'phone': 'Phone',
-    'phone_placeholder': 'Enter your phone number',
+    'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continue',
     'phone_verification': 'Phone Verification',
     'verification_code': 'Verification Code',
@@ -202,11 +273,12 @@ class AppTranslations {
     'please_enter_email': 'Please enter your email',
     'please_enter_valid_email': 'Please enter a valid email',
     'please_enter_phone': 'Please enter your phone number',
-    'please_enter_valid_phone': 'Please enter a valid phone number (10 digits)',
+    'please_enter_valid_phone':
+        'Please enter a valid phone number (+33-XX-XX-XX-XX)',
     'please_enter_password': 'Please enter your password',
-    'password_min_length': 'Password must contain at least 6 characters',
+    'password_min_length': 'Password must contain at least 8 characters',
     'password_requirements':
-        'Password must contain at least one uppercase, one lowercase and one number',
+        'Password must contain at least one uppercase, one lowercase, one number and one special character',
     'please_enter_otp': 'Please enter the OTP code',
     'otp_length': 'OTP code must contain 6 digits',
     'otp_numbers_only': 'OTP code must contain only numbers',
@@ -223,5 +295,41 @@ class AppTranslations {
     'please_enter_number': 'Please enter a number',
     'please_enter_valid_number': 'Please enter a valid number',
     'number_must_be_positive': 'Number must be positive',
+
+    // Salon Home Screen
+    'services': 'Services',
+    'search': 'Search',
+    'create_new_service': 'Create new service',
+    'see_more': 'See more',
+    'view_details': 'View details',
+    'edit': 'Edit',
+    'campaigns': 'Campaigns',
+    'wallet': 'Wallet',
+    'influencers': 'Influencers',
+    'settings': 'Settings',
+
+    // Filter
+    'filter': 'Filter',
+    'min': 'Min',
+    'max': 'Max',
+    'apply_filter': 'Apply filter',
+
+    // Service Creation
+    'service_name': 'Service name',
+    'enter_service_name': 'Enter your service name',
+    'service_price': 'Service price (EURO)',
+    'enter_service_price': 'Enter your service price',
+    'service_description': 'Service description',
+    'describe_service': 'Describe your service',
+    'service_details': 'Service details',
+    'service_created_successfully': 'Service has been created successfully',
+    'delete_service': 'Delete Service',
+    'delete_service_confirmation':
+        'Are you sure you want to delete this service? This action cannot be undone.',
+    'service_deleted': 'Service deleted successfully',
+    'edit_functionality_coming_soon': 'Edit functionality coming soon',
+    'qr_scanning_coming_soon': 'QR scanning functionality coming soon',
+    'cancel': 'Cancel',
+    'delete': 'Delete',
   };
 }
