@@ -27,13 +27,14 @@ class Validators {
     return null;
   }
 
-  // Phone validation
+// Phone validation
   static String? validatePhone(String? value, BuildContext context) {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_phone');
     }
-    // Validate French phone number format: +33666850072
-    if (!RegExp(r'^\+33[0-9]{9}$').hasMatch(value.trim())) {
+    // Generic international phone number validation (E.164 format)
+    // Starts with +, followed by country code (1-3 digits), then up to 12 digits
+    if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(value.trim())) {
       return AppTranslations.getString(context, 'please_enter_valid_phone');
     }
     return null;
@@ -84,7 +85,7 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_salon_address');
     }
-    if (value.trim().length < 10) {
+    if (value.trim().length < 0) {
       return AppTranslations.getString(context, 'salon_address_min_length');
     }
     return null;
@@ -95,7 +96,7 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_salon_domain');
     }
-    if (value.trim().length < 3) {
+    if (value.trim().length < 1) {
       return AppTranslations.getString(context, 'salon_domain_min_length');
     }
     return null;

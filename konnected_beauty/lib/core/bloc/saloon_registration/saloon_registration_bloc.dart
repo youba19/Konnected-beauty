@@ -1098,7 +1098,19 @@ class SaloonRegistrationBloc
       print('📊 Add Salon Profile Result: $result');
 
       if (result['success']) {
-        // Salon profile added successfully
+        // Salon profile added successfully. If API returns tokens, save them like login.
+        try {
+          final data = result['data'] as Map<String, dynamic>?;
+          final accessToken = data?['access_token'] as String?;
+          final refreshToken = data?['refresh_token'] as String?;
+          if (accessToken != null && accessToken.isNotEmpty) {
+            await TokenStorageService.saveAccessToken(accessToken);
+          }
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            await TokenStorageService.saveRefreshToken(refreshToken);
+          }
+        } catch (_) {}
+
         emit(SaloonRegistrationSuccess(
           state,
           successMessage: result['message'] ?? 'Account created successfully',

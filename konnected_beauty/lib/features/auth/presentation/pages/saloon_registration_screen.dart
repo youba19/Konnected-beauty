@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
-import '../../../../core/constants/app_constants.dart';
+// import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
 import '../../../../core/bloc/welcome/welcome_bloc.dart';
@@ -12,7 +12,7 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
 import 'welcome_screen.dart';
-import 'login_screen.dart';
+import '../../../company/presentation/pages/salon_home_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 
 class SaloonRegistrationScreen extends StatefulWidget {
@@ -175,7 +175,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
 
   void _showTopDropBanner(String message, Color color) {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
+    // Use overlay directly (non-null in a mounted tree)
 
     final entry = OverlayEntry(
       builder: (context) {
@@ -275,14 +275,14 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
       body: SafeArea(
         child: BlocListener<SaloonRegistrationBloc, SaloonRegistrationState>(
           listener: (context, state) {
-            // On full success: navigate to Login and show top green banner
+            // On full success: navigate to Salon Home and show top green banner
             if (state is SaloonRegistrationSuccess) {
               _showTopDropBanner(state.successMessage, Colors.green);
-              // Navigate to Login screen after a short delay
+              // Navigate to Salon Home after a short delay
               Future.delayed(const Duration(milliseconds: 500), () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
-                    builder: (context) => const LoginScreen(),
+                    builder: (context) => const SalonHomeScreen(),
                   ),
                   (route) => false,
                 );
@@ -804,14 +804,14 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           maxLines: 4,
           formFieldKey: saloonDescriptionFormKey,
           onChanged: (value) {
-            print('🎯 TextField onChanged: "${value ?? ''}"');
+            print('🎯 TextField onChanged: "$value"');
             print('🕐 State openHour: "${state.openHour}"');
             print('🕐 State closingHour: "${state.closingHour}"');
             // Cancel any pending debounced update
             _descriptionDebounceTimer?.cancel();
             // Update immediately to preserve hours
             context.read<SaloonRegistrationBloc>().add(UpdateSalonProfile(
-                  description: value ?? '',
+                  description: value,
                   openHour: state.openHour,
                   closingHour: state.closingHour,
                 ));

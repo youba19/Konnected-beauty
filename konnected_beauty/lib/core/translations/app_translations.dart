@@ -97,7 +97,7 @@ class AppTranslations {
     'salon_address': 'Adresse du salon',
     'salon_address_placeholder': 'Entrez l\'adresse de votre salon',
     'activity_domain': 'Domaine d\'activité du salon',
-    'activity_domain_placeholder': '+33-XX-XX-XX-XX',
+    'activity_domain_placeholder': 'Domaine d\'activité',
 
     // Salon Profile
     'salon_profile': 'Profil du salon',
@@ -308,7 +308,7 @@ class AppTranslations {
     'salon_address': 'Salon address',
     'salon_address_placeholder': 'Enter your salon address',
     'activity_domain': 'Salon domain of activity',
-    'activity_domain_placeholder': '+33-XX-XX-XX-XX',
+    'activity_domain_placeholder': 'Domain of activity',
 
     // Salon Profile
     'salon_profile': 'Salon Profile',
