@@ -79,6 +79,20 @@ class TokenStorageService {
       prefs.remove(_userEmailKey),
       prefs.remove(_userRoleKey),
     ]);
+    
+    print('🧹 === AUTH DATA CLEARED ===');
+    print('🧹 All tokens and user data removed');
+    print('🧹 === END CLEARED ===');
+  }
+
+  /// Clear all app data (for logout)
+  static Future<void> clearAllData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    
+    print('🧹 === ALL APP DATA CLEARED ===');
+    print('🧹 Complete app reset - all data removed');
+    print('🧹 === END CLEARED ===');
   }
 
   /// Check if user is logged in
@@ -179,6 +193,39 @@ class TokenStorageService {
     await _printTokenStatusSummary();
   }
 
+  /// Get user information from access token
+  static Future<Map<String, dynamic>?> getUserInfoFromToken() async {
+    final accessToken = await getAccessToken();
+    if (accessToken == null) return null;
+
+    try {
+      final parts = accessToken.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = parts[1];
+      final paddedPayload = payload + '=' * (4 - payload.length % 4);
+      final decodedPayload = utf8.decode(base64Url.decode(paddedPayload));
+      final payloadMap = json.decode(decodedPayload);
+
+      return payloadMap as Map<String, dynamic>;
+    } catch (e) {
+      print('❌ Error decoding token payload: $e');
+      return null;
+    }
+  }
+
+  /// Get user ID from token
+  static Future<String?> getUserIdFromToken() async {
+    final userInfo = await getUserInfoFromToken();
+    return userInfo?['id'] as String?;
+  }
+
+  /// Get salon ID from token (if available)
+  static Future<String?> getSalonIdFromToken() async {
+    final userInfo = await getUserInfoFromToken();
+    return userInfo?['salonId'] as String?;
+  }
+
   /// Print token status summary
   static Future<void> _printTokenStatusSummary() async {
     final isAccessExpired = await isAccessTokenExpired();
@@ -196,6 +243,16 @@ class TokenStorageService {
     } else if (!isAccessExpired && !isRefreshExpired) {
       print('✅ Both tokens are valid. User is authenticated.');
     }
+
+    // Print user info from token
+    final userInfo = await getUserInfoFromToken();
+    if (userInfo != null) {
+      print('👤 User ID: ${userInfo['id']}');
+      print('📧 Email: ${userInfo['email']}');
+      print('🏢 Salon ID: ${userInfo['salonId'] ?? 'N/A'}');
+      print('👥 Role: ${userInfo['role']}');
+    }
+
     print('📊 === END STATUS SUMMARY ===');
   }
 

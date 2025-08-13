@@ -126,9 +126,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     try {
-      await TokenStorageService.clearAuthData();
+      print('🚪 === LOGOUT PROCESS ===');
+      print('🚪 Clearing all app data to prevent cross-user contamination');
+
+      // Clear all app data to ensure no cross-user data remains
+      await TokenStorageService.clearAllData();
+
+      print('🚪 === LOGOUT COMPLETED ===');
       emit(AuthUnauthenticated());
     } catch (e) {
+      print('❌ Logout failed: $e');
       emit(AuthError('Logout failed: ${e.toString()}'));
     }
   }

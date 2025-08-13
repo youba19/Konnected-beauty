@@ -54,7 +54,7 @@ class KonnectedBeautyApp extends StatelessWidget {
           return BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
               return MaterialApp(
-                title: 'Konnected Beauty',
+                title: 'Konected Beauty',
                 debugShowCheckedModeBanner: false,
                 theme: AppTheme.darkTheme,
                 locale: languageState.locale,
@@ -103,7 +103,7 @@ class KonnectedBeautyApp extends StatelessWidget {
       }
     } else {
       print('🏠 User is not authenticated, showing WelcomeScreen');
-      // AuthUnauthenticated or AuthError
+      // AuthUnauthenticated or AuthError → show Welcome screen
       return const WelcomeScreen();
     }
   }

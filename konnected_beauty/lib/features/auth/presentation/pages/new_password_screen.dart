@@ -66,8 +66,9 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
     if (passwordValid && confirmPasswordValid) {
       if (passwordController.text != confirmPasswordController.text) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Passwords do not match'),
+          SnackBar(
+            content: Text(
+                AppTranslations.getString(context, 'passwords_do_not_match')),
             backgroundColor: Colors.red,
           ),
         );
@@ -223,10 +224,12 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                                 isPassword: true,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please confirm your password';
+                                    return AppTranslations.getString(
+                                        context, 'please_confirm_password');
                                   }
                                   if (value != passwordController.text) {
-                                    return 'Passwords do not match';
+                                    return AppTranslations.getString(
+                                        context, 'passwords_do_not_match');
                                   }
                                   return null;
                                 },
