@@ -159,7 +159,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               const SizedBox(height: 8),
 
                               Text(
-                                'OTP verification',
+                                AppTranslations.getString(
+                                    context, 'otp_verification'),
                                 style: TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 14,
@@ -176,10 +177,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 keyboardType: TextInputType.number,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter OTP';
+                                    return AppTranslations.getString(
+                                        context, 'please_enter_otp');
                                   }
                                   if (value.length < 6) {
-                                    return 'OTP must be 6 digits';
+                                    return AppTranslations.getString(
+                                        context, 'otp_length');
                                   }
                                   return null;
                                 },

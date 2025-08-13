@@ -289,49 +289,24 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
               });
               return;
             }
-            // Handle error messages
-            if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
-              // Check if it's a success message (contains "successfully" or "already verified")
-              if (state.errorMessage!.toLowerCase().contains('successfully') ||
-                  state.errorMessage!
-                      .toLowerCase()
-                      .contains('already verified')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.errorMessage!),
-                    backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.errorMessage!),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
-              }
+            // Handle error messages (but not success messages that are handled by top banner)
+            if (state.errorMessage != null &&
+                state.errorMessage!.isNotEmpty &&
+                !state.errorMessage!.toLowerCase().contains('successfully') &&
+                !state.errorMessage!
+                    .toLowerCase()
+                    .contains('already verified')) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage!),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
             }
 
-            // Handle success messages for OTP validation
-            // Only show this message if we actually came from OTP verification (not direct navigation)
-            if (state.currentStep == 2 &&
-                !state.isLoading &&
-                state.errorMessage == null &&
-                !state.isOtpError &&
-                !state.isDirectNavigation) {
-              // Check if we have OTP data (indicating we came from OTP verification)
-              if (state.otp.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('OTP verified successfully!'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
-              }
-            }
+            // OTP validation success is handled by the top drop banner
+            // No need to show additional SnackBar messages for OTP verification
           },
           child: BlocBuilder<LanguageBloc, LanguageState>(
             builder: (context, languageState) {

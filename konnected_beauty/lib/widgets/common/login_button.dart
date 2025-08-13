@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/translations/app_translations.dart';
 
 class LoginButton extends StatelessWidget {
   final VoidCallback onPressed;
@@ -27,7 +28,7 @@ class LoginButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Se connecter à votre compte',
+              AppTranslations.getString(context, 'login_to_account'),
               style: AppTheme.loginButtonTextStyle,
             ),
             const SizedBox(width: 8),

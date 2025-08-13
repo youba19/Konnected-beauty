@@ -27,6 +27,15 @@ class ServiceDetailsScreen extends StatefulWidget {
 }
 
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
+  _ServiceDetailsScreenState();
+
+  @override
+  void initState() {
+    super.initState();
+    // Always load services on app start
+    context.read<SalonServicesBloc>().add(LoadSalonServices());
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<SalonServicesBloc, SalonServicesState>(
@@ -338,6 +347,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 // Delete the service using the API
                 context.read<SalonServicesBloc>().add(DeleteSalonService(
                       serviceId: widget.serviceId,
+                      serviceName: widget.serviceName,
                     ));
               },
               child: Text(
@@ -366,13 +376,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
     overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
+        top: 40,
+        left: 16,
+        right: 16,
         child: Material(
           color: Colors.transparent,
           child: Container(
-            margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: backgroundColor,
@@ -404,11 +413,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
                   onPressed: () {
                     overlayEntry.remove();
                   },

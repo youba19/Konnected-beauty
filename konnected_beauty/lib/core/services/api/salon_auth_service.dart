@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 
 class SalonAuthService {
@@ -520,11 +521,51 @@ class SalonAuthService {
           if (await file.exists()) {
             final stream = http.ByteStream(file.openRead());
             final length = await file.length();
+            final filename = path.split('/').last;
+
+            // Validate file type - only allow image files
+            final validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+            final fileExtension = filename.toLowerCase();
+            final isValidImage =
+                validExtensions.any((ext) => fileExtension.endsWith(ext));
+
+            if (!isValidImage) {
+              print(
+                  '❌ Invalid file type: $filename. Only JPG, PNG, GIF, WEBP are allowed.');
+              print('❌ File extension: $fileExtension');
+              continue; // Skip this file
+            }
+
+            // Ensure filename has proper extension
+            String finalFilename = filename;
+            if (!fileExtension.contains('.')) {
+              // If no extension, assume it's JPEG
+              finalFilename = '$filename.jpg';
+              print(
+                  '⚠️ No file extension found, assuming JPEG: $finalFilename');
+            }
+
+            // Determine MIME type based on file extension
+            String mimeType = 'image/jpeg'; // default
+            if (fileExtension.endsWith('.png')) {
+              mimeType = 'image/png';
+            } else if (fileExtension.endsWith('.jpg') ||
+                fileExtension.endsWith('.jpeg')) {
+              mimeType = 'image/jpeg';
+            } else if (fileExtension.endsWith('.gif')) {
+              mimeType = 'image/gif';
+            } else if (fileExtension.endsWith('.webp')) {
+              mimeType = 'image/webp';
+            }
+
+            print('📁 File: $filename, MIME: $mimeType, Size: $length bytes');
+
             final multipartFile = http.MultipartFile(
               'pictures',
               stream,
               length,
-              filename: path.split('/').last,
+              filename: finalFilename,
+              contentType: MediaType.parse(mimeType),
             );
             request.files.add(multipartFile);
           } else {
@@ -556,9 +597,18 @@ class SalonAuthService {
         };
       } else {
         print('❌ Add Salon Profile Failed');
+        String errorMessage = formatMessage(responseData['message']);
+
+        // Provide more helpful error messages
+        if (response.statusCode == 422 &&
+            errorMessage.toLowerCase().contains('invalid file type')) {
+          errorMessage =
+              'Invalid file type. Please select only JPG, PNG, GIF, or WEBP images.';
+        }
+
         return {
           'success': false,
-          'message': formatMessage(responseData['message']),
+          'message': errorMessage,
           'error': responseData['error'],
           'statusCode': response.statusCode,
         };

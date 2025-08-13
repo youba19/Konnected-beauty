@@ -57,7 +57,10 @@ class UpdateSalonProfile extends SaloonRegistrationEvent {
   });
 }
 
-class UploadImage extends SaloonRegistrationEvent {}
+class UploadImage extends SaloonRegistrationEvent {
+  final ImageSource source;
+  UploadImage({this.source = ImageSource.gallery});
+}
 
 class RemoveImage extends SaloonRegistrationEvent {
   final int index;
@@ -538,15 +541,35 @@ class SaloonRegistrationBloc
       UploadImage event, Emitter<SaloonRegistrationState> emit) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: event.source,
         maxWidth: 1920,
         maxHeight: 1080,
         imageQuality: 85,
+        preferredCameraDevice: CameraDevice.rear,
       );
 
       if (image != null) {
-        final newImages = List<File>.from(state.uploadedImages)
-          ..add(File(image.path));
+        final file = File(image.path);
+        final filename = image.path.split('/').last;
+
+        print('📸 Selected image: $filename');
+        print('📁 File path: ${image.path}');
+        print('📏 File size: ${await file.length()} bytes');
+        print('🔍 File exists: ${await file.exists()}');
+
+        // Validate file type
+        final validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        final fileExtension = filename.toLowerCase();
+        final isValidImage =
+            validExtensions.any((ext) => fileExtension.endsWith(ext));
+
+        if (!isValidImage) {
+          emit(SaloonRegistrationError(state,
+              'Invalid file type: $filename. Only JPG, PNG, GIF, WEBP are allowed.'));
+          return;
+        }
+
+        final newImages = List<File>.from(state.uploadedImages)..add(file);
 
         emit(SaloonRegistrationState(
           currentStep: state.currentStep,
@@ -781,7 +804,36 @@ class SaloonRegistrationBloc
       print('📊 OTP Validation Result: $result');
 
       if (result['success']) {
-        // OTP validation successful, proceed to Salon Information step
+        // OTP validation successful, save access token and proceed to Salon Information step
+        final data = result['data'] as Map<String, dynamic>?;
+        print('📊 OTP Validation Data: $data');
+
+        if (data != null) {
+          final accessToken = data['access_token'] as String?;
+          final refreshToken = data['refresh_token'] as String?;
+
+          print(
+              '🔑 Access Token: ${accessToken != null ? "Present" : "Missing"}');
+          print(
+              '🔄 Refresh Token: ${refreshToken != null ? "Present" : "Missing"}');
+
+          if (accessToken != null) {
+            await TokenStorageService.saveAccessToken(accessToken);
+            print('💾 Access token saved after OTP validation');
+          } else {
+            print('⚠️ No access token in OTP validation response');
+          }
+
+          if (refreshToken != null) {
+            await TokenStorageService.saveRefreshToken(refreshToken);
+            print('💾 Refresh token saved after OTP validation');
+          } else {
+            print('⚠️ No refresh token in OTP validation response');
+          }
+        } else {
+          print('⚠️ No data in OTP validation response');
+        }
+
         emit(SaloonRegistrationState(
           currentStep: 2,
           isLoading: false,
@@ -947,10 +999,13 @@ class SaloonRegistrationBloc
 
     try {
       print('🚀 Calling SalonAuthService.addSalonInfo...');
-      // Get access token from login response (we need to store it temporarily for this API call)
+      // Get access token from storage
       final accessToken = await TokenStorageService.getAccessToken();
+      print(
+          '🔑 Retrieved Access Token: ${accessToken != null ? "Present" : "Missing"}');
 
       if (accessToken == null) {
+        print('❌ No access token available for addSalonInfo');
         emit(SaloonRegistrationError(
             state, 'No access token available. Please login again.'));
         return;
