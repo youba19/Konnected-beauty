@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
@@ -8,6 +9,8 @@ import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/services/storage/token_storage_service.dart';
 import '../../../../core/services/api/salon_services_service.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
+import '../../../../widgets/common/gradient_scaffold.dart';
 import '../../../auth/presentation/pages/welcome_screen.dart';
 import 'create_service_screen.dart';
 import 'service_details_screen.dart';
@@ -32,7 +35,6 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
   int? _currentMaxPrice;
   bool _isLoadingMore = false; // Flag to prevent duplicate load more requests
   Timer? _refreshTimer; // Timer for checking data after refresh
-  OverlayEntry? _currentTopDialog; // Current top dialog overlay entry
 
   @override
   void initState() {
@@ -313,57 +315,58 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
         print('✅ Service created successfully, refreshing list...');
         context.read<SalonServicesBloc>().add(LoadSalonServices());
 
-        // Show success message from top
-        _showTopDialog(
-          message: state.message,
-          backgroundColor: Colors.green,
-          icon: Icons.check_circle,
-        );
+        // No need to show success message here - create service screen already shows it
       } else if (state is SalonServiceUpdated) {
         // Service was updated successfully, refresh the list
         print('✅ Service updated successfully, refreshing list...');
         context.read<SalonServicesBloc>().add(LoadSalonServices());
 
-        // Show success message from top
-        _showTopDialog(
-          message: state.message,
-          backgroundColor: Colors.green,
-          icon: Icons.check_circle,
-        );
+        // No need to show success message here - edit service screen already shows it
       } else if (state is SalonServiceDeleted) {
         // Service was deleted successfully, refresh the list
         print('✅ Service deleted successfully, refreshing list...');
         context.read<SalonServicesBloc>().add(LoadSalonServices());
 
-        // Show success message from top
-        _showTopDialog(
+        // Show success message using the new notification service
+        TopNotificationService.showSuccess(
+          context: context,
           message: state.message,
-          backgroundColor: Colors.green,
-          icon: Icons.check_circle,
         );
       }
     }, child: BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
-        return Scaffold(
-          backgroundColor: AppTheme.primaryColor,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Success Banner (if needed)
-                if (_showDeleteSuccess) _buildDeleteSuccessBanner(),
-
-                // Header Section
-                _buildHeader(),
-
-                // Main Content
-                Expanded(
-                  child: _buildMainContent(),
-                ),
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                Color(0xFF1F1E1E), // Bottom color (darker)
+                Color(0xFF3B3B3B), // Top color (lighter)
               ],
             ),
           ),
-          bottomNavigationBar: _buildBottomNavigation(),
-          floatingActionButton: _buildFloatingActionButton(),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Success Banner (if needed)
+                  if (_showDeleteSuccess) _buildDeleteSuccessBanner(),
+
+                  // Header Section
+                  _buildHeader(),
+
+                  // Main Content
+                  Expanded(
+                    child: _buildMainContent(),
+                  ),
+                ],
+              ),
+            ),
+            bottomNavigationBar: _buildBottomNavigation(),
+            floatingActionButton: _buildFloatingActionButton(),
+          ),
         );
       },
     ));
@@ -371,7 +374,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -395,7 +398,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                 height: 48,
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: Colors.red.withOpacity(0.3),
                     width: 1,
@@ -441,12 +444,12 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             children: [
               Expanded(
                 child: Container(
-                  height: 48,
+                  height: 54,
                   decoration: BoxDecoration(
-                    color: AppTheme.secondaryColor,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppTheme.transparentBackground,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppTheme.borderColor,
+                      color: AppTheme.textPrimaryColor,
                       width: 1,
                     ),
                   ),
@@ -458,13 +461,13 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     ),
                     decoration: InputDecoration(
                       hintText: AppTranslations.getString(context, 'search'),
-                      hintStyle: TextStyle(
+                      hintStyle: const TextStyle(
                         color: AppTheme.textSecondaryColor,
                         fontSize: 16,
                       ),
-                      prefixIcon: const Icon(
+                      suffixIcon: const Icon(
                         Icons.search,
-                        color: AppTheme.textSecondaryColor,
+                        color: AppTheme.textPrimaryColor,
                       ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
@@ -483,9 +486,9 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                   color: (_currentMinPrice != null || _currentMaxPrice != null)
                       ? AppTheme.textPrimaryColor
                       : AppTheme.secondaryColor,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppTheme.textPrimaryColor.withOpacity(0.2),
+                    color: AppTheme.textPrimaryColor,
                     width: 1,
                   ),
                 ),
@@ -509,7 +512,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                   height: 48,
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: Colors.red.withOpacity(0.3),
                       width: 1,
@@ -538,7 +541,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.green,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -568,42 +571,12 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       children: [
         // Fixed Create Service Button - outside RefreshIndicator
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: _buildCreateServiceButton(),
         ),
         const SizedBox(height: 16),
         // Debug info - fixed outside refreshable area
-        BlocBuilder<SalonServicesBloc, SalonServicesState>(
-          builder: (context, state) {
-            if (state is SalonServicesLoaded) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: AppTheme.textPrimaryColor.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    '📊 Page ${state.currentPage} • ${state.services.length} services • ${state.hasMoreData ? "More available" : "No more data"}',
-                    style: TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
+
         const SizedBox(height: 8),
         // Refreshable List Content
         Expanded(
@@ -614,7 +587,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
               context.read<SalonServicesBloc>().add(RefreshSalonServices());
             },
             color: AppTheme.textPrimaryColor,
-            backgroundColor: AppTheme.primaryColor,
+            backgroundColor: AppTheme.transparentBackground,
             child: NotificationListener<ScrollNotification>(
               onNotification: (ScrollNotification scrollInfo) {
                 // Debug scroll information
@@ -702,10 +675,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
           color: AppTheme.textPrimaryColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: AppTheme.textPrimaryColor.withOpacity(0.2),
             width: 1,
@@ -717,7 +690,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             Text(
               AppTranslations.getString(context, 'create_new_service'),
               style: const TextStyle(
-                color: AppTheme.primaryColor,
+                color: AppTheme.secondaryColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -726,12 +699,17 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
-                borderRadius: BorderRadius.circular(16),
+                color: AppTheme.textPrimaryColor,
+                shape: BoxShape.circle, // Makes it perfectly circular
+                border: Border.all(
+                  color: AppTheme
+                      .secondaryColor, // Change to your desired border color
+                  width: 2, // Border thickness
+                ),
               ),
               child: const Icon(
                 Icons.add,
-                color: AppTheme.textPrimaryColor,
+                color: AppTheme.secondaryColor,
                 size: 20,
               ),
             ),
@@ -747,7 +725,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
         if (state is SalonServicesLoading) {
           return const Center(
             child: Padding(
-              padding: EdgeInsets.all(32.0),
+              padding: EdgeInsets.all(16.0),
               child: CircularProgressIndicator(
                 color: AppTheme.textPrimaryColor,
               ),
@@ -757,10 +735,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
           if (state.services.isEmpty) {
             return Center(
               child: Padding(
-                padding: const EdgeInsets.all(32.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.spa_outlined,
                       size: 64,
                       color: AppTheme.textSecondaryColor,
@@ -788,7 +766,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
           return ListView.builder(
             controller: _listController,
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             // Only services + bottom loader/end message (create button is now outside)
             itemCount: state.services.length +
                 1, // Services + bottom loader/end message
@@ -819,7 +797,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                         const SizedBox(height: 8),
                         Text(
                           'Loading page ${state.currentPage + 1}...',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppTheme.textSecondaryColor,
                             fontSize: 14,
                           ),
@@ -827,7 +805,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                         const SizedBox(height: 4),
                         Text(
                           '${state.services.length} services loaded so far',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppTheme.textSecondaryColor,
                             fontSize: 12,
                           ),
@@ -843,13 +821,13 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.check_circle_outline,
                           color: AppTheme.textSecondaryColor,
                           size: 32,
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        const Text(
                           'All services loaded',
                           style: TextStyle(
                             color: AppTheme.textSecondaryColor,
@@ -860,7 +838,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                         const SizedBox(height: 4),
                         Text(
                           '${state.services.length} total services',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppTheme.textSecondaryColor,
                             fontSize: 12,
                           ),
@@ -903,7 +881,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
               padding: const EdgeInsets.all(32.0),
               child: Column(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.error_outline,
                     size: 64,
                     color: Colors.red,
@@ -923,7 +901,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       context
@@ -961,10 +939,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.transparentBackground,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.textPrimaryColor.withOpacity(0.2),
+          color: AppTheme.textPrimaryColor,
           width: 1,
         ),
       ),
@@ -980,63 +958,104 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                   title,
                   style: const TextStyle(
                     color: AppTheme.textPrimaryColor,
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              Text(
-                price,
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
 
-          // Description
           Text(
-            description,
+            price,
             style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 14,
-              height: 1.4,
+              color: AppTheme.textPrimaryColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
 
-          // See more link
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => BlocProvider.value(
-                    value: context.read<SalonServicesBloc>(),
-                    child: ServiceDetailsScreen(
-                      serviceId: serviceId ?? '',
-                      serviceName: title,
-                      servicePrice: price,
-                      serviceDescription: description,
+          // Description with "see more" at the end of second line
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate how much text fits in 2 lines
+              final maxWidth = constraints.maxWidth;
+              const textStyle = TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 14,
+                height: 1.4,
+              );
+
+              // Reserve space for "see more" (approximately 80px)
+              final availableWidth = maxWidth - 80;
+
+              // Find the right amount of text that fits in 2 lines
+              String truncatedDescription = description;
+              while (truncatedDescription.isNotEmpty) {
+                final testText =
+                    '$truncatedDescription... ${AppTranslations.getString(context, 'see_more')}';
+                final textSpan = TextSpan(text: testText, style: textStyle);
+                final textPainter = TextPainter(
+                  text: textSpan,
+                  textDirection: TextDirection.ltr,
+                  maxLines: 2,
+                );
+
+                textPainter.layout(maxWidth: maxWidth);
+
+                if (textPainter.didExceedMaxLines) {
+                  // Remove last character and try again
+                  truncatedDescription = truncatedDescription.substring(
+                      0, truncatedDescription.length - 1);
+                } else {
+                  break;
+                }
+              }
+
+              return RichText(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: truncatedDescription,
+                      style: textStyle,
                     ),
-                  ),
+                    TextSpan(
+                      text:
+                          '... ${AppTranslations.getString(context, 'see_more')}',
+                      style: const TextStyle(
+                        color: AppTheme.accentColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => BlocProvider.value(
+                                value: context.read<SalonServicesBloc>(),
+                                child: ServiceDetailsScreen(
+                                  serviceId: serviceId ?? '',
+                                  serviceName: title,
+                                  servicePrice: price,
+                                  serviceDescription: description,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                    ),
+                  ],
                 ),
               );
             },
-            child: Text(
-              AppTranslations.getString(context, 'see_more'),
-              style: const TextStyle(
-                color: AppTheme.accentColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                decoration: TextDecoration.underline,
-              ),
-            ),
           ),
+          // Description
+
           const SizedBox(height: 16),
 
           // Action Buttons
@@ -1054,9 +1073,8 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                             child: ServiceDetailsScreen(
                               serviceId: serviceId ?? '',
                               serviceName: title,
-                              servicePrice: price.replaceAll(' €', ''),
+                              servicePrice: price,
                               serviceDescription: description,
-                              showSuccessMessage: false,
                             ),
                           ),
                         ),
@@ -1067,9 +1085,9 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                       foregroundColor: AppTheme.textPrimaryColor,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: AppTheme.textPrimaryColor.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(
+                          color: AppTheme.textPrimaryColor,
                           width: 1,
                         ),
                       ),
@@ -1103,20 +1121,44 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                         print('🔒 Service ID: $serviceId');
                         print('🔒 About to check ownership...');
 
-                        final isOwned = await SalonServicesService
-                            .isServiceOwnedByCurrentUser(serviceId);
+                        // Use the current state data instead of making a separate API call
+                        final currentState =
+                            context.read<SalonServicesBloc>().state;
+                        bool isOwned = false;
+
+                        if (currentState is SalonServicesLoaded) {
+                          // Check if the service exists in the current loaded services
+                          final serviceExists = currentState.services.any(
+                              (service) =>
+                                  service['id']?.toString() ==
+                                      serviceId.toString() ||
+                                  service['_id']?.toString() ==
+                                      serviceId.toString());
+
+                          if (serviceExists) {
+                            print(
+                                '✅ Service found in current state - ownership verified');
+                            isOwned = true;
+                          } else {
+                            print(
+                                '❌ Service not found in current state - ownership check failed');
+                            isOwned = false;
+                          }
+                        } else {
+                          print(
+                              '⚠️ Current state is not SalonServicesLoaded, falling back to API check');
+                          // Fallback to API check if state is not loaded
+                          isOwned = await SalonServicesService
+                              .isServiceOwnedByCurrentUser(serviceId);
+                        }
+
                         print('🔒 Ownership check result: $isOwned');
 
                         if (!isOwned) {
                           print('❌ UI: Ownership check failed, blocking edit');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text('You can only edit your own services'),
-                              backgroundColor: Colors.red,
-                              behavior: SnackBarBehavior.floating,
-                              margin: const EdgeInsets.all(16),
-                            ),
+                          TopNotificationService.showError(
+                            context: context,
+                            message: 'You can only edit your own services',
                           );
                           return;
                         } else {
@@ -1143,9 +1185,9 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                       foregroundColor: AppTheme.textPrimaryColor,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: AppTheme.textPrimaryColor.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(
+                          color: AppTheme.textPrimaryColor,
                           width: 1,
                         ),
                       ),
@@ -1171,7 +1213,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
   Widget _buildBottomNavigation() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.secondaryColor.withOpacity(0.95),
+        color: AppTheme.navBarColor,
         border: Border(
           top: BorderSide(
             color: AppTheme.textPrimaryColor.withOpacity(0.1),
@@ -1283,7 +1325,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Text(
+          title: const Text(
             'Logout',
             style: TextStyle(
               color: AppTheme.textPrimaryColor,
@@ -1291,7 +1333,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          content: Text(
+          content: const Text(
             'Are you sure you want to logout?',
             style: TextStyle(
               color: AppTheme.textSecondaryColor,
@@ -1303,7 +1345,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
               },
-              child: Text(
+              child: const Text(
                 'Cancel',
                 style: TextStyle(
                   color: AppTheme.textSecondaryColor,
@@ -1316,7 +1358,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                 Navigator.of(context).pop(); // Close dialog
                 _performLogout();
               },
-              child: Text(
+              child: const Text(
                 'Logout',
                 style: TextStyle(
                   color: Colors.red,
@@ -1339,13 +1381,9 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     context.read<AuthBloc>().add(Logout());
 
     // Show logout success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Logged out successfully'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-      ),
+    TopNotificationService.showSuccess(
+      context: context,
+      message: 'Logged out successfully',
     );
 
     // Navigate to welcome screen and clear navigation stack
@@ -1367,115 +1405,17 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
           description: 'This is a test service created for debugging',
         ));
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Creating test service...'),
-        backgroundColor: Colors.blue,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
-      ),
+    TopNotificationService.showInfo(
+      context: context,
+      message: 'Creating test service...',
     );
   }
 
   void _scanQRCode() {
     // TODO: Implement QR code scanning functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text(AppTranslations.getString(context, 'qr_scanning_coming_soon')),
-        backgroundColor: AppTheme.textPrimaryColor,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-      ),
+    TopNotificationService.showInfo(
+      context: context,
+      message: AppTranslations.getString(context, 'qr_scanning_coming_soon'),
     );
-  }
-
-  /// Show a custom dialog that drops from the top
-  void _showTopDialog({
-    required String message,
-    required Color backgroundColor,
-    required IconData icon,
-  }) {
-    // Remove any existing overlay entry
-    _removeTopDialog();
-
-    // Create overlay entry for top dialog
-    final overlay = Overlay.of(context);
-    final overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: Material(
-          color: Colors.transparent,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            height: 80,
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(
-                      icon,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      onPressed: _removeTopDialog,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    // Store the overlay entry for later removal
-    _currentTopDialog = overlayEntry;
-
-    // Insert the overlay entry
-    overlay.insert(overlayEntry);
-
-    // Auto-remove after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      _removeTopDialog();
-    });
-  }
-
-  /// Remove the current top dialog
-  void _removeTopDialog() {
-    _currentTopDialog?.remove();
-    _currentTopDialog = null;
   }
 }

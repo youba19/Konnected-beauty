@@ -16,7 +16,13 @@ import 'features/auth/presentation/pages/welcome_screen.dart';
 import 'features/company/presentation/pages/salon_home_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   Bloc.observer = AppBlocObserver();
+
+  // Debug: Print font loading
+  print('🎨 === MAIN DEBUG ===');
+  print('🎨 AppTheme.fontFamily: ${AppTheme.fontFamily}');
+
   runApp(const KonnectedBeautyApp());
 }
 
@@ -54,9 +60,21 @@ class KonnectedBeautyApp extends StatelessWidget {
           return BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
               return MaterialApp(
-                title: 'Konected Beauty',
+                title: 'Konnected Beauty',
                 debugShowCheckedModeBanner: false,
-                theme: AppTheme.darkTheme,
+                theme: ThemeData(
+                  primaryColor: AppTheme.primaryColor,
+                  scaffoldBackgroundColor: AppTheme.transparentBackground,
+                  fontFamily: 'Montserrat-Regular',
+                  textTheme: const TextTheme(
+                    bodyLarge: TextStyle(fontFamily: 'Montserrat-Regular'),
+                    bodyMedium: TextStyle(fontFamily: 'Montserrat-Regular'),
+                    bodySmall: TextStyle(fontFamily: 'Montserrat-Regular'),
+                    titleLarge: TextStyle(fontFamily: 'Montserrat-Regular'),
+                    titleMedium: TextStyle(fontFamily: 'Montserrat-Regular'),
+                    titleSmall: TextStyle(fontFamily: 'Montserrat-Regular'),
+                  ),
+                ),
                 locale: languageState.locale,
                 supportedLocales: AppTranslations.supportedLocales,
                 localizationsDelegates: const [
@@ -65,6 +83,21 @@ class KonnectedBeautyApp extends StatelessWidget {
                   GlobalCupertinoLocalizations.delegate,
                 ],
                 home: _buildHomeScreen(authState),
+                builder: (context, child) {
+                  // Debug: Print current theme font
+                  print('🎨 === FONT DEBUG ===');
+                  print(
+                      '🎨 TextTheme bodyLarge fontFamily: ${Theme.of(context).textTheme.bodyLarge?.fontFamily}');
+
+                  return DefaultTextStyle(
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat-Regular',
+                      fontSize: 16,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                    child: child!,
+                  );
+                },
               );
             },
           );
@@ -74,11 +107,7 @@ class KonnectedBeautyApp extends StatelessWidget {
   }
 
   Widget _buildHomeScreen(AuthState authState) {
-    print('🏠 === BUILDING HOME SCREEN ===');
-    print('🏠 Auth State Type: ${authState.runtimeType}');
-
     if (authState is AuthLoading) {
-      print('🏠 Showing loading screen');
       return const Scaffold(
         backgroundColor: AppTheme.primaryColor,
         body: Center(
@@ -88,23 +117,86 @@ class KonnectedBeautyApp extends StatelessWidget {
         ),
       );
     } else if (authState is AuthAuthenticated) {
-      print('🏠 User is authenticated');
-      print('🏠 Role: ${authState.role}');
-      print('🏠 Email: ${authState.email}');
-
-      // Navigate to appropriate home screen based on role
       if (authState.role == 'saloon') {
-        print('🏠 Navigating to SalonHomeScreen');
         return const SalonHomeScreen();
       } else {
-        print('🏠 Navigating to WelcomeScreen (non-salon role)');
-        // For influencer or other roles, show welcome screen for now
         return const WelcomeScreen();
       }
     } else {
-      print('🏠 User is not authenticated, showing WelcomeScreen');
-      // AuthUnauthenticated or AuthError → show Welcome screen
       return const WelcomeScreen();
     }
   }
 }
+
+//   Widget _buildHomeScreen(AuthState authState) {
+//     print('🏠 === BUILDING HOME SCREEN ===');
+//     print('🏠 Auth State Type: ${authState.runtimeType}');
+
+//     // TEMPORARY: Force navigate to specific screen for testing
+//     // Uncomment the line below and change the screen you want to test
+//     // return const SaloonRegistrationScreen(); // Test registration
+//     // return const LoginScreen(); // Test login
+//     // return const SalonHomeScreen(); // Test salon home
+//     // return const WelcomeScreen(); // Test welcome screen
+
+//     if (authState is AuthLoading) {
+//       print('🏠 Showing splash screen with logo animation');
+//       return const SplashScreen();
+//     } else if (authState is AuthAuthenticated) {
+//       print('🏠 User is authenticated');
+//       print('🏠 Role: ${authState.role}');
+//       print('🏠 Email: ${authState.email}');
+
+//       // Navigate to appropriate home screen based on role
+//       if (authState.role == 'saloon') {
+//         print('🏠 Navigating to SalonHomeScreen');
+//         return const SalonHomeScreen();
+//       } else {
+//         print('🏠 Navigating to WelcomeScreen (non-salon role)');
+//         // For influencer or other roles, show welcome screen for now
+//         return const WelcomeScreen();
+//       }
+//     } else {
+//       print('🏠 User is not authenticated, showing WelcomeScreen');
+//       // AuthUnauthenticated or AuthError → show Welcome screen
+//       // TEMPORARY: Navigate directly to salon profile step for testing
+//       return const SaloonRegistrationScreen();
+//     }
+//   }
+// }
+
+// class SplashScreen extends StatefulWidget {
+//   const SplashScreen({super.key});
+
+//   @override
+//   State<SplashScreen> createState() => _SplashScreenState();
+// }
+
+// class _SplashScreenState extends State<SplashScreen> {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       decoration: const BoxDecoration(
+//         gradient: LinearGradient(
+//           begin: Alignment.topCenter,
+//           end: Alignment.bottomCenter,
+//           colors: [
+//             Color(0xFF1F1E1E), // Top color
+//             Color(0xFF3B3B3B), // Bottom color
+//           ],
+//         ),
+//       ),
+//       child: Scaffold(
+//         backgroundColor: Colors.transparent,
+//         body: AnimatedLogo(
+//           onAnimationComplete: () {
+//             // After logo animation completes, navigate to WelcomeScreen
+//             Navigator.of(context).pushReplacement(
+//               MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+//             );
+//           },
+//         ),
+//       ),
+//     );
+//   }
+// }

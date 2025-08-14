@@ -19,6 +19,8 @@ class CustomTextField extends StatelessWidget {
   final GlobalKey<FormFieldState>? formFieldKey;
   final bool enabled;
   final ValueChanged<String>? onChanged;
+  final bool obscureText;
+  final bool isPasswordVisible;
 
   const CustomTextField({
     super.key,
@@ -38,6 +40,8 @@ class CustomTextField extends StatelessWidget {
     this.formFieldKey,
     this.enabled = true,
     this.onChanged,
+    this.obscureText = false,
+    this.isPasswordVisible = true,
   });
 
   @override
@@ -57,7 +61,7 @@ class CustomTextField extends StatelessWidget {
           key: formFieldKey,
           controller: controller,
           keyboardType: keyboardType,
-          obscureText: isPassword,
+          obscureText: isPassword ? !isPasswordVisible : false,
           maxLength: maxLength,
           maxLines: isPassword ? 1 : maxLines,
           inputFormatters: inputFormatters,
@@ -73,7 +77,7 @@ class CustomTextField extends StatelessWidget {
           ),
           decoration: InputDecoration(
             hintText: placeholder,
-            hintStyle: TextStyle(
+            hintStyle: const TextStyle(
               color: AppTheme.textSecondaryColor,
               fontSize: 16,
             ),

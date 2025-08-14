@@ -8,6 +8,7 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/reset_password/reset_password_bloc.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
 
@@ -31,7 +32,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   void _onResetPassword() {
     if (_validateFields()) {
-      // Call API to request password reset
       context.read<ResetPasswordBloc>().add(
             RequestPasswordReset(emailController.text),
           );
@@ -48,12 +48,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return BlocListener<ResetPasswordBloc, ResetPasswordState>(
       listener: (context, state) {
         if (state is RequestPasswordResetSuccess) {
-          // Show success message and navigate to OTP verification
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
+          TopNotificationService.showSuccess(
+            context: context,
+            message: state.message,
           );
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -64,129 +61,137 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           );
         } else if (state is ResetPasswordError) {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
+          TopNotificationService.showError(
+            context: context,
+            message: state.message,
           );
         }
       },
       child: BlocBuilder<LanguageBloc, LanguageState>(
         builder: (context, languageState) {
           return Scaffold(
-            backgroundColor: AppTheme.primaryColor,
-            body: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Back Button
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_back,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                                onPressed: () {
-                                  Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute(
-                                      builder: (context) => const LoginScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 32),
-
-                              // Logo
-                              SvgPicture.asset(
-                                'assets/images/Konected beauty - Logo white.svg',
-                                width: 80,
-                                height: 80,
-                                allowDrawingOutsideViewBox: true,
-                                colorFilter: const ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              // Title
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'reset_password'),
-                                style: AppTheme.headingStyle,
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              // Role Selection
-                              _buildRoleSelection(),
-                              const Spacer(),
-
-                              // Email Field
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    AppTranslations.getString(context, 'email'),
-                                    style: TextStyle(
-                                      color: AppTheme.textPrimaryColor,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Color(0xFF3B3B3B),
+                    Color(0xFF1F1E1E),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Back Button
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.arrow_back,
+                                    color: AppTheme.textPrimaryColor,
                                   ),
-                                  const SizedBox(height: 12),
-                                  CustomTextField(
-                                    label: '',
-                                    placeholder: AppTranslations.getString(
-                                        context, 'email_placeholder'),
-                                    controller: emailController,
-                                    keyboardType: TextInputType.emailAddress,
-                                    validator: (value) =>
-                                        Validators.validateEmail(
-                                            value, context),
-                                    autovalidateMode: true,
-                                    formFieldKey: emailFormKey,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 40),
+                                  onPressed: () {
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const LoginScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 32),
 
-                              // Reset Password Button
-                              BlocBuilder<ResetPasswordBloc,
-                                  ResetPasswordState>(
-                                builder: (context, resetState) {
-                                  return CustomButton(
-                                    text: AppTranslations.getString(
-                                        context, 'reset_password_button'),
-                                    onPressed:
-                                        resetState is ResetPasswordLoading
-                                            ? () {}
-                                            : _onResetPassword,
-                                    isLoading:
-                                        resetState is ResetPasswordLoading,
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 40),
-                            ],
+                                // Logo
+                                SvgPicture.asset(
+                                  'assets/images/Konected beauty - Logo white.svg',
+                                  width: 80,
+                                  height: 80,
+                                  allowDrawingOutsideViewBox: true,
+                                  colorFilter: const ColorFilter.mode(
+                                    Colors.white,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 32),
+
+                                // Title
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'reset_password'),
+                                  style: AppTheme.headingStyle,
+                                ),
+
+                                const SizedBox(height: 32),
+
+                                // Role Selection
+                                _buildRoleSelection(),
+                                const Spacer(),
+
+                                // Email Field
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      AppTranslations.getString(
+                                          context, 'email'),
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimaryColor,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    CustomTextField(
+                                      label: '',
+                                      placeholder: AppTranslations.getString(
+                                          context, 'email_placeholder'),
+                                      controller: emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      validator: (value) =>
+                                          Validators.validateEmail(
+                                              value, context),
+                                      autovalidateMode: true,
+                                      formFieldKey: emailFormKey,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 40),
+
+                                // Reset Password Button
+                                BlocBuilder<ResetPasswordBloc,
+                                    ResetPasswordState>(
+                                  builder: (context, resetState) {
+                                    return CustomButton(
+                                      text: AppTranslations.getString(
+                                          context, 'reset_password_button'),
+                                      onPressed:
+                                          resetState is ResetPasswordLoading
+                                              ? () {}
+                                              : _onResetPassword,
+                                      isLoading:
+                                          resetState is ResetPasswordLoading,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           );

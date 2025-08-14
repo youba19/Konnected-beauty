@@ -5,7 +5,7 @@ void main() {
   group('Login Response Parsing Tests', () {
     test('LoginSuccess state correctly handles email-verified status', () {
       // Test with the provided API response format
-      final loginState = LoginInitial();
+      final loginState = const LoginInitial();
       final successState =
           LoginSuccess(loginState, userStatus: 'email-verified');
 
@@ -15,7 +15,7 @@ void main() {
     });
 
     test('LoginSuccess state correctly handles salon-info-added status', () {
-      final loginState = LoginInitial();
+      final loginState = const LoginInitial();
       final successState =
           LoginSuccess(loginState, userStatus: 'salon-info-added');
 
@@ -25,7 +25,7 @@ void main() {
     });
 
     test('LoginSuccess state correctly handles other statuses', () {
-      final loginState = LoginInitial();
+      final loginState = const LoginInitial();
       final successState = LoginSuccess(loginState, userStatus: 'active');
 
       expect(successState.userStatus, equals('active'));

@@ -24,7 +24,7 @@ class AppTranslations {
   // French translations
   static const Map<String, String> _frenchTranslations = {
     // Welcome Screen
-    'welcome_title': 'Bienvenue sur Konnected Beauty',
+    'welcome_title': 'Bienvenue sur KBeauty',
     'welcome_subtitle':
         'Connectez-vous avec les meilleurs professionnels de beauté',
     'signup_saloon': 'S\'inscrire en tant que Salon',
@@ -238,7 +238,7 @@ class AppTranslations {
   // English translations
   static const Map<String, String> _englishTranslations = {
     // Welcome Screen
-    'welcome_title': 'Welcome to Konnected Beauty',
+    'welcome_title': 'Welcome to KBeauty',
     'welcome_subtitle': 'Connect with the best beauty professionals',
     'signup_saloon': 'Sign up as Salon',
     'signup_influencer': 'Sign up as Influencer',

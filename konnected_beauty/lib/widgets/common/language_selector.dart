@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/bloc/language/language_bloc.dart';
 
@@ -22,7 +23,8 @@ class LanguageSelector extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(
-                  Icons.language,
+                  LucideIcons
+                      .languages, // Translation/language icon like in the image
                   color: AppTheme.textPrimaryColor,
                   size: 20,
                 ),
@@ -31,13 +33,14 @@ class LanguageSelector extends StatelessWidget {
                   child: Text(
                     _getLanguageDisplayText(state.locale),
                     style: const TextStyle(
+                      fontFamily: 'Montserrat',
                       color: AppTheme.textPrimaryColor,
                       fontSize: 16,
                     ),
                   ),
                 ),
                 const Icon(
-                  Icons.keyboard_arrow_down,
+                  LucideIcons.chevronDown, // Chevron down like in the image
                   color: AppTheme.textPrimaryColor,
                   size: 20,
                 ),
@@ -64,18 +67,24 @@ class LanguageSelector extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.primaryColor,
-        title: Text(
+        backgroundColor: AppTheme.secondaryColor,
+        title: const Text(
           'Choisir la langue',
-          style: TextStyle(color: AppTheme.textPrimaryColor),
+          style: TextStyle(
+            fontFamily: 'Montserrat',
+            color: AppTheme.textPrimaryColor,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: Text(
+              title: const Text(
                 'Français',
-                style: TextStyle(color: AppTheme.textPrimaryColor),
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
               onTap: () {
                 context
@@ -85,9 +94,12 @@ class LanguageSelector extends StatelessWidget {
               },
             ),
             ListTile(
-              title: Text(
+              title: const Text(
                 'English',
-                style: TextStyle(color: AppTheme.textPrimaryColor),
+                style: TextStyle(
+                  fontFamily: 'Montserrat',
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
               onTap: () {
                 context

@@ -6,6 +6,7 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/reset_password/reset_password_bloc.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -61,12 +62,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return BlocListener<ResetPasswordBloc, ResetPasswordState>(
       listener: (context, state) {
         if (state is VerifyResetPasswordOtpSuccess) {
-          // Show success message and navigate to new password screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
+          TopNotificationService.showSuccess(
+            context: context,
+            message: state.message,
           );
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -79,20 +77,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ),
           );
         } else if (state is RequestPasswordResetSuccess) {
-          // Show success message for resend
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
+          TopNotificationService.showSuccess(
+            context: context,
+            message: state.message,
           );
         } else if (state is ResetPasswordError) {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
+          TopNotificationService.showError(
+            context: context,
+            message: state.message,
           );
         }
       },
@@ -138,7 +130,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               Text(
                                 AppTranslations.getString(
                                     context, 'otp_verification_subtitle'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 16,
                                 ),
@@ -150,7 +142,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               Text(
                                 AppTranslations.getString(
                                     context, 'email_verification'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textPrimaryColor,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -161,7 +153,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               Text(
                                 AppTranslations.getString(
                                     context, 'otp_verification'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 14,
                                 ),
@@ -197,7 +189,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                 child: Text(
                                   AppTranslations.getString(
                                       context, 'resend_code'),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: AppTheme.textPrimaryColor,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,

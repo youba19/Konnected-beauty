@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/bloc/login/login_bloc.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/translations/app_translations.dart';
-import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
-// import 'welcome_screen.dart';
-// import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
+import '../../../../core/bloc/welcome/welcome_bloc.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'forgot_password_screen.dart';
 import '../../../company/presentation/pages/salon_home_screen.dart';
 import 'saloon_registration_screen.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
+import 'welcome_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,10 +42,20 @@ class _LoginScreenState extends State<LoginScreen> {
     // Add listeners to sync with Bloc state
     emailController.addListener(() {
       context.read<LoginBloc>().add(UpdateEmail(emailController.text));
+      // Trigger validation for real-time error display
+      if (emailFormKey.currentState != null) {
+        emailFormKey.currentState!.validate();
+        setState(() {}); // Update UI to show validation errors
+      }
     });
 
     passwordController.addListener(() {
       context.read<LoginBloc>().add(UpdatePassword(passwordController.text));
+      // Trigger validation for real-time error display
+      if (passwordFormKey.currentState != null) {
+        passwordFormKey.currentState!.validate();
+        setState(() {}); // Update UI to show validation errors
+      }
     });
   }
 
@@ -204,418 +214,488 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showTopNotification(String message, bool isError) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry overlayEntry;
+    if (isError) {
+      TopNotificationService.showError(
+        context: context,
+        message: message,
+      );
+    } else {
+      TopNotificationService.showSuccess(
+        context: context,
+        message: message,
+      );
+    }
+  }
 
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isError ? Colors.red : Colors.green,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF3B3B3B),
+            Color(0xFF1F1E1E),
+          ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: BlocListener<LoginBloc, LoginState>(
+            listener: (context, state) {
+              if (state is LoginSuccess) {
+                // Reset local loading state
+                setState(() {
+                  _isLocalLoading = false;
+                  _isLoginSuccessful = true;
+                });
+
+                // Show success notification
+                TopNotificationService.showSuccess(
+                  context: context,
+                  message: AppTranslations.getString(context, 'login_success'),
+                );
+
+                // Navigate based on user status
+                _navigateBasedOnUserStatus(
+                    state.selectedRole, state.userStatus);
+              } else if (state is LoginError) {
+                // Reset local loading state
+                setState(() {
+                  _isLocalLoading = false;
+                  _isLoginSuccessful = false;
+                });
+
+                // Show error notification
+                TopNotificationService.showError(
+                  context: context,
+                  message: state.errorMessage ??
+                      AppTranslations.getString(context, 'login_failed'),
+                );
+              }
+            },
+            child: Column(
               children: [
-                Icon(
-                  isError ? Icons.error : Icons.check_circle,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    overlayEntry.remove();
-                  },
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
+                // Top Section: Header + User Type Selection
+                _buildTopSection(),
+
+                // Spacer to push form to bottom
+                const Spacer(),
+
+                // Bottom Section: Form Elements
+                _buildBottomSection(),
+
+                const SizedBox(height: 24),
               ],
             ),
           ),
         ),
       ),
     );
-
-    overlay.insert(overlayEntry);
-
-    // Auto-remove after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        backgroundColor: AppTheme.primaryColor,
-        body: BlocListener<LoginBloc, LoginState>(
-          listener: (context, state) {
-            if (state is LoginSuccess) {
-              // Reset local loading state
-              setState(() {
-                _isLocalLoading = false;
-                _isLoginSuccessful = true;
-              });
-
-              // Show success notification
-              _showTopNotification(
-                AppTranslations.getString(context, 'login_success'),
-                false,
-              );
-
-              // Navigate based on user status
-              _navigateBasedOnUserStatus(state.selectedRole, state.userStatus);
-            } else if (state is LoginError) {
-              // Reset local loading state
-              setState(() {
-                _isLocalLoading = false;
-                _isLoginSuccessful = false;
-              });
-
-              // Show error notification
-              _showTopNotification(
-                state.errorMessage ??
-                    AppTranslations.getString(context, 'login_failed'),
-                true,
-              );
-            }
-          },
-          child: SafeArea(
-            child: SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height -
-                      MediaQuery.of(context).padding.top -
-                      MediaQuery.of(context).padding.bottom,
-                ),
-                child: IntrinsicHeight(
-                  child: Column(
+  Widget _buildUserTypeSelection() {
+    return BlocBuilder<LoginBloc, LoginState>(
+      builder: (context, state) {
+        return Row(
+          children: [
+            // Influencer Button
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  context
+                      .read<LoginBloc>()
+                      .add(SelectRole(LoginRole.influencer));
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: state.selectedRole == LoginRole.influencer
+                        ? AppTheme.textPrimaryColor
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: AppTheme.textPrimaryColor,
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Back Navigation
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16, top: 8),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              child: const Icon(
-                                Icons.arrow_back,
-                                color: AppTheme.textPrimaryColor,
-                                size: 24,
-                              ),
-                            ),
-                          ),
+                      Icon(
+                        LucideIcons.user,
+                        color: state.selectedRole == LoginRole.influencer
+                            ? AppTheme.primaryColor
+                            : AppTheme.textPrimaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        AppTranslations.getString(context, 'influencer'),
+                        style: TextStyle(
+                          color: state.selectedRole == LoginRole.influencer
+                              ? AppTheme.primaryColor
+                              : AppTheme.textPrimaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-
-                      // Logo and Welcome Message
-                      Expanded(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Logo
-                              SvgPicture.asset(
-                                'assets/images/Konected beauty - Logo white.svg',
-                                height: 80,
-                                colorFilter: const ColorFilter.mode(
-                                  AppTheme.textPrimaryColor,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              // Welcome Message
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'welcome_back'),
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimaryColor,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Montserrat',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Role Selection
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: BlocBuilder<LoginBloc, LoginState>(
-                          builder: (context, state) {
-                            return Row(
-                              children: [
-                                // Influencer Button
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      context.read<LoginBloc>().add(
-                                          SelectRole(LoginRole.influencer));
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        color: state.selectedRole ==
-                                                LoginRole.influencer
-                                            ? AppTheme.textPrimaryColor
-                                            : Colors.transparent,
-                                        border: Border.all(
-                                          color: AppTheme.textPrimaryColor,
-                                          width: 1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.person,
-                                            color: state.selectedRole ==
-                                                    LoginRole.influencer
-                                                ? AppTheme.primaryColor
-                                                : AppTheme.textPrimaryColor,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            AppTranslations.getString(
-                                                context, 'influencer'),
-                                            style: TextStyle(
-                                              color: state.selectedRole ==
-                                                      LoginRole.influencer
-                                                  ? AppTheme.primaryColor
-                                                  : AppTheme.textPrimaryColor,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily: 'Montserrat',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Saloon Button
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      context
-                                          .read<LoginBloc>()
-                                          .add(SelectRole(LoginRole.saloon));
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        color: state.selectedRole ==
-                                                LoginRole.saloon
-                                            ? AppTheme.textPrimaryColor
-                                            : Colors.transparent,
-                                        border: Border.all(
-                                          color: AppTheme.textPrimaryColor,
-                                          width: 1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.store,
-                                            color: state.selectedRole ==
-                                                    LoginRole.saloon
-                                                ? AppTheme.primaryColor
-                                                : AppTheme.textPrimaryColor,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            AppTranslations.getString(
-                                                context, 'saloon'),
-                                            style: TextStyle(
-                                              color: state.selectedRole ==
-                                                      LoginRole.saloon
-                                                  ? AppTheme.primaryColor
-                                                  : AppTheme.textPrimaryColor,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily: 'Montserrat',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Login Form
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          children: [
-                            // Email Field
-                            CustomTextField(
-                              controller: emailController,
-                              label:
-                                  AppTranslations.getString(context, 'email'),
-                              placeholder: AppTranslations.getString(
-                                  context, 'enter_email'),
-                              keyboardType: TextInputType.emailAddress,
-                              formFieldKey: emailFormKey,
-                              enabled: !(_isLocalLoading || _isLoginSuccessful),
-                              validator: (value) =>
-                                  Validators.validateEmail(value, context),
-                            ),
-                            const SizedBox(height: 16),
-                            // Password Field
-                            CustomTextField(
-                              controller: passwordController,
-                              label: AppTranslations.getString(
-                                  context, 'password'),
-                              placeholder: AppTranslations.getString(
-                                  context, 'enter_password'),
-                              isPassword: !isPasswordVisible,
-                              enabled: !(_isLocalLoading || _isLoginSuccessful),
-                              suffixIcon: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    isPasswordVisible = !isPasswordVisible;
-                                  });
-                                },
-                                child: Icon(
-                                  isPasswordVisible
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                              ),
-                              formFieldKey: passwordFormKey,
-                              validator: (value) =>
-                                  Validators.validatePassword(value, context),
-                            ),
-                            const SizedBox(height: 16),
-                            // Forgot Password Link
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ForgotPasswordScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  AppTranslations.getString(
-                                      context, 'forgot_password'),
-                                  style: const TextStyle(
-                                    color: AppTheme.textPrimaryColor,
-                                    fontSize: 14,
-                                    fontFamily: 'Montserrat',
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            // Login Button
-                            SizedBox(
-                              width: double.infinity,
-                              child: CustomButton(
-                                text: AppTranslations.getString(
-                                    context, 'login_to_account'),
-                                onPressed: () {
-                                  // Validate fields
-                                  Validators.validateEmail(
-                                      emailController.text, context);
-                                  Validators.validatePassword(
-                                      passwordController.text, context);
-
-                                  // Check if button should be enabled
-                                  final shouldEnable =
-                                      emailController.text.isNotEmpty &&
-                                          passwordController.text.isNotEmpty &&
-                                          !_isLocalLoading &&
-                                          !_isLoginSuccessful;
-
-                                  if (shouldEnable) {
-                                    _validateFields();
-                                    final currentState =
-                                        context.read<LoginBloc>().state;
-
-                                    setState(() {
-                                      _isLocalLoading = true;
-                                    });
-
-                                    context.read<LoginBloc>().add(Login(
-                                          email: emailController.text,
-                                          password: passwordController.text,
-                                          role: currentState.selectedRole,
-                                        ));
-                                  }
-                                },
-                                isLoading:
-                                    _isLocalLoading || _isLoginSuccessful,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
             ),
+
+            const SizedBox(width: 16),
+
+            // Saloon Button
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  context.read<LoginBloc>().add(SelectRole(LoginRole.saloon));
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: state.selectedRole == LoginRole.saloon
+                        ? AppTheme.textPrimaryColor
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: AppTheme.textPrimaryColor,
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        LucideIcons.building2,
+                        color: state.selectedRole == LoginRole.saloon
+                            ? AppTheme.primaryColor
+                            : AppTheme.textPrimaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        AppTranslations.getString(context, 'saloon'),
+                        style: TextStyle(
+                          color: state.selectedRole == LoginRole.saloon
+                              ? AppTheme.primaryColor
+                              : AppTheme.textPrimaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEmailInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Email Label
+        Text(
+          AppTranslations.getString(context, 'email'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
-        ));
+        ),
+
+        const SizedBox(height: 12),
+
+        // Email Input Field
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: AppTheme.textPrimaryColor,
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextFormField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            enabled: !(_isLocalLoading || _isLoginSuccessful),
+            style: const TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: AppTranslations.getString(context, 'enter_email'),
+              hintStyle: TextStyle(
+                color: AppTheme.textPrimaryColor.withOpacity(0.6),
+                fontSize: 16,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+            validator: (value) => Validators.validateEmail(value, context),
+          ),
+        ),
+
+        // Email Error Message
+        if (emailFormKey.currentState?.hasError == true)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              Validators.validateEmail(emailController.text, context) ??
+                  'Invalid email',
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 14,
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 24),
+
+        // Password Label
+        Text(
+          AppTranslations.getString(context, 'password'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Password Input Field
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: AppTheme.textPrimaryColor,
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextFormField(
+            controller: passwordController,
+            obscureText: !isPasswordVisible,
+            enabled: !(_isLocalLoading || _isLoginSuccessful),
+            style: const TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: AppTranslations.getString(context, 'enter_password'),
+              hintStyle: TextStyle(
+                color: AppTheme.textPrimaryColor.withOpacity(0.6),
+                fontSize: 16,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              suffixIcon: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    isPasswordVisible = !isPasswordVisible;
+                  });
+                },
+                child: Icon(
+                  isPasswordVisible ? LucideIcons.eyeOff : LucideIcons.eye,
+                  color: AppTheme.textPrimaryColor,
+                  size: 20,
+                ),
+              ),
+            ),
+            validator: (value) => Validators.validatePassword(value, context),
+          ),
+        ),
+
+        // Password Error Message
+        if (passwordFormKey.currentState?.hasError == true)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              Validators.validatePassword(passwordController.text, context) ??
+                  'Invalid password',
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 14,
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 20),
+
+        // Forgot Password Link
+        Align(
+          alignment: Alignment.centerLeft,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ForgotPasswordScreen(),
+                ),
+              );
+            },
+            child: Text(
+              AppTranslations.getString(context, 'forgot_password'),
+              style: const TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 14,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          // First trigger validation to show inline errors
+          _validateFields();
+
+          // Check if button should be enabled
+          final shouldEnable = emailController.text.isNotEmpty &&
+              !_isLocalLoading &&
+              !_isLoginSuccessful;
+
+          if (shouldEnable) {
+            final currentState = context.read<LoginBloc>().state;
+
+            setState(() {
+              _isLocalLoading = true;
+            });
+
+            context.read<LoginBloc>().add(Login(
+                  email: emailController.text,
+                  password: passwordController.text,
+                  role: currentState.selectedRole,
+                ));
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.textPrimaryColor,
+          foregroundColor: AppTheme.primaryColor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          elevation: 0,
+        ),
+        child: _isLocalLoading || _isLoginSuccessful
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                ),
+              )
+            : Text(
+                AppTranslations.getString(context, 'login_to_account'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildTopSection() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back Button only (no logo in top bar)
+          GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+              context.read<WelcomeBloc>().add(SkipLogoAnimation());
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => const WelcomeScreen(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: const Icon(
+                LucideIcons.arrowLeft,
+                color: AppTheme.textPrimaryColor,
+                size: 24,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 40),
+
+          // Logo below back button
+          SvgPicture.asset(
+            'assets/images/Konected beauty - Logo white.svg',
+            height: 82,
+            colorFilter: const ColorFilter.mode(
+              AppTheme.textPrimaryColor,
+              BlendMode.srcIn,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Title below logo
+          Text(
+            AppTranslations.getString(context, 'welcome_back'),
+            style: const TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // User Type Selection
+          _buildUserTypeSelection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          // Email Input Section
+          _buildEmailInput(),
+
+          const SizedBox(height: 40),
+
+          // Login Button
+          _buildLoginButton(),
+        ],
+      ),
+    );
   }
 }

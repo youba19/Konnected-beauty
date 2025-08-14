@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -25,12 +26,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Start logo animation when screen loads
-    context.read<WelcomeBloc>().add(StartLogoAnimation());
-  }
-
-  void _onLogoAnimationComplete() {
-    context.read<WelcomeBloc>().add(CompleteLogoAnimation());
+    // Check if we're coming back from another screen
+    final currentState = context.read<WelcomeBloc>().state;
+    if (!currentState.skipAnimation) {
+      // Only start logo animation if not skipping
+      context.read<WelcomeBloc>().add(StartLogoAnimation());
+    }
   }
 
   void _onSignupSaloon() {
@@ -58,29 +59,49 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Content (appears after logo animation)
-            BlocBuilder<WelcomeBloc, WelcomeState>(
-              builder: (context, state) {
-                return AnimatedOpacity(
-                  opacity: state.showContent ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 500),
-                  child: state.showContent
-                      ? _buildContent()
-                      : const SizedBox.shrink(),
-                );
-              },
-            ),
-
-            // Animated Logo (first layer - on top)
-            AnimatedLogo(
-              onAnimationComplete: _onLogoAnimationComplete,
-            ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF3B3B3B),
+            Color(0xFF1F1E1E), // Top color (lighter)
           ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Content (appears after logo animation)
+              BlocBuilder<WelcomeBloc, WelcomeState>(
+                builder: (context, state) {
+                  // Show content if logo animation is complete OR if we're skipping animation
+                  final shouldShowContent =
+                      state.showContent || state.skipAnimation;
+                  return AnimatedOpacity(
+                    opacity: shouldShowContent ? 1.0 : 0.0,
+                    duration: const Duration(
+                        milliseconds: 800), // Slower, more dramatic fade
+                    curve: Curves.easeInOut, // Smooth fade in curve
+                    child: shouldShowContent
+                        ? _buildContent()
+                        : const SizedBox.shrink(),
+                  );
+                },
+              ),
+
+              // Animated Logo (first layer - on top)
+              AnimatedLogo(
+                onAnimationComplete: () {
+                  // This will be called when logo animation is truly complete
+                  // and logo is positioned in top-left corner
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -91,32 +112,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Spacer for logo
-              const SizedBox(height: 80),
-
+              // Spacer for logo - increased to avoid overlap with animated logo
+              const SizedBox(
+                height: 80,
+              ),
               // Welcome Section
               _buildWelcomeSection(),
 
-              const SizedBox(height: 48), // Increased spacing
+              const SizedBox(height: 15), // Increased spacing
 
               // Language Section
               _buildLanguageSection(),
 
-              const SizedBox(height: 48), // Increased spacing
+              const SizedBox(height: 10), // Increased spacing
             ],
           ),
+          const Spacer(),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Signup Section
               _buildSignupSection(),
 
-              const SizedBox(height: 48), // Increased spacing
+              const SizedBox(height: 10), // Increased spacing
 
               // Login Section
               _buildLoginSection(),
@@ -131,6 +152,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(
+          height: 10,
+        ),
         Text(
           AppTranslations.getString(context, 'welcome_title'),
           style: AppTheme.headingStyle,
@@ -145,10 +169,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildLanguageSection() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const LanguageSelector(),
+        LanguageSelector(),
       ],
     );
   }
@@ -158,13 +182,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       children: [
         SignupButton(
           text: AppTranslations.getString(context, 'signup_saloon'),
-          icon: Icons.business,
+          icon: LucideIcons.building2, // Building/shop icon like in the image
           onPressed: _onSignupSaloon,
         ),
         const SizedBox(height: 12),
         SignupButton(
           text: AppTranslations.getString(context, 'signup_influencer'),
-          icon: Icons.person_outline,
+          icon: LucideIcons.user, // Person icon like in the image
           onPressed: _onSignupInfluencer,
         ),
       ],

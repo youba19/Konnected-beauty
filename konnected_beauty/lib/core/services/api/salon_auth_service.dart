@@ -382,7 +382,7 @@ class SalonAuthService {
 
       String currentAccessToken = accessToken;
 
-      Future<http.Response> _doRequest(String token) {
+      Future<http.Response> doRequest(String token) {
         final requestHeaders = {
           ...headers,
           'Authorization': 'Bearer $token',
@@ -400,7 +400,7 @@ class SalonAuthService {
       }
 
       // First attempt
-      http.Response response = await _doRequest(currentAccessToken);
+      http.Response response = await doRequest(currentAccessToken);
       print('📡 Response Status Code: ${response.statusCode}');
       print('📄 Response Body: ${response.body}');
 
@@ -419,7 +419,7 @@ class SalonAuthService {
               await TokenStorageService.saveAccessToken(newAccessToken);
               currentAccessToken = newAccessToken;
               print('✅ Token refreshed. Retrying add-info with new token...');
-              response = await _doRequest(currentAccessToken);
+              response = await doRequest(currentAccessToken);
               print('📡 Retry Response Status Code: ${response.statusCode}');
               print('📄 Retry Response Body: ${response.body}');
             }

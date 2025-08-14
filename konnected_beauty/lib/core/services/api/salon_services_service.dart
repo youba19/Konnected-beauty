@@ -144,45 +144,40 @@ class SalonServicesService {
 
         // DEBUGGING: Temporarily show all services to understand data structure
         List<dynamic> filteredServices = [];
-        if (currentUserId != null) {
-          print('🔍 === DEBUGGING DATA STRUCTURE ===');
-          print('🔍 Services before filtering: ${allServices.length}');
-          print('🔍 Current user ID: $currentUserId');
-          print('🔍 Current user ID type: ${currentUserId.runtimeType}');
+        print('🔍 === DEBUGGING DATA STRUCTURE ===');
+        print('🔍 Services before filtering: ${allServices.length}');
+        print('🔍 Current user ID: $currentUserId');
+        print('🔍 Current user ID type: ${currentUserId.runtimeType}');
+        print(
+            '🔍 Current user salon ID: ${userInfo?['salonId'] ?? 'N/A (user needs to complete salon registration)'}');
+
+        // Log all services to understand the data structure
+        for (int i = 0; i < allServices.length; i++) {
+          final service = allServices[i] as Map<String, dynamic>;
+          print('🔍 Service ${i + 1} - Full data:');
+          print('   📝 Name: ${service['name']}');
+          print('   🆔 ID: ${service['id']}');
+          print('   💰 Price: ${service['price']}');
+          print('   🏢 Salon ID: ${service['salonId'] ?? 'N/A'}');
+          print('   👤 Created By: ${service['createdBy'] ?? 'N/A'}');
           print(
-              '🔍 Current user salon ID: ${userInfo?['salonId'] ?? 'N/A (user needs to complete salon registration)'}');
+              '   👤 Created By Type: ${(service['createdBy'] ?? '').runtimeType}');
+          print('   👤 Current User ID Type: ${currentUserId.runtimeType}');
+          print(
+              '   🔍 Created By == Current User ID: ${service['createdBy'] == currentUserId}');
+          print(
+              '   🔍 Created By Equals Current User ID: ${(service['createdBy'] ?? '').toString() == currentUserId.toString()}');
+          print(
+              '   🔍 Created By Contains Current User ID: ${(service['createdBy'] ?? '').toString().contains(currentUserId.toString())}');
+        }
 
-          // Log all services to understand the data structure
-          for (int i = 0; i < allServices.length; i++) {
-            final service = allServices[i] as Map<String, dynamic>;
-            print('🔍 Service ${i + 1} - Full data:');
-            print('   📝 Name: ${service['name']}');
-            print('   🆔 ID: ${service['id']}');
-            print('   💰 Price: ${service['price']}');
-            print('   🏢 Salon ID: ${service['salonId'] ?? 'N/A'}');
-            print('   👤 Created By: ${service['createdBy'] ?? 'N/A'}');
-            print(
-                '   👤 Created By Type: ${(service['createdBy'] ?? '').runtimeType}');
-            print('   👤 Current User ID Type: ${currentUserId.runtimeType}');
-            print(
-                '   🔍 Created By == Current User ID: ${service['createdBy'] == currentUserId}');
-            print(
-                '   🔍 Created By Equals Current User ID: ${(service['createdBy'] ?? '').toString() == currentUserId.toString()}');
-            print(
-                '   🔍 Created By Contains Current User ID: ${(service['createdBy'] ?? '').toString().contains(currentUserId.toString())}');
-          }
+        // TEMPORARILY SHOW ALL SERVICES FOR DEBUGGING
+        print('🔍 TEMPORARILY SHOWING ALL SERVICES FOR DEBUGGING');
+        filteredServices = allServices;
 
-          // TEMPORARILY SHOW ALL SERVICES FOR DEBUGGING
-          print('🔍 TEMPORARILY SHOWING ALL SERVICES FOR DEBUGGING');
-          filteredServices = allServices;
-
-          if (userInfo?['salonId'] == null) {
-            print(
-                '⚠️ User does not have salonId - they need to complete salon registration');
-          }
-        } else {
-          print('❌ SECURITY ERROR: No user ID available for filtering');
-          filteredServices = []; // Show no services if no user ID
+        if (userInfo?['salonId'] == null) {
+          print(
+              '⚠️ User does not have salonId - they need to complete salon registration');
         }
 
         return {

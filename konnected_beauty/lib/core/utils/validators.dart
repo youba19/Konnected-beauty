@@ -96,7 +96,7 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_salon_domain');
     }
-    if (value.trim().length < 1) {
+    if (value.trim().isEmpty) {
       return AppTranslations.getString(context, 'salon_domain_min_length');
     }
     return null;

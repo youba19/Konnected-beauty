@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_theme.dart';
 
 class SignupButton extends StatelessWidget {
@@ -40,7 +41,7 @@ class SignupButton extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.arrow_forward_ios,
+              LucideIcons.arrowRight, // Right arrow like in the image
               size: 16,
               color: AppTheme.primaryColor,
             ),
