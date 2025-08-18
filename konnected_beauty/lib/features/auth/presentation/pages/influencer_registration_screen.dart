@@ -788,33 +788,7 @@ class _InfluencerRegistrationScreenState
           ),
           const SizedBox(height: 16),
           // Success message for signup
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.successLightColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.successColor.withOpacity(0.3)),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  LucideIcons.checkCircle,
-                  color: Colors.green,
-                  size: 20,
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Account created successfully! Please check your email for the verification code.',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+
           const SizedBox(height: 24),
           CustomTextField(
             label: AppTranslations.getString(context, 'verification_code'),

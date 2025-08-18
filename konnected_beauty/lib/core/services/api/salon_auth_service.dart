@@ -1436,4 +1436,145 @@ class SalonAuthService {
       };
     }
   }
+
+  /// Get salon profile to check registration status
+  static Future<Map<String, dynamic>> getSalonProfile() async {
+    print('🏢 === GETTING SALON PROFILE ===');
+
+    try {
+      // Check authentication status first
+      await checkAuthStatus();
+
+      // Get access token
+      final accessToken = await TokenStorageService.getAccessToken();
+      if (accessToken == null || accessToken.isEmpty) {
+        print('❌ No access token found');
+        return {
+          'success': false,
+          'message': 'No access token found',
+          'error': 'Unauthorized',
+        };
+      }
+
+      print('🔑 Access Token: Present');
+      print('🔑 Token: ${accessToken.substring(0, 50)}...');
+
+      // Check if token is expired
+      final isExpired = await TokenStorageService.isAccessTokenExpired();
+      print('🔑 Token Expired: $isExpired');
+
+      // If token is expired, try to refresh it first
+      String tokenToUse = accessToken;
+      if (isExpired) {
+        print('🔐 Token is expired, refreshing before request...');
+        final refreshTokenValue = await TokenStorageService.getRefreshToken();
+        if (refreshTokenValue != null) {
+          final refreshResult =
+              await refreshToken(refreshToken: refreshTokenValue);
+          if (refreshResult['success']) {
+            final newAccessToken = refreshResult['data']['access_token'];
+            await TokenStorageService.saveAccessToken(newAccessToken);
+            tokenToUse = newAccessToken;
+            print('🔄 Token refreshed successfully before request');
+          } else {
+            print('❌ Failed to refresh token before request');
+          }
+        }
+      }
+
+      // Prepare headers with authorization
+      final requestHeaders = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $tokenToUse',
+      };
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/salon/profile'),
+        headers: requestHeaders,
+      );
+
+      print('📡 Response Status Code: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Salon Profile Retrieved Successfully');
+        print('📊 Profile Data: $responseData');
+        return {
+          'success': true,
+          'data': responseData['data'] ?? responseData,
+          'message':
+              responseData['message'] ?? 'Profile retrieved successfully',
+        };
+      } else if (response.statusCode == 401) {
+        print('🔐 Token expired, attempting to refresh...');
+
+        // Try to refresh the token
+        final refreshTokenValue = await TokenStorageService.getRefreshToken();
+        if (refreshTokenValue != null) {
+          final refreshResult =
+              await refreshToken(refreshToken: refreshTokenValue);
+          if (refreshResult['success']) {
+            final newAccessToken = refreshResult['data']['access_token'];
+            await TokenStorageService.saveAccessToken(newAccessToken);
+
+            print('🔄 Token refreshed, retrying profile request...');
+
+            // Retry the request with the new token
+            final retryHeaders = <String, String>{
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $newAccessToken',
+            };
+
+            final retryResponse = await http.get(
+              Uri.parse('$baseUrl/salon/profile'),
+              headers: retryHeaders,
+            );
+
+            print('📡 Retry Response Status Code: ${retryResponse.statusCode}');
+            print('📄 Retry Response Body: ${retryResponse.body}');
+
+            if (retryResponse.statusCode == 200) {
+              final retryResponseData = jsonDecode(retryResponse.body);
+              print(
+                  '✅ Salon Profile Retrieved Successfully (after token refresh)');
+              print('📊 Profile Data: $retryResponseData');
+              return {
+                'success': true,
+                'data': retryResponseData['data'] ?? retryResponseData,
+                'message': retryResponseData['message'] ??
+                    'Profile retrieved successfully',
+              };
+            }
+          }
+        }
+
+        // If refresh failed or retry failed, return the original error
+        print('❌ Failed to get salon profile (after token refresh attempt)');
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to get profile',
+          'error': errorData['error'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        print('❌ Failed to get salon profile');
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to get profile',
+          'error': errorData['error'],
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error getting salon profile: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'error': e.toString(),
+      };
+    }
+  }
 }

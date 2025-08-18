@@ -54,7 +54,7 @@ class KonnectedBeautyApp extends StatelessWidget {
           create: (context) => ResetPasswordBloc(),
         ),
         BlocProvider<AuthBloc>(
-          create: (context) => AuthBloc()..add(CheckAuthStatus()),
+          create: (context) => AuthBloc()..add(CheckProfileStatus()),
         ),
         BlocProvider<SalonServicesBloc>(
           create: (context) => SalonServicesBloc(),
@@ -170,6 +170,8 @@ class KonnectedBeautyApp extends StatelessWidget {
         return const WelcomeScreen();
       }
     } else {
+      // User is not authenticated or profile is incomplete
+      // Show welcome screen which will handle navigation to appropriate registration
       return const WelcomeScreen();
     }
   }
