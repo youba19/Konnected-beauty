@@ -194,7 +194,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
         // Service Price
         Text(
-          '${widget.servicePrice} €',
+          '${widget.servicePrice}',
           style: const TextStyle(
             color: AppTheme.accentColor,
             fontSize: 20,

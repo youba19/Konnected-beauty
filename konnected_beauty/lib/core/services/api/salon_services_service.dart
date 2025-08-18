@@ -33,32 +33,8 @@ class SalonServicesService {
         requestHeaders['Authorization'] = 'Bearer $accessToken';
       }
 
-      // Get current user's salon ID from token
-      final userInfo = await TokenStorageService.getUserInfoFromToken();
-      final currentUserId = userInfo?['id'] as String?;
-      final currentUserEmail = userInfo?['email'] as String?;
-
-      print('👤 === CURRENT USER INFO ===');
-      print('👤 User ID: $currentUserId');
-      print('👤 User ID Type: ${currentUserId.runtimeType}');
-      print('📧 Email: $currentUserEmail');
-      print('🏢 Salon ID: ${userInfo?['salonId'] ?? 'N/A'}');
-      print('👥 Role: ${userInfo?['role']}');
-      print('👤 Raw userInfo: $userInfo');
-      print('👤 All userInfo keys: ${userInfo?.keys.toList()}');
-      print('👤 === END USER INFO ===');
-
-      // Validate that we have a valid user ID
-      if (currentUserId == null) {
-        print('❌ ERROR: No user ID found in token');
-        print('❌ Full userInfo: $userInfo');
-        return {
-          'success': false,
-          'message': 'Invalid authentication token. Please login again.',
-          'error': 'NoUserIdInToken',
-          'statusCode': 401,
-        };
-      }
+      // Note: User info extraction moved to after successful API response
+      // to allow interceptor to handle token refresh first
 
       // Build query parameters
       final Map<String, String> queryParams = {};
@@ -84,7 +60,6 @@ class SalonServicesService {
       // Note: The server should filter by the JWT token automatically
       // Adding userId as query param might not be the correct approach
       // Let's log the current user info and see what the server returns
-      print('🔍 Current user ID from token: $currentUserId');
       print('🔍 Note: Server should filter by JWT token automatically');
 
       // For debugging, let's see what the server returns without additional filtering
@@ -128,6 +103,21 @@ class SalonServicesService {
         print('📊 === SERVICES DEBUG ===');
         print('📊 Total services returned from server: ${allServices.length}');
         print('📊 Raw response data: $responseData');
+
+        // Get current user's salon ID from token after successful API response
+        final userInfo = await TokenStorageService.getUserInfoFromToken();
+        final currentUserId = userInfo?['id'] as String?;
+        final currentUserEmail = userInfo?['email'] as String?;
+
+        print('👤 === CURRENT USER INFO ===');
+        print('👤 User ID: $currentUserId');
+        print('👤 User ID Type: ${currentUserId.runtimeType}');
+        print('📧 Email: $currentUserEmail');
+        print('🏢 Salon ID: ${userInfo?['salonId'] ?? 'N/A'}');
+        print('👥 Role: ${userInfo?['role']}');
+        print('👤 Raw userInfo: $userInfo');
+        print('👤 All userInfo keys: ${userInfo?.keys.toList()}');
+        print('👤 === END USER INFO ===');
 
         // Log first few services to check their structure
         for (int i = 0; i < allServices.length && i < 3; i++) {
@@ -193,16 +183,13 @@ class SalonServicesService {
         print('❌ Query Params: $queryParams');
         print('❌ Response Body: ${response.body}');
 
-        // Check if user has completed salon registration
-        if (userInfo?['salonId'] == null) {
-          return {
-            'success': false,
-            'message':
-                'Please complete your salon registration first. You need to add salon information and profile.',
-            'error': 'SalonRegistrationIncomplete',
-            'statusCode': response.statusCode,
-          };
-        }
+        // For now, return generic error message since userInfo is not available here
+        return {
+          'success': false,
+          'message': 'Internal server error - please try again',
+          'error': 'InternalServerError',
+          'statusCode': response.statusCode,
+        };
 
         return {
           'success': false,

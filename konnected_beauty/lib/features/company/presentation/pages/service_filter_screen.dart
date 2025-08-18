@@ -322,7 +322,6 @@ class _ServiceFilterScreenState extends State<ServiceFilterScreen>
                                       style: const TextStyle(
                                         color: AppTheme.textPrimaryColor,
                                         fontSize: 14,
-                                        fontFamily: AppTheme.fontFamily,
                                       ),
                                     ),
                                   ),

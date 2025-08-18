@@ -56,7 +56,6 @@ class TopNotificationBanner extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      fontFamily: AppTheme.fontFamily,
                     ),
                     textAlign: TextAlign.center,
                   ),

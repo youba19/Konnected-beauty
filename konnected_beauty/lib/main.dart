@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'core/bloc/app_bloc_observer.dart';
 import 'core/bloc/language/language_bloc.dart';
 import 'core/bloc/welcome/welcome_bloc.dart';
 import 'core/bloc/saloon_registration/saloon_registration_bloc.dart';
+import 'core/bloc/influencer_registration/influencer_registration_bloc.dart';
 import 'core/bloc/login/login_bloc.dart';
 import 'core/bloc/reset_password/reset_password_bloc.dart';
 import 'core/bloc/auth/auth_bloc.dart';
@@ -42,6 +44,9 @@ class KonnectedBeautyApp extends StatelessWidget {
         BlocProvider<SaloonRegistrationBloc>(
           create: (context) => SaloonRegistrationBloc(),
         ),
+        BlocProvider<InfluencerRegistrationBloc>(
+          create: (context) => InfluencerRegistrationBloc(),
+        ),
         BlocProvider<LoginBloc>(
           create: (context) => LoginBloc(),
         ),
@@ -63,16 +68,68 @@ class KonnectedBeautyApp extends StatelessWidget {
                 title: 'Konnected Beauty',
                 debugShowCheckedModeBanner: false,
                 theme: ThemeData(
+                  // Inherit from AppTheme.darkTheme
+                  brightness: Brightness.dark,
                   primaryColor: AppTheme.primaryColor,
                   scaffoldBackgroundColor: AppTheme.transparentBackground,
-                  fontFamily: 'Montserrat-Regular',
-                  textTheme: const TextTheme(
-                    bodyLarge: TextStyle(fontFamily: 'Montserrat-Regular'),
-                    bodyMedium: TextStyle(fontFamily: 'Montserrat-Regular'),
-                    bodySmall: TextStyle(fontFamily: 'Montserrat-Regular'),
-                    titleLarge: TextStyle(fontFamily: 'Montserrat-Regular'),
-                    titleMedium: TextStyle(fontFamily: 'Montserrat-Regular'),
-                    titleSmall: TextStyle(fontFamily: 'Montserrat-Regular'),
+                  fontFamily: AppTheme.fontFamily,
+                  // Force all text to use Poppins with aggressive override using Google Fonts
+                  textTheme:
+                      GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme)
+                          .apply(
+                    bodyColor: AppTheme.textPrimaryColor,
+                    displayColor: AppTheme.textPrimaryColor,
+                  ),
+
+                  // Apply font family to other theme elements
+                  appBarTheme: AppTheme.darkTheme.appBarTheme.copyWith(
+                    titleTextStyle: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+
+                  elevatedButtonTheme: ElevatedButtonThemeData(
+                    style: ElevatedButton.styleFrom(
+                      textStyle: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+
+                  textButtonTheme: TextButtonThemeData(
+                    style: TextButton.styleFrom(
+                      textStyle: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+
+                  outlinedButtonTheme: OutlinedButtonThemeData(
+                    style: OutlinedButton.styleFrom(
+                      textStyle: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+
+                  inputDecorationTheme: InputDecorationTheme(
+                    labelStyle: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    errorStyle: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
                 locale: languageState.locale,
@@ -84,17 +141,7 @@ class KonnectedBeautyApp extends StatelessWidget {
                 ],
                 home: _buildHomeScreen(authState),
                 builder: (context, child) {
-                  // Debug: Print current theme font
-                  print('🎨 === FONT DEBUG ===');
-                  print(
-                      '🎨 TextTheme bodyLarge fontFamily: ${Theme.of(context).textTheme.bodyLarge?.fontFamily}');
-
-                  return DefaultTextStyle(
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat-Regular',
-                      fontSize: 16,
-                      color: AppTheme.textPrimaryColor,
-                    ),
+                  return FontOverrideWidget(
                     child: child!,
                   );
                 },
@@ -126,6 +173,42 @@ class KonnectedBeautyApp extends StatelessWidget {
       return const WelcomeScreen();
     }
   }
+}
+
+// Custom widget that forces ALL text to use Poppins font
+class FontOverrideWidget extends StatelessWidget {
+  final Widget child;
+
+  const FontOverrideWidget({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle(
+      style: GoogleFonts.poppins(
+        fontSize: 16,
+        color: AppTheme.textPrimaryColor,
+      ),
+      child: Builder(
+        builder: (context) {
+          return DefaultTextStyle(
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              color: AppTheme.textPrimaryColor,
+            ),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Extension to force Poppins on all TextStyle objects
+extension TextStyleExtension on TextStyle {
+  TextStyle get poppins => GoogleFonts.poppins().merge(this);
 }
 
 //   Widget _buildHomeScreen(AuthState authState) {

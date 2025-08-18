@@ -14,6 +14,7 @@ import '../../../company/presentation/pages/salon_home_screen.dart';
 import 'saloon_registration_screen.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
 import 'welcome_screen.dart';
+import 'influencer_registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -177,17 +178,55 @@ class _LoginScreenState extends State<LoginScreen> {
           );
           break;
       }
-    } else {
-      // Handle influencer navigation
-      print('📍 Navigating to: Influencer Home Screen');
-      // TODO: Navigate to influencer home screen when implemented
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppTranslations.getString(
-              context, 'influencer_home_not_implemented')),
-          backgroundColor: Colors.orange,
-        ),
-      );
+    } else if (role == LoginRole.influencer) {
+      final normalizedStatus = userStatus.toLowerCase().trim();
+      print('🔍 Normalized influencer status: "$normalizedStatus"');
+      print('🔍 Normalized status length: ${normalizedStatus.length}');
+      print('🔍 Normalized status bytes: ${normalizedStatus.codeUnits}');
+
+      // Direct comparison with expected values
+      print('🔍 === DIRECT COMPARISON ===');
+      print('🔍 Is "email-verified"? ${normalizedStatus == "email-verified"}');
+      print('🔍 Is "profile-added"? ${normalizedStatus == "profile-added"}');
+      print('🔍 Is "otp"? ${normalizedStatus == "otp"}');
+      print('🔍 === END COMPARISON ===');
+
+      switch (normalizedStatus) {
+        case 'email-verified':
+          print('✅ MATCHED: email-verified case');
+          print(
+              '📍 Navigating to: Add Influencer Profile (Registration) - Step 2');
+          _navigateToInfluencerProfileScreen();
+          break;
+
+        case 'otp':
+          print('✅ MATCHED: otp case');
+          print(
+              '📍 Navigating to: Add Influencer OTP Verification (Registration) - Step 1');
+          _navigateToInfluencerOtpScreen();
+          break;
+
+        case 'profile-added':
+          print('✅ MATCHED: profile-added case');
+          print(
+              '📍 Navigating to: Add Influencer Socials (Registration) - Step 3');
+          _navigateToInfluencerSocialsScreen();
+          break;
+
+        default:
+          print('❌ NO MATCH: default case');
+          print('📍 Navigating to: Influencer Home Screen (default case)');
+          print('🔍 Status did not match any case: "$normalizedStatus"');
+          // TODO: Navigate to influencer home screen when implemented
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppTranslations.getString(
+                  context, 'influencer_home_not_implemented')),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          break;
+      }
     }
   }
 
@@ -211,6 +250,36 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     // Set the step directly to 3 (Salon Profile)
     context.read<SaloonRegistrationBloc>().add(GoToStep(3));
+  }
+
+  void _navigateToInfluencerProfileScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) =>
+            const InfluencerRegistrationScreen(initialStep: 2),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+  }
+
+  void _navigateToInfluencerSocialsScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) =>
+            const InfluencerRegistrationScreen(initialStep: 3),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+  }
+
+  void _navigateToInfluencerOtpScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) =>
+            const InfluencerRegistrationScreen(initialStep: 1),
+      ),
+      (route) => false, // Remove all previous routes
+    );
   }
 
   void _showTopNotification(String message, bool isError) {

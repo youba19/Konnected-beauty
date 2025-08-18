@@ -33,7 +33,6 @@ class LanguageSelector extends StatelessWidget {
                   child: Text(
                     _getLanguageDisplayText(state.locale),
                     style: const TextStyle(
-                      fontFamily: 'Montserrat',
                       color: AppTheme.textPrimaryColor,
                       fontSize: 16,
                     ),
@@ -71,7 +70,6 @@ class LanguageSelector extends StatelessWidget {
         title: const Text(
           'Choisir la langue',
           style: TextStyle(
-            fontFamily: 'Montserrat',
             color: AppTheme.textPrimaryColor,
           ),
         ),
@@ -82,7 +80,6 @@ class LanguageSelector extends StatelessWidget {
               title: const Text(
                 'Français',
                 style: TextStyle(
-                  fontFamily: 'Montserrat',
                   color: AppTheme.textPrimaryColor,
                 ),
               ),
@@ -97,7 +94,6 @@ class LanguageSelector extends StatelessWidget {
               title: const Text(
                 'English',
                 style: TextStyle(
-                  fontFamily: 'Montserrat',
                   color: AppTheme.textPrimaryColor,
                 ),
               ),

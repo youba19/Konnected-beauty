@@ -10,12 +10,13 @@ import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/services/storage/token_storage_service.dart';
 import '../../../../core/services/api/salon_services_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
-import '../../../../widgets/common/gradient_scaffold.dart';
+
 import '../../../auth/presentation/pages/welcome_screen.dart';
 import 'create_service_screen.dart';
 import 'service_details_screen.dart';
 import 'edit_service_screen.dart';
 import 'service_filter_screen.dart';
+import 'influencers_screen.dart';
 
 class SalonHomeScreen extends StatefulWidget {
   final bool showDeleteSuccess;
@@ -244,6 +245,38 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF1F1E1E), // Bottom color (darker)
+            Color(0xFF3B3B3B), // Top color (lighter)
+          ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Content based on selected tab
+              Expanded(
+                child: selectedIndex == 3
+                    ? const InfluencersScreen()
+                    : _buildServicesContent(),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _buildBottomNavigation(),
+        floatingActionButton: _buildFloatingActionButton(),
+      ),
+    );
+  }
+
+  Widget _buildServicesContent() {
     return BlocListener<SalonServicesBloc, SalonServicesState>(
         listener: (context, state) {
       if (state is SalonServicesLoaded) {
@@ -335,38 +368,19 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       }
     }, child: BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E), // Bottom color (darker)
-                Color(0xFF3B3B3B), // Top color (lighter)
-              ],
-            ),
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  // Success Banner (if needed)
-                  if (_showDeleteSuccess) _buildDeleteSuccessBanner(),
+        return Column(
+          children: [
+            // Success Banner (if needed)
+            if (_showDeleteSuccess) _buildDeleteSuccessBanner(),
 
-                  // Header Section
-                  _buildHeader(),
+            // Header Section
+            _buildHeader(),
 
-                  // Main Content
-                  Expanded(
-                    child: _buildMainContent(),
-                  ),
-                ],
-              ),
+            // Main Content
+            Expanded(
+              child: _buildMainContent(),
             ),
-            bottomNavigationBar: _buildBottomNavigation(),
-            floatingActionButton: _buildFloatingActionButton(),
-          ),
+          ],
         );
       },
     ));
@@ -956,10 +970,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: AppTheme.getTextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimaryColor,
                   ),
                 ),
               ),
@@ -969,67 +983,60 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
           Text(
             price,
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: AppTheme.getTextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimaryColor,
             ),
           ),
           const SizedBox(height: 5),
 
-          // Description with "see more" at the end of second line
           LayoutBuilder(
             builder: (context, constraints) {
-              // Calculate how much text fits in 2 lines
               final maxWidth = constraints.maxWidth;
-              const textStyle = TextStyle(
-                color: AppTheme.textPrimaryColor,
+              final textStyle = AppTheme.getTextStyle(
                 fontSize: 14,
                 height: 1.4,
+                color: AppTheme.textPrimaryColor,
               );
 
-              // Reserve space for "see more" (approximately 80px)
-              final availableWidth = maxWidth - 80;
+              final seeMoreText =
+                  '... ${AppTranslations.getString(context, 'see_more')}';
 
-              // Find the right amount of text that fits in 2 lines
-              String truncatedDescription = description;
-              while (truncatedDescription.isNotEmpty) {
-                final testText =
-                    '$truncatedDescription... ${AppTranslations.getString(context, 'see_more')}';
-                final textSpan = TextSpan(text: testText, style: textStyle);
+              // Function to measure how many characters fit in 2 lines
+              String truncateToTwoLines(String text) {
                 final textPainter = TextPainter(
-                  text: textSpan,
+                  text: TextSpan(text: '$text$seeMoreText', style: textStyle),
                   textDirection: TextDirection.ltr,
                   maxLines: 2,
                 );
 
+                String temp = text;
                 textPainter.layout(maxWidth: maxWidth);
 
-                if (textPainter.didExceedMaxLines) {
-                  // Remove last character and try again
-                  truncatedDescription = truncatedDescription.substring(
-                      0, truncatedDescription.length - 1);
-                } else {
-                  break;
+                while (textPainter.didExceedMaxLines && temp.isNotEmpty) {
+                  temp = temp.substring(0, temp.length - 1);
+                  textPainter.text =
+                      TextSpan(text: '$temp$seeMoreText', style: textStyle);
+                  textPainter.layout(maxWidth: maxWidth);
                 }
+                return temp;
               }
+
+              final truncatedDescription = truncateToTwoLines(description);
 
               return RichText(
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                overflow: TextOverflow.clip,
                 text: TextSpan(
                   children: [
+                    TextSpan(text: truncatedDescription, style: textStyle),
                     TextSpan(
-                      text: truncatedDescription,
-                      style: textStyle,
-                    ),
-                    TextSpan(
-                      text:
-                          '... ${AppTranslations.getString(context, 'see_more')}',
-                      style: const TextStyle(
-                        color: AppTheme.accentColor,
+                      text: seeMoreText,
+                      style: AppTheme.getTextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                        color: AppTheme.accentColor,
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
@@ -1094,10 +1101,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     ),
                     child: Text(
                       AppTranslations.getString(context, 'view_details'),
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
+                      style: AppTheme.getTextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor,
                       ),
                     ),
                   ),
@@ -1194,10 +1201,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     ),
                     child: Text(
                       AppTranslations.getString(context, 'edit'),
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
+                      style: AppTheme.getTextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor,
                       ),
                     ),
                   ),
@@ -1264,7 +1271,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             icon,
             color: isSelected
                 ? AppTheme.textPrimaryColor
-                : AppTheme.textSecondaryColor,
+                : AppTheme.navBartextColor,
             size: 22,
           ),
           const SizedBox(height: 3),
@@ -1273,7 +1280,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             style: TextStyle(
               color: isSelected
                   ? AppTheme.textPrimaryColor
-                  : AppTheme.textSecondaryColor,
+                  : AppTheme.navBartextColor,
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),

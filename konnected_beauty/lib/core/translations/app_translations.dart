@@ -233,6 +233,56 @@ class AppTranslations {
     'please_enter_number': 'Veuillez entrer un nombre',
     'please_enter_valid_number': 'Veuillez entrer un nombre valide',
     'number_must_be_positive': 'Le nombre doit être positif',
+
+    // Campaign Invite Dialog
+    'campaign_invite_title':
+        'Êtes-vous sûr de vouloir inviter cet influenceur et créer une campagne pour lui ?',
+    'campaign_invite_instructions':
+        'Si oui, donnez-nous les détails nécessaires si vous avez des promotions ci-dessous.',
+    'promotion_type': 'Type de promotion',
+    'select_type': 'Sélectionner le type',
+    'promotion_value': 'Valeur de la promotion',
+    'please_select_promotion_type':
+        'Veuillez sélectionner le type de promotion',
+    'please_enter_promotion_value': 'Veuillez entrer la valeur de la promotion',
+    'create_campaign_invite': 'Créer une campagne et inviter',
+    'campaign_created_successfully': 'Campagne créée avec succès !',
+
+    // Influencer Registration
+    'create_influencer_account': 'Créer un compte',
+    'complete_influencer_registration':
+        'Complétez l\'inscription pour créer votre compte et commencer à faire des affaires.',
+    'your_information': 'Vos informations',
+    'profile_picture': 'Photo de profil',
+    'upload_profile_picture': 'Télécharger votre photo de profil',
+    'upload_your_profile_picture': 'Télécharger votre photo de profil',
+    'pseudo': 'Pseudo',
+    'enter_pseudo': 'Entrez votre nom spécial',
+    'enter_your_special_name': 'Entrez votre nom spécial',
+    'bio': 'Bio',
+    'enter_bio': 'Décrivez-vous rapidement',
+    'describe_yourself_quickly': 'Décrivez-vous rapidement',
+    'zone': 'Zone',
+    'select_zone': 'Sélectionnez votre zone',
+    'select_your_zone': 'Sélectionnez votre zone',
+    'your_socials': 'Vos réseaux sociaux',
+    'instagram': 'Instagram',
+    'snapchat': 'Snapchat',
+    'tiktok': 'TikTok',
+    'youtube': 'YouTube',
+    'enter_instagram_link': 'Entrez le lien Instagram',
+    'enter_tiktok_link': 'Entrez le lien TikTok',
+    'enter_youtube_link': 'Entrez le lien YouTube',
+    'add_more_later': 'Vous pouvez en ajouter plus plus tard !',
+    'account_created_success_message':
+        'Compte créé avec succès ! Veuillez vérifier votre email pour le code de vérification.',
+    'social_media': 'Réseaux sociaux',
+    'select_image_source': 'Sélectionner la source d\'image',
+    'camera': 'Caméra',
+    'gallery': 'Galerie',
+    'tap_to_change': 'Appuyez pour changer',
+    'tap_to_select': 'Appuyez pour sélectionner',
+    'remove_image': 'Supprimer l\'image',
   };
 
   // English translations
@@ -436,5 +486,54 @@ class AppTranslations {
     'please_enter_number': 'Please enter a number',
     'please_enter_valid_number': 'Please enter a valid number',
     'number_must_be_positive': 'Number must be positive',
+
+    // Campaign Invite Dialog
+    'campaign_invite_title':
+        'Are you sure you want to invite this influencer and create a campaign for it?',
+    'campaign_invite_instructions':
+        'If yes, give us the details needed if you have promotions below.',
+    'promotion_type': 'Promotion type',
+    'select_type': 'Select type',
+    'promotion_value': 'Promotion value',
+    'please_select_promotion_type': 'Please select promotion type',
+    'please_enter_promotion_value': 'Please enter promotion value',
+    'create_campaign_invite': 'Create campaign & invite',
+    'campaign_created_successfully': 'Campaign created successfully!',
+
+    // Influencer Registration
+    'create_influencer_account': 'Create Account',
+    'complete_influencer_registration':
+        'Complete registration to create your account and start making deals.',
+    'your_information': 'Your information',
+    'profile_picture': 'Profile picture',
+    'upload_profile_picture': 'Upload your profile picture',
+    'upload_your_profile_picture': 'Upload your profile picture',
+    'pseudo': 'Pseudo',
+    'enter_pseudo': 'Enter your special name',
+    'enter_your_special_name': 'Enter your special name',
+    'bio': 'Bio',
+    'enter_bio': 'Describe yourself quickly',
+    'describe_yourself_quickly': 'Describe yourself quickly',
+    'zone': 'Zone',
+    'select_zone': 'Select your zone',
+    'select_your_zone': 'Select your zone',
+    'your_socials': 'Your socials',
+    'instagram': 'Instagram',
+    'snapchat': 'Snapchat',
+    'tiktok': 'TikTok',
+    'youtube': 'YouTube',
+    'enter_instagram_link': 'Enter Instagram link',
+    'enter_tiktok_link': 'Enter TikTok link',
+    'enter_youtube_link': 'Enter YouTube link',
+    'add_more_later': 'You can add more later!',
+    'account_created_success_message':
+        'Account created successfully! Please check your email for the verification code.',
+    'social_media': 'Social Media',
+    'select_image_source': 'Select Image Source',
+    'camera': 'Camera',
+    'gallery': 'Gallery',
+    'tap_to_change': 'Tap to change',
+    'tap_to_select': 'Tap to select',
+    'remove_image': 'Remove image',
   };
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
+import 'http_interceptor.dart';
 
 class SalonAuthService {
   static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';

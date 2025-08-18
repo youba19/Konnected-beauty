@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/welcome/welcome_bloc.dart';
-import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
+import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart'
+    as salon;
+import '../../../../core/bloc/influencer_registration/influencer_registration_bloc.dart'
+    as influencer;
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/common/animated_logo.dart';
 import '../../../../widgets/common/language_selector.dart';
 import '../../../../widgets/common/signup_button.dart';
 import '../../../../widgets/common/login_button.dart';
 import 'saloon_registration_screen.dart';
+import 'influencer_registration_screen.dart';
 import 'login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -37,17 +39,83 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void _onSignupSaloon() {
     // Dismiss keyboard before navigation
     FocusScope.of(context).unfocus();
-    // Reset registration state and navigate
-    context.read<SaloonRegistrationBloc>().add(ResetRegistration());
-    context.read<SaloonRegistrationBloc>().add(GoToStep(0));
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const SaloonRegistrationScreen()),
-    );
+
+    print('🎯 Attempting to navigate to salon registration...');
+
+    try {
+      // Check if bloc is available
+      final bloc = context.read<salon.SaloonRegistrationBloc>();
+      print('✅ SaloonRegistrationBloc found: $bloc');
+
+      // Reset registration state and navigate
+      bloc.add(salon.ResetRegistration());
+      print('✅ ResetRegistration event added');
+
+      bloc.add(salon.GoToStep(0));
+      print('✅ GoToStep(0) event added');
+
+      // Navigate to salon registration screen
+      print('🚀 Navigating to SaloonRegistrationScreen...');
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const SaloonRegistrationScreen(),
+        ),
+      );
+      print('✅ Navigation completed successfully');
+    } catch (e) {
+      print('❌ Error navigating to salon registration: $e');
+      print('🔍 Error type: ${e.runtimeType}');
+      print('🔍 Error details: $e');
+
+      // Fallback navigation
+      print('🔄 Attempting fallback navigation...');
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const SaloonRegistrationScreen(),
+        ),
+      );
+    }
   }
 
   void _onSignupInfluencer() {
-    // TODO: Navigate to influencer signup
-    print('Signup as Influencer');
+    // Dismiss keyboard before navigation
+    FocusScope.of(context).unfocus();
+
+    print('🎯 Attempting to navigate to influencer registration...');
+
+    try {
+      // Check if bloc is available
+      final bloc = context.read<influencer.InfluencerRegistrationBloc>();
+      print('✅ InfluencerRegistrationBloc found: $bloc');
+
+      // Reset registration state and navigate
+      bloc.add(influencer.ResetRegistration());
+      print('✅ ResetRegistration event added');
+
+      bloc.add(influencer.GoToStep(0));
+      print('✅ GoToStep(0) event added');
+
+      // Navigate to influencer registration screen
+      print('🚀 Navigating to InfluencerRegistrationScreen...');
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const InfluencerRegistrationScreen(),
+        ),
+      );
+      print('✅ Navigation completed successfully');
+    } catch (e) {
+      print('❌ Error navigating to influencer registration: $e');
+      print('🔍 Error type: ${e.runtimeType}');
+      print('🔍 Error details: $e');
+
+      // Fallback navigation
+      print('🔄 Attempting fallback navigation...');
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const InfluencerRegistrationScreen(),
+        ),
+      );
+    }
   }
 
   void _onLogin() {
@@ -108,42 +176,45 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Widget _buildContent() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Spacer for logo - increased to avoid overlap with animated logo
-              const SizedBox(
-                height: 80,
-              ),
-              // Welcome Section
-              _buildWelcomeSection(),
+    return DefaultTextStyle(
+      style: const TextStyle(fontFamily: AppTheme.fontFamily), // Chela One font
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Spacer for logo - increased to avoid overlap with animated logo
+                const SizedBox(
+                  height: 80,
+                ),
+                // Welcome Section
+                _buildWelcomeSection(),
 
-              const SizedBox(height: 15), // Increased spacing
+                const SizedBox(height: 15), // Increased spacing
 
-              // Language Section
-              _buildLanguageSection(),
+                // Language Section
+                _buildLanguageSection(),
 
-              const SizedBox(height: 10), // Increased spacing
-            ],
-          ),
-          const Spacer(),
-          Column(
-            children: [
-              // Signup Section
-              _buildSignupSection(),
+                const SizedBox(height: 10), // Increased spacing
+              ],
+            ),
+            const Spacer(),
+            Column(
+              children: [
+                // Signup Section
+                _buildSignupSection(),
 
-              const SizedBox(height: 10), // Increased spacing
+                const SizedBox(height: 10), // Increased spacing
 
-              // Login Section
-              _buildLoginSection(),
-            ],
-          ),
-        ],
+                // Login Section
+                _buildLoginSection(),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -157,12 +228,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         ),
         Text(
           AppTranslations.getString(context, 'welcome_title'),
-          style: AppTheme.headingStyle,
+          style: AppTheme.forceFont(AppTheme.headingStyle),
         ),
         const SizedBox(height: 16),
         Text(
           AppTranslations.getString(context, 'welcome_subtitle'),
-          style: AppTheme.subtitleStyle,
+          style: AppTheme.forceFont(AppTheme.subtitleStyle),
         ),
       ],
     );
@@ -211,7 +282,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 AppTranslations.getString(context, 'already_have_account'),
-                style: AppTheme.dividerTextStyle,
+                style: AppTheme.forceFont(AppTheme.dividerTextStyle),
               ),
             ),
             Expanded(
