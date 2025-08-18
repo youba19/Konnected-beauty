@@ -9,8 +9,12 @@ class TokenStorageService {
 
   /// Save access token
   static Future<void> saveAccessToken(String token) async {
+    print('💾 === SAVING ACCESS TOKEN ===');
+    print('🔑 Token: ${token.substring(0, 20)}...');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_accessTokenKey, token);
+    print('✅ Access token saved to SharedPreferences');
+    print('💾 === END SAVING ACCESS TOKEN ===');
   }
 
   /// Get access token
@@ -26,8 +30,12 @@ class TokenStorageService {
 
   /// Save refresh token
   static Future<void> saveRefreshToken(String token) async {
+    print('💾 === SAVING REFRESH TOKEN ===');
+    print('🔄 Token: ${token.substring(0, 20)}...');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_refreshTokenKey, token);
+    print('✅ Refresh token saved to SharedPreferences');
+    print('💾 === END SAVING REFRESH TOKEN ===');
   }
 
   /// Get refresh token

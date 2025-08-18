@@ -87,17 +87,31 @@ class HttpInterceptor {
 
       if (response.statusCode == 200) {
         // Extract new tokens from response (API uses snake_case)
-        final newAccessToken =
-            responseData['access_token'] ?? responseData['accessToken'];
-        final newRefreshToken =
-            responseData['refresh_token'] ?? responseData['refreshToken'];
+        final newAccessToken = responseData['data']?['access_token'] ??
+            responseData['access_token'] ??
+            responseData['accessToken'];
+        final newRefreshToken = responseData['data']?['refresh_token'] ??
+            responseData['refresh_token'] ??
+            responseData['refreshToken'];
 
-        if (newAccessToken != null) {
+        print('🔍 === TOKEN EXTRACTION DEBUG ===');
+        print('🔍 Response Data: $responseData');
+        print('🔍 Data Object: ${responseData['data']}');
+        print(
+            '🔍 Access Token from data.access_token: ${responseData['data']?['access_token']}');
+        print(
+            '🔍 Access Token from access_token: ${responseData['access_token']}');
+        print(
+            '🔍 Access Token from accessToken: ${responseData['accessToken']}');
+        print('🔍 Final Access Token: $newAccessToken');
+        print('🔍 === END TOKEN EXTRACTION ===');
+
+        if (newAccessToken != null && newAccessToken.isNotEmpty) {
           // Store the new access token
           await TokenStorageService.saveAccessToken(newAccessToken);
 
           // If a new refresh token is provided, store it too
-          if (newRefreshToken != null) {
+          if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
             await TokenStorageService.saveRefreshToken(newRefreshToken);
           }
 
@@ -108,6 +122,8 @@ class HttpInterceptor {
             'accessToken': newAccessToken,
           };
         } else {
+          print('❌ No valid access token found in refresh response');
+          print('❌ Response structure: $responseData');
           return {
             'success': false,
             'message': 'No access token in refresh response',
@@ -152,6 +168,7 @@ class HttpInterceptor {
     print('🔐 === AUTHENTICATED REQUEST ===');
     print('🔗 Method: $method');
     print('🔗 Endpoint: $endpoint');
+    print('🔗 Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
 
     return interceptRequest(() async {
       final accessToken = await TokenStorageService.getAccessToken();
