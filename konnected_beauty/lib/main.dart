@@ -173,8 +173,12 @@ class KonnectedBeautyApp extends StatelessWidget {
       } else {
         return const WelcomeScreen();
       }
+    } else if (authState is AuthProfileIncomplete) {
+      // User is authenticated but profile is incomplete
+      // Navigate to welcome screen which will handle registration flow
+      return const WelcomeScreen();
     } else {
-      // User is not authenticated or profile is incomplete
+      // User is not authenticated
       // Show welcome screen which will handle navigation to appropriate registration
       return const WelcomeScreen();
     }

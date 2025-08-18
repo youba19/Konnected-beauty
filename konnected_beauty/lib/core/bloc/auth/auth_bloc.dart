@@ -34,6 +34,18 @@ class AuthAuthenticated extends AuthState {
 
 class AuthUnauthenticated extends AuthState {}
 
+class AuthProfileIncomplete extends AuthState {
+  final String email;
+  final String role;
+  final String accessToken;
+
+  AuthProfileIncomplete({
+    required this.email,
+    required this.role,
+    required this.accessToken,
+  });
+}
+
 class AuthError extends AuthState {
   final String message;
   AuthError(this.message);
@@ -152,18 +164,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final profileData = profileResult['data'];
           print('🏢 Salon profile found: $profileData');
 
-                                  // Check if profile is complete (has required salon business fields)
+                      // Check if profile is complete based on status
             final hasCompleteProfile = profileData != null &&
-                profileData['salonInfo'] != null &&
-                profileData['salonProfile'] != null;
+                profileData['status'] == 'pending';
 
-            print('🏢 === PROFILE COMPLETENESS CHECK ===');
+                      print('🏢 === PROFILE COMPLETENESS CHECK ===');
             print('🏢 Profile data: $profileData');
+            print('🏢 Status: ${profileData['status']}');
             print('🏢 salonInfo: ${profileData['salonInfo']}');
             print('🏢 salonProfile: ${profileData['salonProfile']}');
-            print('🏢 Has complete profile: $hasCompleteProfile');
+            print('🏢 Has complete profile (status == pending): $hasCompleteProfile');
 
-            if (hasCompleteProfile) {
+          if (hasCompleteProfile) {
             print('✅ Profile complete, navigating to home');
             print('✅ Emitting AuthAuthenticated state');
             // Profile is complete, emit authenticated state
@@ -178,10 +190,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             print('✅ AuthAuthenticated state emitted successfully');
           } else {
             print('⚠️ Profile incomplete, navigating to registration');
-            print('⚠️ Emitting AuthUnauthenticated state');
-            // Profile is incomplete, emit unauthenticated to show registration
-            emit(AuthUnauthenticated());
-            print('⚠️ AuthUnauthenticated state emitted successfully');
+            print('⚠️ Emitting AuthProfileIncomplete state');
+            // Profile is incomplete, emit profile incomplete state to show registration
+            final email = await TokenStorageService.getUserEmail();
+            final accessToken = await TokenStorageService.getAccessToken();
+
+            emit(AuthProfileIncomplete(
+              email: email ?? '',
+              role: role ?? '',
+              accessToken: accessToken ?? '',
+            ));
+            print('⚠️ AuthProfileIncomplete state emitted successfully');
           }
         } else {
           print('❌ Failed to get salon profile: ${profileResult['message']}');
