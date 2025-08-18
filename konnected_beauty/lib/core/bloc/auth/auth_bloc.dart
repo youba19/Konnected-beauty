@@ -152,12 +152,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final profileData = profileResult['data'];
           print('🏢 Salon profile found: $profileData');
 
-          // Check if profile is complete (has required fields)
-          final hasCompleteProfile = profileData != null &&
-              profileData['name'] != null &&
-              profileData['name'].toString().isNotEmpty;
+                                  // Check if profile is complete (has required salon business fields)
+            final hasCompleteProfile = profileData != null &&
+                profileData['salonInfo'] != null &&
+                profileData['salonProfile'] != null;
 
-          if (hasCompleteProfile) {
+            print('🏢 === PROFILE COMPLETENESS CHECK ===');
+            print('🏢 Profile data: $profileData');
+            print('🏢 salonInfo: ${profileData['salonInfo']}');
+            print('🏢 salonProfile: ${profileData['salonProfile']}');
+            print('🏢 Has complete profile: $hasCompleteProfile');
+
+            if (hasCompleteProfile) {
             print('✅ Profile complete, navigating to home');
             print('✅ Emitting AuthAuthenticated state');
             // Profile is complete, emit authenticated state
