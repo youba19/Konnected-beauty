@@ -127,6 +127,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     print('🏢 === CHECKING PROFILE STATUS ===');
+    print('🏢 Event received: ${event.runtimeType}');
+    print('🏢 Starting profile status check...');
     emit(AuthLoading());
 
     try {
@@ -157,6 +159,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
           if (hasCompleteProfile) {
             print('✅ Profile complete, navigating to home');
+            print('✅ Emitting AuthAuthenticated state');
             // Profile is complete, emit authenticated state
             final email = await TokenStorageService.getUserEmail();
             final accessToken = await TokenStorageService.getAccessToken();
@@ -166,10 +169,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               role: role ?? '',
               accessToken: accessToken ?? '',
             ));
+            print('✅ AuthAuthenticated state emitted successfully');
           } else {
             print('⚠️ Profile incomplete, navigating to registration');
+            print('⚠️ Emitting AuthUnauthenticated state');
             // Profile is incomplete, emit unauthenticated to show registration
             emit(AuthUnauthenticated());
+            print('⚠️ AuthUnauthenticated state emitted successfully');
           }
         } else {
           print('❌ Failed to get salon profile: ${profileResult['message']}');

@@ -54,7 +54,11 @@ class KonnectedBeautyApp extends StatelessWidget {
           create: (context) => ResetPasswordBloc(),
         ),
         BlocProvider<AuthBloc>(
-          create: (context) => AuthBloc()..add(CheckProfileStatus()),
+          create: (context) {
+            print('🏗️ === CREATING AUTH BLOC ===');
+            print('🏗️ Adding CheckProfileStatus event');
+            return AuthBloc()..add(CheckProfileStatus());
+          },
         ),
         BlocProvider<SalonServicesBloc>(
           create: (context) => SalonServicesBloc(),
