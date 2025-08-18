@@ -149,16 +149,34 @@ class HttpInterceptor {
     Object? body,
     Map<String, String>? queryParameters,
   }) async {
+    print('🔐 === AUTHENTICATED REQUEST ===');
+    print('🔗 Method: $method');
+    print('🔗 Endpoint: $endpoint');
+
     return interceptRequest(() async {
       final accessToken = await TokenStorageService.getAccessToken();
+      final userRole = await TokenStorageService.getUserRole();
+      final userEmail = await TokenStorageService.getUserEmail();
+
+      print('🔐 === TOKEN INFO ===');
+      print(
+          '🔑 Access Token: ${accessToken != null ? '${accessToken.substring(0, 20)}...' : 'NULL'}');
+      print('👤 User Role: $userRole');
+      print('📧 User Email: $userEmail');
+      print('🔐 === END TOKEN INFO ===');
 
       final requestHeaders = Map<String, String>.from(headers ?? {});
-      if (accessToken != null) {
+      if (accessToken != null && accessToken.isNotEmpty) {
         requestHeaders['Authorization'] = 'Bearer $accessToken';
+        print('✅ Authorization header added');
+      } else {
+        print('❌ No access token available - request will fail with 401');
       }
 
       final uri = Uri.parse('$baseUrl$endpoint')
           .replace(queryParameters: queryParameters);
+
+      print('🔗 Full URL: $uri');
 
       switch (method.toUpperCase()) {
         case 'GET':

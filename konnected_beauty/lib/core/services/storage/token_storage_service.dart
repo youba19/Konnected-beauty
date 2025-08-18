@@ -16,7 +16,12 @@ class TokenStorageService {
   /// Get access token
   static Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_accessTokenKey);
+    final token = prefs.getString(_accessTokenKey);
+    print('🔑 === GET ACCESS TOKEN ===');
+    print(
+        '🔑 Token: ${token != null ? '${token.substring(0, 20)}...' : 'NULL'}');
+    print('🔑 === END GET ACCESS TOKEN ===');
+    return token;
   }
 
   /// Save refresh token
@@ -62,12 +67,21 @@ class TokenStorageService {
     required String email,
     required String role,
   }) async {
+    print('💾 === SAVING AUTH DATA ===');
+    print('🔑 Access Token: ${accessToken.substring(0, 20)}...');
+    print('🔄 Refresh Token: ${refreshToken.substring(0, 20)}...');
+    print('📧 Email: $email');
+    print('👤 Role: $role');
+
     await Future.wait([
       saveAccessToken(accessToken),
       saveRefreshToken(refreshToken),
       saveUserEmail(email),
       saveUserRole(role),
     ]);
+
+    print('✅ Auth data saved successfully');
+    print('💾 === END SAVING AUTH DATA ===');
   }
 
   /// Clear all authentication data
@@ -79,7 +93,7 @@ class TokenStorageService {
       prefs.remove(_userEmailKey),
       prefs.remove(_userRoleKey),
     ]);
-    
+
     print('🧹 === AUTH DATA CLEARED ===');
     print('🧹 All tokens and user data removed');
     print('🧹 === END CLEARED ===');
@@ -89,7 +103,7 @@ class TokenStorageService {
   static Future<void> clearAllData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    
+
     print('🧹 === ALL APP DATA CLEARED ===');
     print('🧹 Complete app reset - all data removed');
     print('🧹 === END CLEARED ===');
