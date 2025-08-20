@@ -55,6 +55,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               confirmPassword: confirmPasswordController.text,
               resetToken: widget.resetToken,
               email: widget.email,
+              role: widget.role,
             ),
           );
     }
@@ -81,30 +82,39 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<ResetPasswordBloc, ResetPasswordState>(
-      listener: (context, state) {
-        if (state is ResetPasswordSuccess) {
-          TopNotificationService.showSuccess(
-            context: context,
-            message: state.message,
-          );
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const LoginScreen(),
+        listener: (context, state) {
+      if (state is ResetPasswordSuccess) {
+        TopNotificationService.showSuccess(
+          context: context,
+          message: state.message,
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const LoginScreen(),
+          ),
+          (route) => false,
+        );
+      } else if (state is ResetPasswordError) {
+        TopNotificationService.showError(
+          context: context,
+          message: state.message,
+        );
+      }
+    }, child: BlocBuilder<LanguageBloc, LanguageState>(
+      builder: (context, languageState) {
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Color(0xFF3B3B3B),
+                  Color(0xFF1F1E1E),
+                ],
+              ),
             ),
-            (route) => false,
-          );
-        } else if (state is ResetPasswordError) {
-          TopNotificationService.showError(
-            context: context,
-            message: state.message,
-          );
-        }
-      },
-      child: BlocBuilder<LanguageBloc, LanguageState>(
-        builder: (context, languageState) {
-          return Scaffold(
-            backgroundColor: AppTheme.primaryColor,
-            body: SafeArea(
+            child: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
@@ -264,7 +274,6 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                                   );
                                 },
                               ),
-                              const SizedBox(height: 40),
                             ],
                           ),
                         ),
@@ -274,9 +283,9 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                 },
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        );
+      },
+    ));
   }
 }

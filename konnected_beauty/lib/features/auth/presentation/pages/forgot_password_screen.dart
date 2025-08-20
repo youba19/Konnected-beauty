@@ -33,7 +33,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void _onResetPassword() {
     if (_validateFields()) {
       context.read<ResetPasswordBloc>().add(
-            RequestPasswordReset(emailController.text),
+            RequestPasswordReset(emailController.text, selectedRole),
           );
     }
   }

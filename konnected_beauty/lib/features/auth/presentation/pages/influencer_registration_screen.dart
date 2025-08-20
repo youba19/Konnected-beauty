@@ -12,8 +12,10 @@ import '../../../../core/utils/validators.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
+import '../../../../widgets/forms/custom_dropdown.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'welcome_screen.dart';
+import '../../../influencer/presentation/pages/influencer_home_screen.dart';
 
 class InfluencerRegistrationScreen extends StatefulWidget {
   final InfluencerRegistrationBloc? existingBloc;
@@ -69,6 +71,12 @@ class _InfluencerRegistrationScreenState
   Timer? _resendCooldownTimer;
   int _resendCooldownSeconds = 0;
 
+  // Flag to ensure social media controllers are set up only once
+  bool _socialMediaControllersSetup = false;
+
+  // Flag to prevent multiple OTP resend requests
+  bool _isResendRequestInProgress = false;
+
   // Image picker
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
@@ -80,6 +88,66 @@ class _InfluencerRegistrationScreenState
     'Teenagers',
     'Seniors',
     'All ages',
+  ];
+
+  // French departments (wilayas) for zone dropdown
+  final List<String> frenchDepartments = [
+    'Paris',
+    'Lyon',
+    'Marseille',
+    'Toulouse',
+    'Nice',
+    'Nantes',
+    'Strasbourg',
+    'Montpellier',
+    'Bordeaux',
+    'Lille',
+    'Rennes',
+    'Reims',
+    'Saint-Étienne',
+    'Toulon',
+    'Le Havre',
+    'Grenoble',
+    'Dijon',
+    'Angers',
+    'Villeurbanne',
+    'Le Mans',
+    'Aix-en-Provence',
+    'Brest',
+    'Nîmes',
+    'Limoges',
+    'Clermont-Ferrand',
+    'Tours',
+    'Amiens',
+    'Perpignan',
+    'Metz',
+    'Besançon',
+    'Boulogne-Billancourt',
+    'Orléans',
+    'Mulhouse',
+    'Rouen',
+    'Saint-Denis',
+    'Caen',
+    'Argenteuil',
+    'Saint-Paul',
+    'Montreuil',
+    'Nancy',
+    'Roubaix',
+    'Tourcoing',
+    'Nanterre',
+    'Avignon',
+    'Vitry-sur-Seine',
+    'Créteil',
+    'Dunkerque',
+    'Poitiers',
+    'Asnières-sur-Seine',
+    'Courbevoie',
+    'Versailles',
+    'Colombes',
+    'Fort-de-France',
+    'Cayenne',
+    'Saint-Pierre',
+    'Saint-Denis (Réunion)',
   ];
 
   // Image picker methods
@@ -302,29 +370,7 @@ class _InfluencerRegistrationScreenState
           ));
     });
 
-    instagramController.addListener(() {
-      context.read<InfluencerRegistrationBloc>().add(UpdateSocials(
-            instagram: instagramController.text,
-            tiktok: tiktokController.text,
-            youtube: youtubeController.text,
-          ));
-    });
-
-    tiktokController.addListener(() {
-      context.read<InfluencerRegistrationBloc>().add(UpdateSocials(
-            instagram: instagramController.text,
-            tiktok: tiktokController.text,
-            youtube: youtubeController.text,
-          ));
-    });
-
-    youtubeController.addListener(() {
-      context.read<InfluencerRegistrationBloc>().add(UpdateSocials(
-            instagram: instagramController.text,
-            tiktok: tiktokController.text,
-            youtube: youtubeController.text,
-          ));
-    });
+    // Social media controllers will be set up in BlocListener when bloc becomes available
 
     // Start initial cooldown timer
     _startResendCooldown();
@@ -350,11 +396,68 @@ class _InfluencerRegistrationScreenState
     _startResendCooldown();
   }
 
-  void _showErrorNotification(String message) {
-    TopNotificationService.showError(
-      context: context,
-      message: message,
-    );
+  void _setupSocialMediaControllers() {
+    print('🔧 === SETTING UP SOCIAL MEDIA CONTROLLERS ===');
+
+    // Remove existing listeners first to avoid duplicates
+    instagramController.removeListener(_onInstagramChanged);
+    tiktokController.removeListener(_onTiktokChanged);
+    youtubeController.removeListener(_onYoutubeChanged);
+
+    // Add new listeners
+    instagramController.addListener(_onInstagramChanged);
+    tiktokController.addListener(_onTiktokChanged);
+    youtubeController.addListener(_onYoutubeChanged);
+
+    print('✅ Social media controllers setup complete');
+  }
+
+  void _onInstagramChanged() {
+    print('📱 === INSTAGRAM CONTROLLER LISTENER ===');
+    print('📱 Instagram text changed to: "${instagramController.text}"');
+    print('📱 TikTok text: "${tiktokController.text}"');
+    print('📱 YouTube text: "${youtubeController.text}"');
+
+    if (mounted) {
+      final bloc = context.read<InfluencerRegistrationBloc>();
+      bloc.add(UpdateSocials(
+        instagram: instagramController.text,
+        tiktok: tiktokController.text,
+        youtube: youtubeController.text,
+      ));
+    }
+  }
+
+  void _onTiktokChanged() {
+    print('📱 === TIKTOK CONTROLLER LISTENER ===');
+    print('📱 Instagram text: "${instagramController.text}"');
+    print('📱 TikTok text changed to: "${tiktokController.text}"');
+    print('📱 YouTube text: "${youtubeController.text}"');
+
+    if (mounted) {
+      final bloc = context.read<InfluencerRegistrationBloc>();
+      bloc.add(UpdateSocials(
+        instagram: instagramController.text,
+        tiktok: tiktokController.text,
+        youtube: youtubeController.text,
+      ));
+    }
+  }
+
+  void _onYoutubeChanged() {
+    print('📱 === YOUTUBE CONTROLLER LISTENER ===');
+    print('📱 Instagram text: "${instagramController.text}"');
+    print('📱 TikTok text: "${tiktokController.text}"');
+    print('📱 YouTube text changed to: "${youtubeController.text}"');
+
+    if (mounted) {
+      final bloc = context.read<InfluencerRegistrationBloc>();
+      bloc.add(UpdateSocials(
+        instagram: instagramController.text,
+        tiktok: tiktokController.text,
+        youtube: youtubeController.text,
+      ));
+    }
   }
 
   @override
@@ -444,33 +547,90 @@ class _InfluencerRegistrationScreenState
             child: BlocListener<InfluencerRegistrationBloc,
                 InfluencerRegistrationState>(
               listener: (context, state) {
+                print('🎭 === BLOC LISTENER TRIGGERED ===');
+                print('📱 Current Step: ${state.currentStep}');
+                print('🎯 State Type: ${state.runtimeType}');
+
                 // Handle success messages
                 if (state is InfluencerRegistrationSuccess) {
+                  print('🎉 === INFLUENCER REGISTRATION SUCCESS ===');
+                  print('📱 Current Step: ${state.currentStep}');
+                  print('💬 Success Message: ${state.successMessage}');
+                  print('🎯 Navigating to step: ${state.currentStep}');
+
                   TopNotificationService.showSuccess(
                     context: context,
-                    message: state.successMessage,
+                    message: AppTranslations.getString(
+                        context, state.successMessage),
                   );
+
+                  // Check if this is the final success (after socials submission)
+                  if (state.successMessage == 'socials_added_success') {
+                    print(
+                        '🏠 === REGISTRATION COMPLETE - NAVIGATING TO INFLUENCER HOME ===');
+                    // Navigate immediately to influencer home page
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const InfluencerHomeScreen(),
+                      ),
+                      (route) => false, // Remove all previous routes
+                    );
+                  } else {
+                    print(
+                        '✅ Success notification shown, staying on current step');
+                  }
+
+                  // Reset resend request flag for OTP resend success
+                  if (state.successMessage == 'otp_resent_success') {
+                    _isResendRequestInProgress = false;
+                  }
+
                   return;
                 }
 
-                // Handle error messages (but not success messages that are handled by top banner)
-                if (state.errorMessage != null &&
-                    state.errorMessage!.isNotEmpty &&
-                    !state.errorMessage!
-                        .toLowerCase()
-                        .contains('successfully') &&
-                    !state.errorMessage!
-                        .toLowerCase()
-                        .contains('already verified')) {
-                  _showErrorNotification(state.errorMessage!);
+                // Handle step changes for navigation (regular state, not success state)
+                if (state is InfluencerRegistrationState &&
+                    state.currentStep == 3) {
+                  print('📱 === STEP CHANGED TO SOCIALS (3) ===');
+                  print('🎯 UI should now show social media step');
+                  print('🔄 This is a regular state change, not success state');
                 }
 
-                // OTP validation success is handled by the top drop banner
-                // No need to show additional SnackBar messages for OTP verification
+                // Handle error messages with top notifications
+                if (state.errorMessage != null &&
+                    state.errorMessage!.isNotEmpty) {
+                  print('❌ === SHOWING ERROR NOTIFICATION ===');
+                  print('💬 Error Message: ${state.errorMessage}');
+                  TopNotificationService.showError(
+                    context: context,
+                    message:
+                        AppTranslations.getString(context, state.errorMessage!),
+                  );
+
+                  // Reset resend request flag for OTP resend errors
+                  if (state.errorMessage!.contains('OTP') ||
+                      state.errorMessage!.contains('resend')) {
+                    _isResendRequestInProgress = false;
+                  }
+                }
               },
               child: BlocBuilder<InfluencerRegistrationBloc,
                   InfluencerRegistrationState>(
+                buildWhen: (previous, current) {
+                  print('🔍 === BLOC BUILDER BUILD WHEN ===');
+                  print('📱 Previous Step: ${previous.currentStep}');
+                  print('📱 Current Step: ${current.currentStep}');
+                  print('🎯 Previous State Type: ${previous.runtimeType}');
+                  print('🎯 Current State Type: ${current.runtimeType}');
+                  print(
+                      '🔄 Should rebuild: ${previous.currentStep != current.currentStep || previous.runtimeType != current.runtimeType}');
+                  return true; // Always rebuild for debugging
+                },
                 builder: (context, state) {
+                  print('🎭 === BLOC BUILDER REBUILD ===');
+                  print('📱 Current Step: ${state.currentStep}');
+                  print('🎯 State Type: ${state.runtimeType}');
+
                   return Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
@@ -481,7 +641,7 @@ class _InfluencerRegistrationScreenState
                           color: Colors.transparent,
                           child: _buildHeader(),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
 
                         // Content
                         Expanded(
@@ -534,15 +694,22 @@ class _InfluencerRegistrationScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          AppTranslations.getString(context, 'join_konnected_beauty'),
+          AppTranslations.getString(
+              context, 'complete_influencer_registration'),
           style: AppTheme.subtitleStyle,
         ),
+        // Add step counter for debugging
       ],
     );
   }
 
   Widget _buildStepper(
       BuildContext context, InfluencerRegistrationState state) {
+    print('🎯 === BUILDING STEPPER ===');
+    print('📱 Current Step: ${state.currentStep}');
+    print(
+        '🎨 Step indicators: 0:${state.currentStep >= 0}, 1:${state.currentStep >= 1}, 2:${state.currentStep >= 2}, 3:${state.currentStep >= 3}');
+
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
       child: Row(
@@ -581,16 +748,25 @@ class _InfluencerRegistrationScreenState
   Widget _buildStepContent(
       BuildContext context, InfluencerRegistrationState state) {
     try {
+      print('🎭 === BUILDING STEP CONTENT ===');
+      print('📱 Current Step: ${state.currentStep}');
+      print('🎯 Building step: ${state.currentStep}');
+
       switch (state.currentStep) {
         case 0:
+          print('📝 Building Personal Information Step');
           return _buildPersonalInformationStep(context, state);
         case 1:
+          print('🔐 Building OTP Verification Step');
           return _buildOtpVerificationStep(context, state);
         case 2:
+          print('👤 Building Influencer Profile Step');
           return _buildInfluencerProfileStep(context, state);
         case 3:
+          print('📱 Building Social Media Step');
           return _buildSocialMediaStep(context, state);
         default:
+          print('❌ Unknown step: ${state.currentStep}');
           return const SizedBox.shrink();
       }
     } catch (e) {
@@ -770,35 +946,24 @@ class _InfluencerRegistrationScreenState
         children: [
           Row(
             children: [
-              const Icon(
-                LucideIcons.shield,
-                color: AppTheme.textPrimaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
               Text(
                 AppTranslations.getString(context, 'phone_verification'),
                 style: const TextStyle(
                   color: AppTheme.textPrimaryColor,
-                  fontSize: 20,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 15),
           // Success message for signup
 
-          const SizedBox(height: 24),
           CustomTextField(
             label: AppTranslations.getString(context, 'verification_code'),
             placeholder: AppTranslations.getString(context, 'otp_placeholder'),
             controller: otpController,
             keyboardType: TextInputType.number,
-            isError: state.isOtpError,
-            errorMessage: state.isOtpError
-                ? AppTranslations.getString(context, 'wrong_code')
-                : null,
             maxLength: 6,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
@@ -806,23 +971,49 @@ class _InfluencerRegistrationScreenState
             validator: (value) => Validators.validateOtp(value, context),
             autovalidateMode: true,
             formFieldKey: otpFormKey,
+            onChanged: (value) {
+              context.read<InfluencerRegistrationBloc>().add(UpdateOtp(value));
+            },
           ),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: (state.isLoading || _resendCooldownSeconds > 0)
-                ? null // Disable tap when loading or in cooldown
+            onTap: (state.isLoading ||
+                    _resendCooldownSeconds > 0 ||
+                    _isResendRequestInProgress)
+                ? null // Disable tap when loading, in cooldown, or request in progress
                 : () {
-                    context.read<InfluencerRegistrationBloc>().add(ResendOtp());
-                    _resetResendCooldown(); // Reset cooldown after sending
+                    // Prevent multiple rapid clicks
+                    if (!_isResendRequestInProgress) {
+                      _isResendRequestInProgress = true;
+
+                      // Send OTP resend request
+                      context
+                          .read<InfluencerRegistrationBloc>()
+                          .add(ResendOtp());
+                      _resetResendCooldown(); // Reset cooldown after sending
+
+                      // Re-enable after a short delay to prevent spam
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        if (mounted) {
+                          setState(() {
+                            _isResendRequestInProgress = false;
+                          });
+                        }
+                      });
+                    }
                   },
             child: Text(
               state.isLoading
                   ? AppTranslations.getString(context, 'resend_code')
                   : _resendCooldownSeconds > 0
                       ? '${AppTranslations.getString(context, 'resend_code')} (${_resendCooldownSeconds}s)'
-                      : AppTranslations.getString(context, 'resend_code'),
+                      : _isResendRequestInProgress
+                          ? '${AppTranslations.getString(context, 'resend_code')}...'
+                          : AppTranslations.getString(context, 'resend_code'),
               style: TextStyle(
-                color: (state.isLoading || _resendCooldownSeconds > 0)
+                color: (state.isLoading ||
+                        _resendCooldownSeconds > 0 ||
+                        _isResendRequestInProgress)
                     ? AppTheme.textSecondaryColor.withOpacity(0.7)
                     : AppTheme.accentColor,
                 fontSize: 16,
@@ -860,7 +1051,7 @@ class _InfluencerRegistrationScreenState
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 15),
 
         // Debug: Show current language and translation
 
@@ -870,70 +1061,116 @@ class _InfluencerRegistrationScreenState
         Text(
           AppTranslations.getString(context, 'profile_picture'),
           style: const TextStyle(
-            color: AppTheme.accentColor,
+            color: AppTheme.textPrimaryColor,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
-        GestureDetector(
-          onTap: _showImageSourceDialog,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.borderColor, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: _selectedImage != null
-                ? Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          _selectedImage!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        AppTranslations.getString(context, 'tap_to_change'),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Icon(
-                        LucideIcons.upload,
-                        color: AppTheme.textSecondaryColor,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        AppTranslations.getString(
-                            context, 'upload_your_profile_picture'),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        AppTranslations.getString(context, 'tap_to_select'),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _showImageSourceDialog,
+            borderRadius: BorderRadius.circular(12),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.borderColor,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
+                ],
+              ),
+              child: _selectedImage != null
+                  ? Row(
+                      children: [
+                        // Small preview image
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.borderColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(7),
+                            child: Image.file(
+                              _selectedImage!,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Image name and info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getImageDisplayName(_selectedImage!.path),
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                AppTranslations.getString(
+                                    context, 'tap_to_change'),
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondaryColor,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Change icon
+                        Icon(
+                          LucideIcons.edit,
+                          color: AppTheme.textSecondaryColor,
+                          size: 20,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Icon(
+                          LucideIcons.upload,
+                          color: AppTheme.textSecondaryColor,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            AppTranslations.getString(
+                                context, 'upload_your_profile_picture'),
+                            style: const TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
 
@@ -994,28 +1231,24 @@ class _InfluencerRegistrationScreenState
         const SizedBox(height: 20),
 
         // Zone Field
-        CustomTextField(
+        CustomDropdown(
           label: AppTranslations.getString(context, 'zone'),
           placeholder: AppTranslations.getString(context, 'select_your_zone'),
-          controller: zoneController,
-          validator: (value) =>
-              Validators.validateRequired(value, 'zone', context),
-          autovalidateMode: true,
-          formFieldKey: zoneFormKey,
-          isError: zoneFormKey.currentState?.hasError ?? false,
-          errorMessage: zoneFormKey.currentState?.hasError == true
-              ? Validators.validateRequired(
-                  zoneController.text, 'zone', context)
-              : null,
+          items: frenchDepartments,
+          selectedValue:
+              zoneController.text.isNotEmpty ? zoneController.text : null,
           onChanged: (value) {
-            context.read<InfluencerRegistrationBloc>().add(
-                  UpdateProfileInfo(
-                    pseudo: pseudoController.text,
-                    bio: bioController.text,
-                    zone: value,
-                    profilePicture: null, // Will be set when image is picked
-                  ),
-                );
+            if (value != null) {
+              zoneController.text = value;
+              context.read<InfluencerRegistrationBloc>().add(
+                    UpdateProfileInfo(
+                      pseudo: pseudoController.text,
+                      bio: bioController.text,
+                      zone: value,
+                      profilePicture: null, // Will be set when image is picked
+                    ),
+                  );
+            }
           },
         ),
         const SizedBox(height: 5),
@@ -1023,8 +1256,27 @@ class _InfluencerRegistrationScreenState
     );
   }
 
+  String _getImageDisplayName(String imagePath) {
+    final fileName = imagePath.split('/').last;
+    // If filename is too long, truncate it
+    if (fileName.length > 25) {
+      return '${fileName.substring(0, 22)}...';
+    }
+    return fileName;
+  }
+
   Widget _buildSocialMediaStep(
       BuildContext context, InfluencerRegistrationState state) {
+    // Set up social media controllers when this step is built
+    if (!_socialMediaControllersSetup) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_socialMediaControllersSetup) {
+          _setupSocialMediaControllers();
+          _socialMediaControllersSetup = true;
+        }
+      });
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1048,6 +1300,16 @@ class _InfluencerRegistrationScreenState
         ),
         const SizedBox(height: 24),
 
+        // Help text
+        Text(
+          'Please provide at least one social media link to continue.',
+          style: TextStyle(
+            color: AppTheme.textSecondaryColor,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 20),
+
         // Instagram Field
         CustomTextField(
           label: AppTranslations.getString(context, 'instagram'),
@@ -1055,6 +1317,15 @@ class _InfluencerRegistrationScreenState
               AppTranslations.getString(context, 'enter_instagram_link'),
           controller: instagramController,
           keyboardType: TextInputType.url,
+          onChanged: (value) {
+            context.read<InfluencerRegistrationBloc>().add(
+                  UpdateSocials(
+                    instagram: value,
+                    tiktok: tiktokController.text,
+                    youtube: youtubeController.text,
+                  ),
+                );
+          },
         ),
         const SizedBox(height: 20),
 
@@ -1064,6 +1335,15 @@ class _InfluencerRegistrationScreenState
           placeholder: AppTranslations.getString(context, 'enter_tiktok_link'),
           controller: tiktokController,
           keyboardType: TextInputType.url,
+          onChanged: (value) {
+            context.read<InfluencerRegistrationBloc>().add(
+                  UpdateSocials(
+                    instagram: instagramController.text,
+                    tiktok: value,
+                    youtube: youtubeController.text,
+                  ),
+                );
+          },
         ),
         const SizedBox(height: 20),
 
@@ -1073,8 +1353,17 @@ class _InfluencerRegistrationScreenState
           placeholder: AppTranslations.getString(context, 'enter_youtube_link'),
           controller: youtubeController,
           keyboardType: TextInputType.url,
+          onChanged: (value) {
+            context.read<InfluencerRegistrationBloc>().add(
+                  UpdateSocials(
+                    instagram: instagramController.text,
+                    tiktok: tiktokController.text,
+                    youtube: value,
+                  ),
+                );
+          },
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 5),
       ],
     );
   }
@@ -1135,11 +1424,30 @@ class _InfluencerRegistrationScreenState
           onPressed: state.isLoading
               ? () {}
               : () {
+                  print('🔘 === SOCIAL MEDIA CONTINUE BUTTON PRESSED ===');
+                  print('📱 Instagram text: "${instagramController.text}"');
+                  print('📱 TikTok text: "${tiktokController.text}"');
+                  print('📱 YouTube text: "${youtubeController.text}"');
+
                   _validateCurrentStep(state);
-                  if (_canProceedToNextStep(state)) {
+                  final canProceed = _canProceedToNextStep(state);
+                  print('🎯 Can proceed to next step: $canProceed');
+
+                  if (canProceed) {
+                    print('✅ Proceeding with social media submission');
+                    // Ensure bloc state is up-to-date before submit
+                    context.read<InfluencerRegistrationBloc>().add(
+                          UpdateSocials(
+                            instagram: instagramController.text,
+                            tiktok: tiktokController.text,
+                            youtube: youtubeController.text,
+                          ),
+                        );
                     context
                         .read<InfluencerRegistrationBloc>()
                         .add(SubmitSocials());
+                  } else {
+                    print('❌ Cannot proceed - validation failed');
                   }
                 },
           isLoading: state.isLoading,
@@ -1164,7 +1472,21 @@ class _InfluencerRegistrationScreenState
             bioController.text.isNotEmpty &&
             zoneController.text.isNotEmpty;
       case 3:
-        return true; // Social media is optional
+        final hasInstagram = instagramController.text.isNotEmpty;
+        final hasTiktok = tiktokController.text.isNotEmpty;
+        final hasYoutube = youtubeController.text.isNotEmpty;
+        final canProceed = hasInstagram || hasTiktok || hasYoutube;
+
+        print('🔍 === SOCIAL MEDIA VALIDATION ===');
+        print(
+            '📱 Instagram: "${instagramController.text}" (${hasInstagram ? "Valid" : "Empty"})');
+        print(
+            '📱 TikTok: "${tiktokController.text}" (${hasTiktok ? "Valid" : "Empty"})');
+        print(
+            '📱 YouTube: "${youtubeController.text}" (${hasYoutube ? "Valid" : "Empty"})');
+        print('🎯 Can proceed: $canProceed');
+
+        return canProceed;
       default:
         return false;
     }

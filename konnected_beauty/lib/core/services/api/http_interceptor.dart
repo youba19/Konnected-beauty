@@ -65,7 +65,8 @@ class HttpInterceptor {
       // Determine which refresh endpoint to use based on user role
       String refreshEndpoint;
       if (userRole == 'influencer') {
-        refreshEndpoint = '/influencer-auth/refresh-token';
+        // Temporarily use salon refresh endpoint for testing
+        refreshEndpoint = '/salon-auth/refresh-token';
       } else {
         refreshEndpoint = '/salon-auth/refresh-token';
       }

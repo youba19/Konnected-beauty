@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/influencer_auth_service.dart';
 import '../../services/storage/token_storage_service.dart';
@@ -414,6 +415,20 @@ class InfluencerRegistrationBloc
 
   void _onUpdateSocials(
       UpdateSocials event, Emitter<InfluencerRegistrationState> emit) {
+    print('🔄 === UPDATE SOCIALS EVENT ===');
+    print(
+        '📱 Event Instagram: "${event.instagram}" (length: ${event.instagram.length})');
+    print(
+        '📱 Event TikTok: "${event.tiktok}" (length: ${event.tiktok.length})');
+    print(
+        '📱 Event YouTube: "${event.youtube}" (length: ${event.youtube.length})');
+    print(
+        '📱 Current State Instagram: "${state.instagram}" (length: ${state.instagram.length})');
+    print(
+        '📱 Current State TikTok: "${state.tiktok}" (length: ${state.tiktok.length})');
+    print(
+        '📱 Current State YouTube: "${state.youtube}" (length: ${state.youtube.length})');
+
     emit(InfluencerRegistrationState(
       currentStep: state.currentStep,
       isLoading: state.isLoading,
@@ -628,8 +643,67 @@ class InfluencerRegistrationBloc
         otp: state.otp,
       );
 
-      if (response['success'] == true) {
-        // OTP validation successful, move to profile step
+      print('🔐 === OTP VALIDATION RESPONSE ===');
+      print('Response: $response');
+      print('Response type: ${response.runtimeType}');
+      print('Success key exists: ${response.containsKey('success')}');
+      print('Success value: ${response['success']}');
+      print('Message: ${response['message']}');
+      print('Status code: ${response['statusCode']}');
+      print('=====================================');
+
+      // Check if response indicates success (either success: true or statusCode: 200)
+      final isSuccess =
+          response['success'] == true || response['statusCode'] == 200;
+
+      if (isSuccess) {
+        // OTP verification successful - save tokens and move to profile step
+        print('🔐 === OTP VERIFIED - SAVING TOKENS ===');
+
+        // Extract and save tokens from response
+        final data = response['data'] as Map<String, dynamic>?;
+        if (data != null) {
+          final accessToken = data['access_token'] as String?;
+          final refreshToken = data['refresh_token'] as String?;
+
+          print(
+              '🔑 Access Token: ${accessToken != null ? "Present" : "Missing"}');
+          print(
+              '🔄 Refresh Token: ${refreshToken != null ? "Present" : "Missing"}');
+
+          if (accessToken != null) {
+            await TokenStorageService.saveAccessToken(accessToken);
+            print('💾 Access token saved after OTP validation');
+          } else {
+            print('⚠️ No access token in OTP validation response');
+          }
+
+          if (refreshToken != null) {
+            await TokenStorageService.saveRefreshToken(refreshToken);
+            print('💾 Refresh token saved after OTP validation');
+
+            // Verify the token was saved
+            final savedRefreshToken =
+                await TokenStorageService.getRefreshToken();
+            print(
+                '🔍 Verification - Saved refresh token: ${savedRefreshToken != null ? "Present" : "Missing"}');
+            if (savedRefreshToken != null) {
+              print(
+                  '🔍 Token preview: ${savedRefreshToken.substring(0, 20)}...');
+            }
+          } else {
+            print('⚠️ No refresh token in OTP validation response');
+          }
+
+          // Save user role as 'influencer' for profile submission
+          await TokenStorageService.saveUserRole('influencer');
+          print('👤 User role saved as: influencer');
+        } else {
+          print('⚠️ No data in OTP validation response');
+        }
+
+        // Move to profile step
+        print('🔐 === OTP VERIFIED - MOVING TO STEP 2 ===');
         emit(InfluencerRegistrationState(
           currentStep: 2,
           isLoading: false,
@@ -657,6 +731,7 @@ class InfluencerRegistrationBloc
         ));
 
         // Show success notification
+        print('🎉 === EMITTING SUCCESS NOTIFICATION ===');
         emit(InfluencerRegistrationSuccess(
           InfluencerRegistrationState(
             currentStep: 2,
@@ -683,39 +758,23 @@ class InfluencerRegistrationBloc
             tiktok: state.tiktok,
             youtube: state.youtube,
           ),
-          successMessage:
-              'OTP verified successfully! Please complete your profile.',
+          successMessage: 'otp_verified_success',
         ));
       } else {
-        // OTP validation failed
-        emit(InfluencerRegistrationState(
-          currentStep: state.currentStep,
-          isLoading: false,
-          name: state.name,
-          email: state.email,
-          phone: state.phone,
-          password: state.password,
-          isNameValid: state.isNameValid,
-          isEmailValid: state.isEmailValid,
-          isPhoneValid: state.isPhoneValid,
-          isPasswordValid: state.isPasswordValid,
-          otp: state.otp,
-          isOtpValid: false,
-          isOtpError: true,
-          pseudo: state.pseudo,
-          bio: state.bio,
-          zone: state.zone,
-          profilePicture: state.profilePicture,
-          isPseudoValid: state.isPseudoValid,
-          isBioValid: state.isBioValid,
-          isZoneValid: state.isZoneValid,
-          instagram: state.instagram,
-          tiktok: state.tiktok,
-          youtube: state.youtube,
-        ));
+        // OTP validation failed - show simple error message
+        final errorMessage = response['message'] ?? 'invalid_verification_code';
+        print('❌ OTP validation failed: $errorMessage');
+        emit(InfluencerRegistrationError(state, errorMessage));
       }
     } catch (e) {
-      emit(InfluencerRegistrationError(state, 'OTP validation error: $e'));
+      // Show simple error message for network/API issues
+      String errorMessage = 'verification_failed';
+      if (e.toString().contains('Failed to validate OTP')) {
+        errorMessage = 'invalid_verification_code';
+      } else if (e.toString().contains('Network')) {
+        errorMessage = 'network_error_try_again';
+      }
+      emit(InfluencerRegistrationError(state, errorMessage));
     }
   }
 
@@ -737,10 +796,34 @@ class InfluencerRegistrationBloc
         profilePicture: state.profilePicture,
       );
 
+      print('📊 === PROFILE SUBMISSION RESPONSE ===');
+      print('📄 Full response: $response');
+      print('🔍 Success field: ${response['success']}');
+      print('🔍 Success type: ${response['success'].runtimeType}');
+      print('🔍 Success == true: ${response['success'] == true}');
+
       if (response['success'] == true) {
-        // Profile submission successful, move to socials step
-        emit(InfluencerRegistrationState(
-          currentStep: 3,
+        // Profile created successfully - always navigate to socials step
+        final profileStatus = response['profileStatus'];
+        final shouldNavigateToSocials =
+            true; // Always navigate to socials after profile creation
+
+        print('📊 Profile submission response:');
+        print('   - Success: ${response['success']}');
+        print('   - Status: $profileStatus');
+        print('   - Should navigate to socials: $shouldNavigateToSocials');
+
+        // Always move to socials step (step 3)
+        final nextStep = 3;
+
+        print('🎯 Navigation decision:');
+        print('   - Current step: ${state.currentStep}');
+        print('   - Next step: $nextStep');
+        print('   - Will navigate: $shouldNavigateToSocials');
+
+        // Create the new state with the updated step
+        final newState = InfluencerRegistrationState(
+          currentStep: nextStep,
           isLoading: false,
           name: state.name,
           email: state.email,
@@ -763,38 +846,31 @@ class InfluencerRegistrationBloc
           instagram: state.instagram,
           tiktok: state.tiktok,
           youtube: state.youtube,
-        ));
+        );
 
-        // Show success notification
-        emit(InfluencerRegistrationSuccess(
-          InfluencerRegistrationState(
-            currentStep: 3,
-            isLoading: false,
-            name: state.name,
-            email: state.email,
-            phone: state.phone,
-            password: state.password,
-            isNameValid: state.isNameValid,
-            isEmailValid: state.isEmailValid,
-            isPhoneValid: state.isPhoneValid,
-            isPasswordValid: state.isPasswordValid,
-            otp: state.otp,
-            isOtpValid: state.isOtpValid,
-            isOtpError: state.isOtpError,
-            pseudo: state.pseudo,
-            bio: state.bio,
-            zone: state.zone,
-            profilePicture: state.profilePicture,
-            isPseudoValid: state.isPseudoValid,
-            isBioValid: state.isBioValid,
-            isZoneValid: state.isZoneValid,
-            instagram: state.instagram,
-            tiktok: state.tiktok,
-            youtube: state.youtube,
-          ),
-          successMessage:
-              'Profile added successfully! Please add your social media links.',
-        ));
+        // Show success notification with appropriate message
+        final successMessage =
+            'Profile added successfully! Please add your social media links.';
+
+        // First emit the state change to update the step
+        print('🔄 === EMITTING STATE CHANGE ===');
+        print('   - Next step: $nextStep');
+        print('   - State type: InfluencerRegistrationState');
+
+        emit(newState);
+
+        // Add a small delay to ensure the UI rebuilds before showing success
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Then emit the success notification
+        print('🎉 === EMITTING SUCCESS NOTIFICATION ===');
+        print('   - Success message: $successMessage');
+        print('   - State type: InfluencerRegistrationSuccess');
+
+        emit(InfluencerRegistrationSuccess(newState,
+            successMessage: successMessage));
+
+        print('✅ Both states emitted successfully');
       } else {
         // Profile submission failed
         emit(InfluencerRegistrationError(
@@ -805,11 +881,59 @@ class InfluencerRegistrationBloc
     }
   }
 
+  // Helper method to validate URLs
+  bool _isValidUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<void> _onSubmitSocials(
       SubmitSocials event, Emitter<InfluencerRegistrationState> emit) async {
     emit(InfluencerRegistrationLoading(state));
 
     try {
+      // Validate that at least one social media link is provided
+      print('🔍 === SOCIAL MEDIA VALIDATION IN BLOC ===');
+      print(
+          '📱 State Instagram: "${state.instagram}" (length: ${state.instagram.length})');
+      print(
+          '📱 State TikTok: "${state.tiktok}" (length: ${state.tiktok.length})');
+      print(
+          '📱 State YouTube: "${state.youtube}" (length: ${state.youtube.length})');
+      print(
+          '🔍 All empty: ${state.instagram.isEmpty && state.tiktok.isEmpty && state.youtube.isEmpty}');
+
+      if (state.instagram.isEmpty &&
+          state.tiktok.isEmpty &&
+          state.youtube.isEmpty) {
+        print('❌ No social media links provided');
+        emit(InfluencerRegistrationError(
+            state, 'Please provide at least one social media link'));
+        return;
+      }
+
+      // Validate URL format for provided links
+      final List<String> validationErrors = [];
+      if (state.instagram.isNotEmpty && !_isValidUrl(state.instagram)) {
+        validationErrors.add('Instagram URL is not valid');
+      }
+      if (state.tiktok.isNotEmpty && !_isValidUrl(state.tiktok)) {
+        validationErrors.add('TikTok URL is not valid');
+      }
+      if (state.youtube.isNotEmpty && !_isValidUrl(state.youtube)) {
+        validationErrors.add('YouTube URL is not valid');
+      }
+
+      if (validationErrors.isNotEmpty) {
+        print('❌ URL validation errors: $validationErrors');
+        emit(InfluencerRegistrationError(state, validationErrors.join(', ')));
+        return;
+      }
+
       final socials = [
         if (state.instagram.isNotEmpty)
           {"name": "instagram", "link": state.instagram},
@@ -818,14 +942,36 @@ class InfluencerRegistrationBloc
           {"name": "youtube", "link": state.youtube},
       ];
 
+      print('📱 === SUBMITTING SOCIALS ===');
+      print('📱 Instagram: ${state.instagram}');
+      print('📱 TikTok: ${state.tiktok}');
+      print('📱 YouTube: ${state.youtube}');
+      print('📱 Final socials array: $socials');
+      print('📱 JSON payload: ${jsonEncode({"socials": socials})}');
+      print('📱 Socials count: ${socials.length}');
+
       final response = await InfluencerAuthService.addSocials(socials: socials);
 
-      if (response['success'] == true) {
+      print('📱 === SOCIALS API RESPONSE ===');
+      print('📱 Response: $response');
+      print('📱 Success: ${response['success']}');
+      print('📱 Message: ${response['message']}');
+      print('📱 Status Code: ${response['statusCode']}');
+
+      // Check for success based on status code and message
+      if (response['statusCode'] == 200 &&
+          response['message']
+                  ?.toString()
+                  .toLowerCase()
+                  .contains('successfully') ==
+              true) {
         // Socials submission successful, registration complete
+        print('✅ Socials added successfully!');
         emit(InfluencerRegistrationSuccess(state,
-            successMessage: 'Registration completed successfully!'));
+            successMessage: 'socials_added_success'));
       } else {
         // Socials submission failed
+        print('❌ Socials submission failed: ${response['message']}');
         emit(InfluencerRegistrationError(
             state, response['message'] ?? 'Socials submission failed'));
       }
@@ -840,7 +986,13 @@ class InfluencerRegistrationBloc
       final response =
           await InfluencerAuthService.resendOtp(email: state.email);
 
-      if (response['success'] == true) {
+      // Check for success based on status code and message
+      if (response['statusCode'] == 200 &&
+          response['message']
+                  ?.toString()
+                  .toLowerCase()
+                  .contains('successfully') ==
+              true) {
         // OTP resent successfully
         emit(InfluencerRegistrationState(
           currentStep: state.currentStep,
@@ -895,7 +1047,7 @@ class InfluencerRegistrationBloc
             tiktok: state.tiktok,
             youtube: state.youtube,
           ),
-          successMessage: 'OTP resent successfully! Please check your email.',
+          successMessage: 'otp_resent_success',
         ));
       } else {
         // OTP resend failed

@@ -51,13 +51,24 @@ class AppTranslations {
     'login_failed': 'Échec de la connexion',
     'influencer_home_not_implemented':
         'Écran d\'accueil influenceur pas encore implémenté',
+    'influencer_home': 'Accueil Influenceur',
+    'welcome_influencer': 'Bienvenue, Influenceur !',
+    'influencer_home_description':
+        'Votre inscription est terminée et vous faites maintenant partie de la communauté Konnected Beauty.',
+    'registration_complete': 'Inscription Terminée !',
+    'registration_complete_message':
+        'Félicitations ! Vous avez terminé avec succès votre inscription d\'influenceur. Vous pouvez maintenant commencer à collaborer avec des marques de beauté et développer votre audience.',
+    'socials_added_success':
+        'Liens de réseaux sociaux ajoutés avec succès ! Inscription terminée. Redirection vers la page d\'accueil...',
+    'otp_resent_success':
+        'Code OTP renvoyé avec succès ! Vérifiez votre email.',
 
     // Reset Password Screen
     'reset_password': 'Réinitialiser le mot de passe',
     'reset_password_subtitle':
         'Entrez votre email pour réinitialiser votre mot de passe',
     'reset_password_button': 'Réinitialiser le mot de passe',
-    'otp_verification_title': 'Vérification du code',
+    'otp_verification_title': 'Vérification du code OTP',
     'otp_verification_subtitle':
         'Nous avons envoyé un code de vérification à votre email',
     'otp_verification': 'Vérification OTP',
@@ -74,19 +85,26 @@ class AppTranslations {
 
     // Registration Screen
     'create_account': 'Créer un compte',
-    'join_konnected_beauty': 'Rejoignez Konnected Beauty',
+    'join_konnected_beauty':
+        'Terminez votre inscription pour créer votre compte et commencer à vendre.',
     'personal_information': 'Informations personnelles',
     'full_name': 'Nom complet',
     'full_name_placeholder': 'Entrez votre nom complet',
     'phone': 'Téléphone',
     'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continuer',
-    'phone_verification': 'Vérification du téléphone',
+    'phone_verification': 'Vérification du votre e-mail',
     'verification_code': 'Code de vérification',
+    'verify_code': 'Vérifier le code',
     'otp_placeholder': 'Entrez le code à 6 chiffres',
     'resend_code': 'Renvoyer le code',
     'submit_continue': 'Continuer',
     'wrong_code': 'Code incorrect',
+    'otp_verified_success':
+        'Code OTP vérifié avec succès ! Veuillez compléter votre profil.',
+    'invalid_verification_code': 'Code de vérification invalide',
+    'verification_failed': 'Échec de la vérification',
+    'network_error_try_again': 'Erreur réseau. Veuillez réessayer',
     'account_created_check_email':
         'Compte créé avec succès ! Veuillez vérifier votre e-mail pour le code de vérification.',
 
@@ -314,12 +332,23 @@ class AppTranslations {
     'login_failed': 'Login failed',
     'influencer_home_not_implemented':
         'Influencer home screen not implemented yet',
+    'influencer_home': 'Influencer Home',
+    'welcome_influencer': 'Welcome, Influencer!',
+    'influencer_home_description':
+        'Your registration is complete and you are now part of the Konnected Beauty community.',
+    'registration_complete': 'Registration Complete!',
+    'registration_complete_message':
+        'Congratulations! You have successfully completed your influencer registration. You can now start collaborating with beauty brands and growing your audience.',
+    'socials_added_success':
+        'Social media links added successfully! Registration complete. Redirecting to home page...',
+    'otp_resent_success':
+        'OTP code resent successfully! Please check your email.',
 
     // Reset Password Screen
     'reset_password': 'Reset Password',
     'reset_password_subtitle': 'Enter your email to reset your password',
     'reset_password_button': 'Reset Password',
-    'otp_verification_title': 'Code Verification',
+    'otp_verification_title': 'OTP Verification',
     'otp_verification_subtitle':
         'We have sent a verification code to your email',
     'otp_verification': 'OTP verification',
@@ -335,28 +364,35 @@ class AppTranslations {
 
     // Registration Screen
     'create_account': 'Create Account',
-    'join_konnected_beauty': 'Join Konnected Beauty',
+    'join_konnected_beauty':
+        'Complete registration to create your account and start selling.',
     'personal_information': 'Personal Information',
     'full_name': 'Full Name',
     'full_name_placeholder': 'Enter your full name',
     'phone': 'Phone',
     'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continue',
-    'phone_verification': 'Phone Verification',
-    'verification_code': 'Verification Code',
+    'phone_verification': 'Email Verification',
+    'verification_code': 'OTP Verification',
+    'verify_code': 'Verify Code',
     'otp_placeholder': 'Enter the 6-digit code',
     'resend_code': 'Resend Code',
     'submit_continue': 'Continue',
     'wrong_code': 'Wrong Code',
+    'otp_verified_success':
+        'OTP verified successfully! Please complete your profile.',
+    'invalid_verification_code': 'Invalid verification code',
+    'verification_failed': 'Verification failed',
+    'network_error_try_again': 'Network error. Please try again',
     'account_created_check_email':
         'Account created successfully! Please check your email for the verification code.',
 
     // Salon Information
-    'salon_information': 'Salon Information',
+    'salon_information': 'Saloon Information',
     'salon_name': 'Name',
     'salon_name_placeholder': 'Enter your name',
     'salon_address': 'Salon address',
-    'salon_address_placeholder': 'Enter your salon address',
+    'salon_address_placeholder': 'Enter your saloon address',
     'activity_domain': 'Salon domain of activity',
     'activity_domain_placeholder': 'Domain of activity',
 
@@ -368,7 +404,7 @@ class AppTranslations {
     'closing_hour': 'Closing Hour',
     'select': 'Select',
     'salon_description': 'Salon Description',
-    'describe_salon_placeholder': 'Describe your salon...',
+    'describe_salon_placeholder': 'Describe your saloon...',
 
     // Service Management
     'service_name': 'Service name',
@@ -473,11 +509,11 @@ class AppTranslations {
     'otp_numbers_only': 'OTP code must contain only numbers',
     'please_confirm_password': 'Please confirm your password',
     'passwords_do_not_match': 'Passwords do not match',
-    'please_enter_salon_name': 'Please enter the salon name',
+    'please_enter_salon_name': 'Please enter the saloon name',
     'salon_name_min_length': 'Salon name must contain at least 3 characters',
-    'please_enter_salon_address': 'Please enter the salon address',
+    'please_enter_salon_address': 'Please enter the saloon address',
     'salon_address_min_length': 'Address must contain at least 10 characters',
-    'please_enter_salon_domain': 'Please enter the salon domain',
+    'please_enter_salon_domain': 'Please enter the saloon domain',
     'salon_domain_min_length': 'Domain must contain at least 3 characters',
     'please_enter_description': 'Please enter a description',
     'description_min_length': 'Description must contain at least 10 characters',

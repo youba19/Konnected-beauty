@@ -164,16 +164,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final profileData = profileResult['data'];
           print('🏢 Salon profile found: $profileData');
 
-                      // Check if profile is complete based on status
-            final hasCompleteProfile = profileData != null &&
-                profileData['status'] == 'pending';
+          // Check if profile is complete based on status
+          final hasCompleteProfile =
+              profileData != null && profileData['status'] == 'pending';
 
-                      print('🏢 === PROFILE COMPLETENESS CHECK ===');
-            print('🏢 Profile data: $profileData');
-            print('🏢 Status: ${profileData['status']}');
-            print('🏢 salonInfo: ${profileData['salonInfo']}');
-            print('🏢 salonProfile: ${profileData['salonProfile']}');
-            print('🏢 Has complete profile (status == pending): $hasCompleteProfile');
+          print('🏢 === PROFILE COMPLETENESS CHECK ===');
+          print('🏢 Profile data: $profileData');
+          print('🏢 Status: ${profileData['status']}');
+          print('🏢 salonInfo: ${profileData['salonInfo']}');
+          print('🏢 salonProfile: ${profileData['salonProfile']}');
+          print(
+              '🏢 Has complete profile (status == pending): $hasCompleteProfile');
 
           if (hasCompleteProfile) {
             print('✅ Profile complete, navigating to home');
@@ -190,6 +191,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             print('✅ AuthAuthenticated state emitted successfully');
           } else {
             print('⚠️ Profile incomplete, navigating to registration');
+
+            // Check if status is "email-verified" and refresh token if needed
+            if (profileData['status'] == 'email-verified') {
+              print('🔄 Status is email-verified, refreshing token...');
+              final refreshToken = await TokenStorageService.getRefreshToken();
+              if (refreshToken != null) {
+                final refreshResult = await SalonAuthService.refreshToken(
+                    refreshToken: refreshToken);
+                if (refreshResult['success']) {
+                  final newAccessToken = refreshResult['data']['access_token'];
+                  await TokenStorageService.saveAccessToken(newAccessToken);
+                  print(
+                      '✅ Token refreshed successfully for email-verified user');
+                } else {
+                  print('❌ Failed to refresh token for email-verified user');
+                }
+              }
+            }
+
             print('⚠️ Emitting AuthProfileIncomplete state');
             // Profile is incomplete, emit profile incomplete state to show registration
             final email = await TokenStorageService.getUserEmail();

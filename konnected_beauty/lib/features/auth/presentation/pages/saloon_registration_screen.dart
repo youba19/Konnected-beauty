@@ -290,15 +290,6 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
               builder: (context, state) => _buildStepper(context, state),
             ),
-            IconButton(
-              icon: const Icon(
-                LucideIcons.moreHorizontal,
-                color: AppTheme.textPrimaryColor,
-              ),
-              onPressed: () {
-                // TODO: Implement menu functionality
-              },
-            ),
           ],
         ),
         body: SafeArea(
@@ -343,7 +334,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                         children: [
                           // Header
                           _buildHeader(),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 50),
 
                           // Content
                           Expanded(
@@ -361,7 +352,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                                             MainAxisAlignment.end,
                                         children: [
                                           _buildStepContent(context, state),
-                                          const SizedBox(height: 20),
+                                          const SizedBox(height: 10),
                                         ],
                                       ),
                                     ),
@@ -374,7 +365,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                           // Bottom Button
                           _buildBottomButton(context, state),
                           // Add extra padding for keyboard
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 5),
                         ],
                       ),
                     );
@@ -574,34 +565,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           ),
           const SizedBox(height: 16),
           // Success message for signup
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  LucideIcons.checkCircle,
-                  color: Colors.green,
-                  size: 20,
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Account created successfully! Please check your email for the verification code.',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+
           CustomTextField(
             label: AppTranslations.getString(context, 'verification_code'),
             placeholder: AppTranslations.getString(context, 'otp_placeholder'),
@@ -619,7 +583,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             autovalidateMode: true,
             formFieldKey: otpFormKey,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 5),
           GestureDetector(
             onTap: () {
               context.read<SaloonRegistrationBloc>().add(ResendOtp());
@@ -627,14 +591,16 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             child: Text(
               AppTranslations.getString(context, 'resend_code'),
               style: const TextStyle(
-                color: AppTheme.accentColor,
+                color: AppTheme.textPrimaryColor,
                 fontSize: 16,
                 decoration: TextDecoration.underline,
               ),
             ),
           ),
+          const SizedBox(
+            height: 10,
+          )
           // Add extra space for keyboard
-          const SizedBox(height: 100),
         ],
       ),
     );
@@ -699,7 +665,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             autovalidateMode: true,
             formFieldKey: saloonDomainFormKey,
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -713,9 +679,9 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
         Row(
           children: [
             const Icon(
-              LucideIcons.image,
+              LucideIcons.building,
               color: AppTheme.textPrimaryColor,
-              size: 20,
+              size: 22,
             ),
             const SizedBox(width: 8),
             Text(
@@ -728,7 +694,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 10),
 
         // Saloon Pictures Section
         Text(
@@ -756,9 +722,9 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
               child: Text(
                 AppTranslations.getString(context, 'upload_photos'),
                 style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
-                ),
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -903,6 +869,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                 ));
           },
         ),
+        const SizedBox(height: 10),
       ],
     );
   }

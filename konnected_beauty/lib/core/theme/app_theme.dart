@@ -16,7 +16,7 @@ class AppTheme {
 
   static const Color transparentBackground = Colors.transparent;
   static const Color scaffoldBackground = Color(0xFF2A2A2A);
-  
+
   // Success and Error Colors
   static const Color successColor = Color(0xFF4CAF50);
   static const Color successLightColor = Color(0xFFE8F5E8);
@@ -35,7 +35,7 @@ class AppTheme {
   }
 
   // Text Styles with comprehensive font weights and sizes
-  static TextStyle get headingStyle => TextStyle(
+  static TextStyle get headingStyle => const TextStyle(
         fontSize: 28,
         fontWeight: FontWeight.bold,
         color: textPrimaryColor,
@@ -143,11 +143,6 @@ class AppTheme {
       maxLines: maxLines,
       overflow: overflow,
     );
-  }
-
-  // Force font override for any TextStyle
-  static TextStyle forceMontserrat(TextStyle style) {
-    return style.copyWith(fontFamily: fontFamily);
   }
 
   // Create a TextStyle with guaranteed Montserrat font

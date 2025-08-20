@@ -15,6 +15,7 @@ import 'saloon_registration_screen.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
 import 'welcome_screen.dart';
 import 'influencer_registration_screen.dart';
+import '../../../influencer/presentation/pages/influencer_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -84,14 +85,12 @@ class _LoginScreenState extends State<LoginScreen> {
           (route) => false, // Remove all previous routes
         );
       } else {
-        // TODO: Navigate to influencer home screen when implemented
-        // For now, show a localized message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppTranslations.getString(
-                context, 'influencer_home_not_implemented')),
-            backgroundColor: Colors.orange,
+        // Navigate to influencer home screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const InfluencerHomeScreen(),
           ),
+          (route) => false, // Remove all previous routes
         );
       }
     });
@@ -188,6 +187,12 @@ class _LoginScreenState extends State<LoginScreen> {
       print('🔍 === DIRECT COMPARISON ===');
       print('🔍 Is "email-verified"? ${normalizedStatus == "email-verified"}');
       print('🔍 Is "profile-added"? ${normalizedStatus == "profile-added"}');
+      print(
+          '🔍 Is "influencer-profile-added"? ${normalizedStatus == "influencer-profile-added"}');
+      print('🔍 Is "pending"? ${normalizedStatus == "pending"}');
+      print('🔍 Is "active"? ${normalizedStatus == "active"}');
+      print('🔍 Is "verified"? ${normalizedStatus == "verified"}');
+      print('🔍 Is "approved"? ${normalizedStatus == "approved"}');
       print('🔍 Is "otp"? ${normalizedStatus == "otp"}');
       print('🔍 === END COMPARISON ===');
 
@@ -213,18 +218,35 @@ class _LoginScreenState extends State<LoginScreen> {
           _navigateToInfluencerSocialsScreen();
           break;
 
+        case 'influencer-profile-added':
+          print('✅ MATCHED: influencer-profile-added case');
+          print(
+              '📍 Navigating to: Add Influencer Socials (Registration) - Step 3');
+          _navigateToInfluencerSocialsScreen();
+          break;
+
+        case 'pending':
+          print('✅ MATCHED: pending case');
+          print(
+              '📍 Navigating to: Influencer Home Screen (profile is pending)');
+          _navigateToInfluencerHomeScreen();
+          break;
+
+        case 'active':
+        case 'verified':
+        case 'approved':
+          print('✅ MATCHED: ${normalizedStatus} case');
+          print(
+              '📍 Navigating to: Influencer Home Screen (profile is ${normalizedStatus})');
+          _navigateToInfluencerHomeScreen();
+          break;
+
         default:
           print('❌ NO MATCH: default case');
           print('📍 Navigating to: Influencer Home Screen (default case)');
           print('🔍 Status did not match any case: "$normalizedStatus"');
-          // TODO: Navigate to influencer home screen when implemented
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppTranslations.getString(
-                  context, 'influencer_home_not_implemented')),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          // Navigate to influencer home screen for any unmatched status
+          _navigateToInfluencerHomeScreen();
           break;
       }
     }
@@ -267,6 +289,15 @@ class _LoginScreenState extends State<LoginScreen> {
       MaterialPageRoute(
         builder: (context) =>
             const InfluencerRegistrationScreen(initialStep: 3),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+  }
+
+  void _navigateToInfluencerHomeScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const InfluencerHomeScreen(),
       ),
       (route) => false, // Remove all previous routes
     );

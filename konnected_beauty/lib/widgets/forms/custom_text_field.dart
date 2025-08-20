@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:konnected_beauty/core/translations/app_translations.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_theme.dart';
 
 class CustomTextField extends StatelessWidget {
@@ -54,7 +56,7 @@ class CustomTextField extends StatelessWidget {
           style: const TextStyle(
             color: AppTheme.textPrimaryColor,
             fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.bold,
           ),
         ),
         TextFormField(
@@ -80,39 +82,40 @@ class CustomTextField extends StatelessWidget {
             hintStyle: const TextStyle(
               color: AppTheme.textSecondaryColor,
               fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
             filled: true,
             fillColor: AppTheme.secondaryColor,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
                 color: isError ? Colors.red : AppTheme.borderColor,
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
                 color: isError ? Colors.red : AppTheme.borderColor,
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
                 color: AppTheme.accentColor,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
                 color: Colors.red,
                 width: 1,
               ),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(
                 color: Colors.red,
                 width: 2,
@@ -130,6 +133,117 @@ class CustomTextField extends StatelessWidget {
           ),
         ),
         if (isError && errorMessage != null && validator == null) ...[
+          const SizedBox(height: 8),
+          Text(
+            errorMessage!,
+            style: const TextStyle(
+              color: Colors.red,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class CustomImagePicker extends StatelessWidget {
+  final String label;
+  final String? imagePath;
+  final VoidCallback onTap;
+  final bool isError;
+  final String? errorMessage;
+
+  const CustomImagePicker({
+    super.key,
+    required this.label,
+    this.imagePath,
+    required this.onTap,
+    this.isError = false,
+    this.errorMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label (same as CustomTextField)
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Upload container
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            decoration: BoxDecoration(
+              color: AppTheme.secondaryColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isError ? Colors.red : AppTheme.borderColor,
+                width: 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (imagePath == null) ...[
+                  Icon(
+                    LucideIcons.upload,
+                    color: AppTheme.textSecondaryColor,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppTranslations.getString(
+                        context, 'upload_your_profile_picture'),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    AppTranslations.getString(context, 'tap_to_select'),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ] else ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      imagePath!,
+                      height: 120,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppTranslations.getString(context, 'tap_to_change'),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        // Error text (same as CustomTextField)
+        if (isError && errorMessage != null) ...[
           const SizedBox(height: 8),
           Text(
             errorMessage!,
