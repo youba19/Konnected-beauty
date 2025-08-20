@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/translations/app_translations.dart';
@@ -7,6 +8,7 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/reset_password/reset_password_bloc.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'login_screen.dart';
 
 class NewPasswordScreen extends StatefulWidget {
@@ -53,6 +55,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
               confirmPassword: confirmPasswordController.text,
               resetToken: widget.resetToken,
               email: widget.email,
+              role: widget.role,
             ),
           );
     }
@@ -65,12 +68,9 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
     if (passwordValid && confirmPasswordValid) {
       if (passwordController.text != confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                AppTranslations.getString(context, 'passwords_do_not_match')),
-            backgroundColor: Colors.red,
-          ),
+        TopNotificationService.showError(
+          context: context,
+          message: AppTranslations.getString(context, 'passwords_do_not_match'),
         );
         return false;
       }
@@ -82,36 +82,39 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<ResetPasswordBloc, ResetPasswordState>(
-      listener: (context, state) {
-        if (state is ResetPasswordSuccess) {
-          // Show success message and navigate to login screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
+        listener: (context, state) {
+      if (state is ResetPasswordSuccess) {
+        TopNotificationService.showSuccess(
+          context: context,
+          message: state.message,
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const LoginScreen(),
+          ),
+          (route) => false,
+        );
+      } else if (state is ResetPasswordError) {
+        TopNotificationService.showError(
+          context: context,
+          message: state.message,
+        );
+      }
+    }, child: BlocBuilder<LanguageBloc, LanguageState>(
+      builder: (context, languageState) {
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Color(0xFF3B3B3B),
+                  Color(0xFF1F1E1E),
+                ],
+              ),
             ),
-          );
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => const LoginScreen(),
-            ),
-            (route) => false,
-          );
-        } else if (state is ResetPasswordError) {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
-      child: BlocBuilder<LanguageBloc, LanguageState>(
-        builder: (context, languageState) {
-          return Scaffold(
-            backgroundColor: AppTheme.primaryColor,
-            body: SafeArea(
+            child: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
@@ -149,7 +152,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                               Text(
                                 AppTranslations.getString(
                                     context, 'new_password_subtitle'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 16,
                                 ),
@@ -162,7 +165,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                               Text(
                                 AppTranslations.getString(
                                     context, 'reset_password'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textPrimaryColor,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -173,7 +176,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
                               Text(
                                 AppTranslations.getString(context, 'password'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 14,
                                 ),
@@ -186,14 +189,15 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                                     context, 'password_placeholder'),
                                 controller: passwordController,
                                 isPassword: true,
+                                isPasswordVisible: isPasswordVisible,
                                 validator: (value) =>
                                     Validators.validatePassword(value, context),
                                 autovalidateMode: true,
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     isPasswordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
+                                        ? LucideIcons.eyeOff
+                                        : LucideIcons.eye,
                                     color: AppTheme.textSecondaryColor,
                                   ),
                                   onPressed: () {
@@ -209,7 +213,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                               Text(
                                 AppTranslations.getString(
                                     context, 'confirm_password'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 14,
                                 ),
@@ -222,6 +226,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                                     context, 'confirm_password_placeholder'),
                                 controller: confirmPasswordController,
                                 isPassword: true,
+                                isPasswordVisible: isConfirmPasswordVisible,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return AppTranslations.getString(
@@ -237,8 +242,8 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     isConfirmPasswordVisible
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
+                                        ? LucideIcons.eyeOff
+                                        : LucideIcons.eye,
                                     color: AppTheme.textSecondaryColor,
                                   ),
                                   onPressed: () {
@@ -269,7 +274,6 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                                   );
                                 },
                               ),
-                              const SizedBox(height: 40),
                             ],
                           ),
                         ),
@@ -279,9 +283,9 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                 },
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        );
+      },
+    ));
   }
 }

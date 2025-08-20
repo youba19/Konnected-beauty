@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
@@ -6,6 +7,7 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_button.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/reset_password/reset_password_bloc.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -39,6 +41,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             VerifyResetPasswordOtp(
               email: widget.email,
               otp: otpController.text,
+              role: widget.role,
             ),
           );
     }
@@ -47,7 +50,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void _onResendCode() {
     // Call API to resend password reset OTP
     context.read<ResetPasswordBloc>().add(
-          RequestPasswordReset(widget.email),
+          RequestPasswordReset(widget.email, widget.role),
         );
   }
 
@@ -61,12 +64,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return BlocListener<ResetPasswordBloc, ResetPasswordState>(
       listener: (context, state) {
         if (state is VerifyResetPasswordOtpSuccess) {
-          // Show success message and navigate to new password screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
+          TopNotificationService.showSuccess(
+            context: context,
+            message: state.message,
           );
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -79,159 +79,167 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ),
           );
         } else if (state is RequestPasswordResetSuccess) {
-          // Show success message for resend
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
+          TopNotificationService.showSuccess(
+            context: context,
+            message: state.message,
           );
         } else if (state is ResetPasswordError) {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
+          TopNotificationService.showError(
+            context: context,
+            message: state.message,
           );
         }
       },
       child: BlocBuilder<LanguageBloc, LanguageState>(
         builder: (context, languageState) {
           return Scaffold(
-            backgroundColor: AppTheme.primaryColor,
-            body: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Back Button
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_back,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                              const SizedBox(height: 32),
-
-                              // Title
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'otp_verification_title'),
-                                style: AppTheme.headingStyle,
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Subtitle
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'otp_verification_subtitle'),
-                                style: TextStyle(
-                                  color: AppTheme.textSecondaryColor,
-                                  fontSize: 16,
-                                ),
-                              ),
-
-                              const Spacer(),
-
-                              // Email Verification Section
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'email_verification'),
-                                style: TextStyle(
-                                  color: AppTheme.textPrimaryColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'otp_verification'),
-                                style: TextStyle(
-                                  color: AppTheme.textSecondaryColor,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-
-                              // OTP Field
-                              CustomTextField(
-                                label: '',
-                                placeholder: AppTranslations.getString(
-                                    context, 'otp_placeholder'),
-                                controller: otpController,
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return AppTranslations.getString(
-                                        context, 'please_enter_otp');
-                                  }
-                                  if (value.length < 6) {
-                                    return AppTranslations.getString(
-                                        context, 'otp_length');
-                                  }
-                                  return null;
-                                },
-                                autovalidateMode: true,
-                                formFieldKey: otpFormKey,
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Resend Code Link
-                              GestureDetector(
-                                onTap: _onResendCode,
-                                child: Text(
-                                  AppTranslations.getString(
-                                      context, 'resend_code'),
-                                  style: TextStyle(
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Color(0xFF3B3B3B),
+                    Color(0xFF1F1E1E),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Back Button
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.arrow_back,
                                     color: AppTheme.textPrimaryColor,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.underline,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                const SizedBox(height: 32),
+
+                                // Title
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'otp_verification_title'),
+                                  style: AppTheme.headingStyle,
+                                ),
+                                const SizedBox(height: 8),
+
+                                // Subtitle
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'otp_verification_subtitle'),
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondaryColor,
+                                    fontSize: 16,
                                   ),
                                 ),
-                              ),
 
-                              const SizedBox(height: 40),
+                                const Spacer(),
 
-                              // Submit Button
-                              BlocBuilder<ResetPasswordBloc,
-                                  ResetPasswordState>(
-                                builder: (context, resetState) {
-                                  return CustomButton(
-                                    text: AppTranslations.getString(
-                                        context, 'submit_and_continue'),
-                                    onPressed:
-                                        resetState is ResetPasswordLoading
-                                            ? () {}
-                                            : _onSubmitOtp,
-                                    isLoading:
-                                        resetState is ResetPasswordLoading,
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 40),
-                            ],
+                                // Email Verification Section
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'email_verification'),
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimaryColor,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'otp_verification'),
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimaryColor,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                // OTP Field
+                                CustomTextField(
+                                  label: '',
+                                  placeholder: AppTranslations.getString(
+                                      context, 'otp_placeholder'),
+                                  controller: otpController,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 6,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return AppTranslations.getString(
+                                          context, 'please_enter_otp');
+                                    }
+                                    if (value.length < 6) {
+                                      return AppTranslations.getString(
+                                          context, 'otp_length');
+                                    }
+                                    return null;
+                                  },
+                                  autovalidateMode: true,
+                                  formFieldKey: otpFormKey,
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Resend Code Link
+                                GestureDetector(
+                                  onTap: _onResendCode,
+                                  child: Text(
+                                    AppTranslations.getString(
+                                        context, 'resend_code'),
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimaryColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 15),
+
+                                // Submit Button
+                                BlocBuilder<ResetPasswordBloc,
+                                    ResetPasswordState>(
+                                  builder: (context, resetState) {
+                                    return CustomButton(
+                                      text: AppTranslations.getString(
+                                          context, 'submit_and_continue'),
+                                      onPressed:
+                                          resetState is ResetPasswordLoading
+                                              ? () {}
+                                              : _onSubmitOtp,
+                                      isLoading:
+                                          resetState is ResetPasswordLoading,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           );

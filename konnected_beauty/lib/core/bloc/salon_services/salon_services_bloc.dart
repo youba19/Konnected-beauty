@@ -929,7 +929,7 @@ class SalonServicesBloc extends Bloc<SalonServicesEvent, SalonServicesState> {
 
         // Use the previous loaded state snapshot to append new services
         if (previousStateSnapshot is SalonServicesLoaded) {
-          final currentState = previousStateSnapshot as SalonServicesLoaded;
+          final currentState = previousStateSnapshot;
           final allServices = [...currentState.services, ...newServices];
 
           print('📄 === UPDATING STATE ===');

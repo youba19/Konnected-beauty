@@ -19,14 +19,15 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.accentColor,
           foregroundColor: AppTheme.primaryColor,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 12, vertical: 16), // Reduced from 20 to 12
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -45,17 +46,15 @@ class CustomButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (leadingIcon != null) ...[
-                    Icon(leadingIcon, size: 20),
-                    const SizedBox(width: 8),
-                  ],
                   Text(
                     text,
                     style: AppTheme.buttonTextStyle,
                   ),
-                  if (trailingIcon != null) ...[
-                    const SizedBox(width: 8),
-                    Icon(trailingIcon, size: 16),
+                  const SizedBox(
+                    width: 5,
+                  ),
+                  if (leadingIcon != null) ...[
+                    Icon(leadingIcon, size: 20),
                   ],
                 ],
               ),

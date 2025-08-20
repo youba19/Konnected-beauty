@@ -23,12 +23,12 @@ class LanguageInitial extends LanguageState {
 }
 
 class LanguageLoaded extends LanguageState {
-  const LanguageLoaded(Locale locale) : super(locale);
+  const LanguageLoaded(super.locale);
 }
 
 class LanguageError extends LanguageState {
   final String message;
-  const LanguageError(Locale locale, this.message) : super(locale);
+  const LanguageError(super.locale, this.message);
 }
 
 // Bloc

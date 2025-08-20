@@ -5,7 +5,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
 
 class ServiceFilterScreen extends StatefulWidget {
   final int? currentMinPrice;
@@ -164,7 +163,8 @@ class _ServiceFilterScreenState extends State<ServiceFilterScreen>
 
                     // Filter content
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0), // Reduced from 24.0
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -196,21 +196,45 @@ class _ServiceFilterScreenState extends State<ServiceFilterScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    CustomTextField(
-                                      label: '',
-                                      placeholder: '0',
-                                      controller: minPriceController,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9]')),
-                                      ],
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.secondaryColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppTheme.borderColor,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: TextField(
+                                        controller: minPriceController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                              RegExp(r'[0-9]')),
+                                        ],
+                                        style: const TextStyle(
+                                          color: AppTheme.textPrimaryColor,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: '0',
+                                          hintStyle: TextStyle(
+                                            color: AppTheme.textSecondaryColor,
+                                            fontSize: 16,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 12, // Reduced padding
+                                            vertical: 12, // Reduced padding
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
 
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8), // Reduced spacing
 
                               // Max Price
                               Expanded(
@@ -225,15 +249,39 @@ class _ServiceFilterScreenState extends State<ServiceFilterScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    CustomTextField(
-                                      label: '',
-                                      placeholder: '1000',
-                                      controller: maxPriceController,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9]')),
-                                      ],
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.secondaryColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppTheme.borderColor,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: TextField(
+                                        controller: maxPriceController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                              RegExp(r'[0-9]')),
+                                        ],
+                                        style: const TextStyle(
+                                          color: AppTheme.textPrimaryColor,
+                                          fontSize: 16,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: '1000',
+                                          hintStyle: TextStyle(
+                                            color: AppTheme.textSecondaryColor,
+                                            fontSize: 16,
+                                          ),
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 12, // Reduced padding
+                                            vertical: 12, // Reduced padding
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -248,7 +296,7 @@ class _ServiceFilterScreenState extends State<ServiceFilterScreen>
                             children: [
                               // Cancel Button
                               Expanded(
-                                child: Container(
+                                child: SizedBox(
                                   height: 48,
                                   child: ElevatedButton(
                                     onPressed: _cancelFilter,
@@ -265,28 +313,50 @@ class _ServiceFilterScreenState extends State<ServiceFilterScreen>
                                           width: 1,
                                         ),
                                       ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8), // Reduced padding
                                     ),
                                     child: Text(
                                       AppTranslations.getString(
                                           context, 'cancel'),
                                       style: const TextStyle(
                                         color: AppTheme.textPrimaryColor,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8), // Reduced spacing
 
                               // Apply Filter Button
                               Expanded(
-                                child: CustomButton(
-                                  text: AppTranslations.getString(
-                                      context, 'apply_filter'),
-                                  onPressed: _applyFilter,
+                                child: SizedBox(
+                                  height: 48,
+                                  child: ElevatedButton(
+                                    onPressed: _applyFilter,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.accentColor,
+                                      foregroundColor: AppTheme.primaryColor,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 12), // Compact padding
+                                    ),
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'apply_filter'),
+                                      style: const TextStyle(
+                                        color: AppTheme.primaryColor,
+                                        fontSize: 14, // Compact font size
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
