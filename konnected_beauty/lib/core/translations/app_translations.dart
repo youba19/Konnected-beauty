@@ -60,8 +60,56 @@ class AppTranslations {
         'Félicitations ! Vous avez terminé avec succès votre inscription d\'influenceur. Vous pouvez maintenant commencer à collaborer avec des marques de beauté et développer votre audience.',
     'socials_added_success':
         'Liens de réseaux sociaux ajoutés avec succès ! Inscription terminée. Redirection vers la page d\'accueil...',
+    'account_created_successfully': 'Votre compte a été créé avec succès',
     'otp_resent_success':
         'Code OTP renvoyé avec succès ! Vérifiez votre email.',
+
+    // Influencer Home Screen
+    'good_morning': 'Bonjour,',
+    'total_revenue': 'Revenus totaux',
+    'total_orders': 'Commandes totales',
+    'received_invitations': 'Invitations reçues',
+    'no_requests_yet':
+        'Vous n\'avez encore reçu aucune demande,\ncontinuez à grandir et les opportunités viendront à vous',
+    'saloons': 'Salons',
+    'campaign': 'Campagne',
+    'wallet': 'Portefeuille',
+    'profile': 'Profil',
+    'social_information': 'Informations sociales',
+    'security': 'Sécurité',
+    'current_password': 'Mot de passe actuel',
+    'new_password': 'Nouveau mot de passe',
+    'confirm_new_password': 'Confirmer le nouveau mot de passe',
+    'enter_current_password': 'Entrer le mot de passe actuel',
+    'set_new_password': 'Définir le nouveau mot de passe',
+    'current_password_required': 'Le mot de passe actuel est requis',
+    'new_password_required': 'Le nouveau mot de passe est requis',
+    'confirm_password_required':
+        'Veuillez confirmer votre nouveau mot de passe',
+    'passwords_not_match': 'Les nouveaux mots de passe ne correspondent pas',
+    'password_too_short': 'Le mot de passe doit contenir au moins 6 caractères',
+    'new_password_too_short':
+        'Le nouveau mot de passe doit contenir au moins 6 caractères',
+    'password_changed_successfully': 'Mot de passe modifié avec succès',
+    'password_change_failed': 'Échec de la modification du mot de passe',
+    'notifications': 'Notifications',
+    'logout': 'Déconnexion',
+
+    // Settings Screen
+    'saloon_name': 'Nom du Salon',
+    'profile_details': 'Détails du profil',
+    'enter_your_name': 'Entrez votre nom',
+    'enter_your_email': 'Entrez votre email',
+    'set_your_password': 'Définissez votre mot de passe',
+    'save_changes': 'Sauvegarder les modifications',
+    'profile_updated_successfully': 'Profil mis à jour avec succès',
+    'profile_update_failed': 'Échec de la mise à jour du profil',
+    'name_required': 'Le nom est requis',
+    'email_required': 'L\'email est requis',
+    'invalid_email': 'Veuillez entrer un email valide',
+    'phone_required': 'Le téléphone est requis',
+    'password_required': 'Le mot de passe est requis',
+    'saloon_information': 'Informations du salon',
 
     // Reset Password Screen
     'reset_password': 'Réinitialiser le mot de passe',
@@ -90,6 +138,7 @@ class AppTranslations {
     'personal_information': 'Informations personnelles',
     'full_name': 'Nom complet',
     'full_name_placeholder': 'Entrez votre nom complet',
+    'full_name_required': 'Le nom complet est requis',
     'phone': 'Téléphone',
     'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continuer',
@@ -110,7 +159,7 @@ class AppTranslations {
 
     // Salon Information
     'salon_information': 'Informations du salon',
-    'salon_name': 'Nom',
+    'salon_name': 'Nom du salon',
     'salon_name_placeholder': 'Entrez votre nom',
     'salon_address': 'Adresse du salon',
     'salon_address_placeholder': 'Entrez l\'adresse de votre salon',
@@ -126,6 +175,13 @@ class AppTranslations {
     'select': 'Sélectionner',
     'salon_description': 'Description du salon',
     'describe_salon_placeholder': 'Décrivez votre salon...',
+    'salon_address_required': 'L\'adresse du salon est requise',
+    'activity_domain_required': 'Le domaine d\'activité est requis',
+    'salon_information_updated_successfully':
+        'Informations du salon mises à jour avec succès',
+    'salon_information_update_failed':
+        'Échec de la mise à jour des informations du salon',
+    'notifications_empty_state': 'Il n\'y a pas encore de notifications !',
 
     // Service Management
     'service_name': 'Nom du service',
@@ -141,7 +197,6 @@ class AppTranslations {
         'Êtes-vous sûr de vouloir supprimer ce service ? Cette action ne peut pas être annulée.',
     'service_deleted': 'Service supprimé avec succès',
     'edit_service': 'Modifier le service',
-    'save_changes': 'Enregistrer les modifications',
     'service_updated': 'Service mis à jour avec succès',
     'service_created': 'Service créé avec succès',
     'update_service': 'Mettre à jour le service',
@@ -193,7 +248,27 @@ class AppTranslations {
     'view_details': 'Voir les détails',
     'edit': 'Modifier',
     'campaigns': 'Campagnes',
-    'wallet': 'Portefeuille',
+    'total_campaigns': 'Total des campagnes',
+    'total_clicks': 'Total des clics',
+    'clicks': 'Clics',
+    'no_campaigns_yet': 'Il n\'y a pas encore de campagnes !',
+    'go_to_influencers_message':
+        'Allez chez les Influenceurs et invitez-les pour des campagnes.',
+    'go_to_influencers': 'Aller chez les Influenceurs',
+    'filter_coming_soon': 'Fonctionnalité de filtre bientôt disponible',
+    'campaign_with': 'Campagne avec',
+    'created_at': 'Créé le',
+    'promotion_type': 'Type de promotion',
+    'value': 'Valeur',
+    'completed_orders': 'Commandes terminées',
+    'finish_campaign': 'Terminer la campagne',
+    'copy_link': 'Copier le lien',
+    'delete_campaign': 'Supprimer la campagne',
+    'delete_campaign_confirm':
+        'Êtes-vous sûr de vouloir supprimer cette campagne ?',
+    'campaign_finished_success': 'Campagne terminée avec succès !',
+    'campaign_link_copied': 'Lien de campagne copié dans le presse-papiers !',
+    'campaign_deleted_success': 'Campagne supprimée avec succès !',
     'influencers': 'Influenceurs',
     'settings': 'Paramètres',
 
@@ -257,7 +332,6 @@ class AppTranslations {
         'Êtes-vous sûr de vouloir inviter cet influenceur et créer une campagne pour lui ?',
     'campaign_invite_instructions':
         'Si oui, donnez-nous les détails nécessaires si vous avez des promotions ci-dessous.',
-    'promotion_type': 'Type de promotion',
     'select_type': 'Sélectionner le type',
     'promotion_value': 'Valeur de la promotion',
     'please_select_promotion_type':
@@ -301,6 +375,28 @@ class AppTranslations {
     'tap_to_change': 'Appuyez pour changer',
     'tap_to_select': 'Appuyez pour sélectionner',
     'remove_image': 'Supprimer l\'image',
+    'add_link': 'Ajouter un lien',
+    'link_name': 'Nom du lien',
+    'link': 'Lien',
+    'link_name_placeholder': 'Nom du lien',
+    'link_placeholder': 'www.....',
+
+    // Influencer Campaign
+    'accept_campaign': 'Accepter la campagne',
+    'refuse_campaign': 'Refuser la campagne',
+    'refuse_campaign_confirmation':
+        'Êtes-vous sûr de vouloir refuser cette campagne ? Cette action ne peut pas être annulée.',
+    'refuse': 'Refuser',
+    'waiting_for_you': 'En attente de vous',
+    'on_going': 'En cours',
+    'finished': 'Terminé',
+    'orders': 'Commandes',
+    'campaigns_will_appear_here':
+        'Les invitations de campagne et les collaborations apparaîtront ici',
+    'refresh': 'Actualiser',
+    'try_again': 'Réessayer',
+    'total': 'Total',
+    'message': 'Message',
   };
 
   // English translations
@@ -341,8 +437,38 @@ class AppTranslations {
         'Congratulations! You have successfully completed your influencer registration. You can now start collaborating with beauty brands and growing your audience.',
     'socials_added_success':
         'Social media links added successfully! Registration complete. Redirecting to home page...',
+    'account_created_successfully': 'Your account is created successfully',
     'otp_resent_success':
         'OTP code resent successfully! Please check your email.',
+
+    // Influencer Home Screen
+    'good_morning': 'Good morning,',
+    'total_revenue': 'Total Revenue',
+    'total_orders': 'Total Orders',
+    'received_invitations': 'Received invitations',
+    'no_requests_yet':
+        'You\'ve received no requests yet,\nkeep growing and opportunities will come for you',
+    'home': 'Home',
+    'saloons': 'Saloons',
+    'campaign': 'Campaign',
+    'wallet': 'Wallet',
+    'profile': 'Profile',
+    'social_information': 'Social Information',
+    'security': 'Security',
+    'current_password': 'Current password',
+    'new_password': 'New password',
+    'confirm_new_password': 'Confirm new password',
+    'enter_current_password': 'Enter Current password',
+    'set_new_password': 'Set New password',
+    'current_password_required': 'Current password is required',
+    'new_password_required': 'New password is required',
+    'confirm_password_required': 'Please confirm your new password',
+    'passwords_not_match': 'New passwords do not match',
+    'new_password_too_short': 'New password must be at least 6 characters',
+    'password_changed_successfully': 'Password changed successfully',
+    'password_change_failed': 'Failed to change password',
+    'notifications': 'Notifications',
+    'logout': 'Logout',
 
     // Reset Password Screen
     'reset_password': 'Reset Password',
@@ -369,6 +495,7 @@ class AppTranslations {
     'personal_information': 'Personal Information',
     'full_name': 'Full Name',
     'full_name_placeholder': 'Enter your full name',
+    'full_name_required': 'Full name is required',
     'phone': 'Phone',
     'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continue',
@@ -405,6 +532,12 @@ class AppTranslations {
     'select': 'Select',
     'salon_description': 'Salon Description',
     'describe_salon_placeholder': 'Describe your saloon...',
+    'salon_address_required': 'Salon address is required',
+    'activity_domain_required': 'Activity domain is required',
+    'salon_information_updated_successfully':
+        'Salon information updated successfully',
+    'salon_information_update_failed': 'Failed to update salon information',
+    'notifications_empty_state': 'There are no notifications yet!',
 
     // Service Management
     'service_name': 'Service name',
@@ -420,7 +553,6 @@ class AppTranslations {
         'Are you sure you want to delete this service? This action cannot be undone.',
     'service_deleted': 'Service deleted successfully',
     'edit_service': 'Edit Service',
-    'save_changes': 'Save Changes',
     'service_updated': 'Service updated successfully',
     'service_created': 'Service created successfully',
     'update_service': 'Update Service',
@@ -470,9 +602,44 @@ class AppTranslations {
     'view_details': 'View details',
     'edit': 'Edit',
     'campaigns': 'Campaigns',
-    'wallet': 'Wallet',
+    'total_campaigns': 'Total campaigns',
+    'total_clicks': 'Total clicks',
+    'clicks': 'Clicks',
+    'no_campaigns_yet': 'There are no campaigns yet!',
+    'go_to_influencers_message':
+        'Go to Influencers and invite them for campaigns.',
+    'go_to_influencers': 'Go to Influencers',
+    'filter_coming_soon': 'Filter functionality coming soon',
+    'campaign_with': 'Campaign with',
+    'created_at': 'Created at',
+    'value': 'Value',
+    'completed_orders': 'Completed orders',
+    'finish_campaign': 'Finish campaign',
+    'copy_link': 'Copy link',
+    'delete_campaign': 'Delete campaign',
+    'delete_campaign_confirm': 'Are you sure you want to delete this campaign?',
+    'campaign_finished_success': 'Campaign finished successfully!',
+    'campaign_link_copied': 'Campaign link copied to clipboard!',
+    'campaign_deleted_success': 'Campaign deleted successfully!',
     'influencers': 'Influencers',
     'settings': 'Settings',
+
+    // Settings Screen
+    'name': 'Name',
+    'saloon_name': 'Salon Name',
+    'profile_details': 'Profile Details',
+    'enter_your_name': 'Enter your name',
+    'enter_your_email': 'Enter your email',
+    'set_your_password': 'Set your password',
+    'profile_updated_successfully': 'Profile updated successfully',
+    'profile_update_failed': 'Failed to update profile',
+    'name_required': 'Name is required',
+    'email_required': 'Email is required',
+    'invalid_email': 'Please enter a valid email',
+    'phone_required': 'Phone is required',
+    'password_required': 'Password is required',
+    'password_too_short': 'Password must be at least 6 characters',
+    'saloon_information': 'Salon Information',
 
     // Filter
     'filter': 'Filter',
@@ -571,5 +738,27 @@ class AppTranslations {
     'tap_to_change': 'Tap to change',
     'tap_to_select': 'Tap to select',
     'remove_image': 'Remove image',
+    'add_link': 'Add link',
+    'link_name': 'Link name',
+    'link': 'Link',
+    'link_name_placeholder': 'Link name',
+    'link_placeholder': 'www.....',
+
+    // Influencer Campaign
+    'accept_campaign': 'Accept campaign',
+    'refuse_campaign': 'Refuse campaign',
+    'refuse_campaign_confirmation':
+        'Are you sure you want to refuse this campaign? This action cannot be undone.',
+    'refuse': 'Refuse',
+    'waiting_for_you': 'Waiting for you',
+    'on_going': 'On going',
+    'finished': 'Finished',
+    'orders': 'Orders',
+    'campaigns_will_appear_here':
+        'Campaign invitations and collaborations will appear here',
+    'refresh': 'Refresh',
+    'try_again': 'Try again',
+    'total': 'Total',
+    'message': 'Message',
   };
 }

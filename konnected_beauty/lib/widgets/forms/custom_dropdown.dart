@@ -42,7 +42,7 @@ class CustomDropdown extends StatelessWidget {
           padding:
               EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 4 : 8),
           decoration: BoxDecoration(
-            color: AppTheme.secondaryColor,
+            color: AppTheme.transparentBackground,
             border: Border.all(color: AppTheme.borderColor, width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -62,7 +62,7 @@ class CustomDropdown extends StatelessWidget {
               ),
               underline: const SizedBox.shrink(),
               isExpanded: true,
-              dropdownColor: AppTheme.secondaryColor,
+              dropdownColor: AppTheme.primaryColor,
               menuMaxHeight: compact ? 250 : 300,
               style: const TextStyle(
                 color: AppTheme.textSecondaryColor,

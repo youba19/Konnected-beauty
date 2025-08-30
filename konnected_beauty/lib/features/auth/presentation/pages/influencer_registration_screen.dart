@@ -558,16 +558,18 @@ class _InfluencerRegistrationScreenState
                   print('💬 Success Message: ${state.successMessage}');
                   print('🎯 Navigating to step: ${state.currentStep}');
 
-                  TopNotificationService.showSuccess(
-                    context: context,
-                    message: AppTranslations.getString(
-                        context, state.successMessage),
-                  );
-
                   // Check if this is the final success (after socials submission)
                   if (state.successMessage == 'socials_added_success') {
                     print(
                         '🏠 === REGISTRATION COMPLETE - NAVIGATING TO INFLUENCER HOME ===');
+
+                    // Show simple account created success message instead of the long default one
+                    TopNotificationService.showSuccess(
+                      context: context,
+                      message: AppTranslations.getString(
+                          context, 'account_created_successfully'),
+                    );
+
                     // Navigate immediately to influencer home page
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
@@ -576,6 +578,12 @@ class _InfluencerRegistrationScreenState
                       (route) => false, // Remove all previous routes
                     );
                   } else {
+                    // Show the default success message for other steps
+                    TopNotificationService.showSuccess(
+                      context: context,
+                      message: AppTranslations.getString(
+                          context, state.successMessage),
+                    );
                     print(
                         '✅ Success notification shown, staying on current step');
                   }

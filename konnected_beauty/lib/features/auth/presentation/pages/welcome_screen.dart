@@ -177,7 +177,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   Widget _buildContent() {
     return DefaultTextStyle(
-      style: const TextStyle(fontFamily: AppTheme.fontFamily), // Chela One font
+      style: AppTheme.globalText, // Poppins font via Google Fonts
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -228,12 +228,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         ),
         Text(
           AppTranslations.getString(context, 'welcome_title'),
-          style: AppTheme.forceFont(AppTheme.headingStyle),
+          style: AppTheme.headingStyle,
         ),
         const SizedBox(height: 16),
         Text(
           AppTranslations.getString(context, 'welcome_subtitle'),
-          style: AppTheme.forceFont(AppTheme.subtitleStyle),
+          style: AppTheme.subtitleStyle,
         ),
       ],
     );
@@ -282,7 +282,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 AppTranslations.getString(context, 'already_have_account'),
-                style: AppTheme.forceFont(AppTheme.dividerTextStyle),
+                style: AppTheme.dividerTextStyle,
               ),
             ),
             Expanded(

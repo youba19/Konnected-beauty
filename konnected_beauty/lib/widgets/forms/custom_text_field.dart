@@ -59,6 +59,7 @@ class CustomTextField extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+        const SizedBox(height: 8),
         TextFormField(
           key: formFieldKey,
           controller: controller,
@@ -85,7 +86,7 @@ class CustomTextField extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
             filled: true,
-            fillColor: AppTheme.secondaryColor,
+            fillColor: AppTheme.transparentBackground,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(

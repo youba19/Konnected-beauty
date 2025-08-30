@@ -35,11 +35,16 @@ class SignupButton extends StatelessWidget {
             Icon(icon, size: 20),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                text,
-                style: AppTheme.buttonTextStyle,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text,
+                  style: AppTheme.buttonTextStyle,
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
+            const SizedBox(width: 12),
             const Icon(
               LucideIcons.arrowRight, // Right arrow like in the image
               size: 16,

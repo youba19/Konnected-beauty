@@ -270,8 +270,6 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomNavigation(),
-        floatingActionButton: _buildFloatingActionButton(),
       ),
     );
   }
@@ -1296,6 +1294,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       margin: const EdgeInsets.only(
           bottom: 0), // Position exactly at top of nav bar
       child: FloatingActionButton(
+        heroTag: 'salon_home_fab',
         onPressed: () {
           _scanQRCode();
         },
@@ -1403,8 +1402,6 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
   }
 
   void _createTestService() {
-    print('🧪 === CREATING TEST SERVICE ===');
-
     // Create a test service
     context.read<SalonServicesBloc>().add(CreateSalonService(
           name: 'Test Service ${DateTime.now().millisecondsSinceEpoch}',

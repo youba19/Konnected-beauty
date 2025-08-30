@@ -10,12 +10,13 @@ import '../../../../core/bloc/welcome/welcome_bloc.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
+
 import '../../../../widgets/forms/custom_dropdown.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'welcome_screen.dart';
 import '../../../company/presentation/pages/salon_home_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../company/presentation/pages/salon_main_wrapper.dart';
 
 class SaloonRegistrationScreen extends StatefulWidget {
   const SaloonRegistrationScreen({super.key});
@@ -298,11 +299,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
               // On full success: navigate to Salon Home and show top green banner
               if (state is SaloonRegistrationSuccess) {
                 _showSuccessNotification(state.successMessage);
-                // Navigate to Salon Home after a short delay
+                // Navigate to Salon Main Wrapper after a short delay to preserve bottom navigation
                 Future.delayed(const Duration(milliseconds: 500), () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (context) => const SalonHomeScreen(),
+                      builder: (context) => const SalonMainWrapper(),
                     ),
                     (route) => false,
                   );
@@ -334,7 +335,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                         children: [
                           // Header
                           _buildHeader(),
-                          const SizedBox(height: 50),
+                          const SizedBox(height: 20),
 
                           // Content
                           Expanded(
@@ -557,7 +558,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                 AppTranslations.getString(context, 'phone_verification'),
                 style: const TextStyle(
                   color: AppTheme.textPrimaryColor,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -874,11 +875,72 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     );
   }
 
+  Widget _buildWhiteButton({
+    required String text,
+    required VoidCallback onPressed,
+    bool isLoading = false,
+    IconData? leadingIcon,
+  }) {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primaryColor,
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                ),
+              )
+            : leadingIcon != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        text,
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        leadingIcon,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
+                    ],
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+      ),
+    );
+  }
+
   Widget _buildBottomButton(
       BuildContext context, SaloonRegistrationState state) {
     switch (state.currentStep) {
       case 0:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'continue'),
           onPressed: state.isLoading
               ? () {}
@@ -899,7 +961,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           isLoading: state.isLoading,
         );
       case 1:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'submit_continue'),
           onPressed: state.isLoading
               ? () {}
@@ -912,7 +974,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           isLoading: state.isLoading,
         );
       case 2:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'continue'),
           onPressed: state.isLoading
               ? () {}
@@ -927,7 +989,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           isLoading: state.isLoading,
         );
       case 3:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'continue'),
           onPressed: state.isLoading
               ? () {}

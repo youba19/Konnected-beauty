@@ -16,6 +16,7 @@ import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart'
 import 'welcome_screen.dart';
 import 'influencer_registration_screen.dart';
 import '../../../influencer/presentation/pages/influencer_home_screen.dart';
+import '../../../company/presentation/pages/salon_main_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -77,10 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
     // Add a small delay to show the success notification
     Future.delayed(const Duration(seconds: 2), () {
       if (role == LoginRole.saloon) {
-        // Navigate to salon home screen
+        // Navigate to salon main wrapper to preserve bottom navigation
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            builder: (context) => const SalonHomeScreen(),
+            builder: (context) => const SalonMainWrapper(),
           ),
           (route) => false, // Remove all previous routes
         );
@@ -160,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         default:
           print('❌ NO MATCH: default case');
-          print('📍 Navigating to: Salon Home Screen (default case)');
+          print('📍 Navigating to: Salon Main Wrapper (default case)');
           print('🔍 Status did not match any case: "$normalizedStatus"');
           print('🔍 Comparing with:');
           print(
@@ -168,10 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
           print('   - "otp": ${normalizedStatus == "otp"}');
           print(
               '   - "salon-info-added": ${normalizedStatus == "salon-info-added"}');
-          // Navigate to salon home screen for other statuses
+          // Navigate to salon main wrapper for other statuses to preserve bottom navigation
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (context) => const SalonHomeScreen(),
+              builder: (context) => const SalonMainWrapper(),
             ),
             (route) => false, // Remove all previous routes
           );
@@ -376,19 +377,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               }
             },
-            child: Column(
-              children: [
-                // Top Section: Header + User Type Selection
-                _buildTopSection(),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      // Top Section: Header + User Type Selection
+                      _buildTopSection(),
 
-                // Spacer to push form to bottom
-                const Spacer(),
+                      // Spacer to push form to bottom
+                      const Spacer(),
 
-                // Bottom Section: Form Elements
-                _buildBottomSection(),
+                      // Bottom Section: Form Elements
+                      _buildBottomSection(),
 
-                const SizedBox(height: 24),
-              ],
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -433,14 +448,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         size: 20,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        AppTranslations.getString(context, 'influencer'),
-                        style: TextStyle(
-                          color: state.selectedRole == LoginRole.influencer
-                              ? AppTheme.primaryColor
-                              : AppTheme.textPrimaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            AppTranslations.getString(context, 'influencer'),
+                            style: TextStyle(
+                              color: state.selectedRole == LoginRole.influencer
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.textPrimaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -481,14 +501,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         size: 20,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        AppTranslations.getString(context, 'saloon'),
-                        style: TextStyle(
-                          color: state.selectedRole == LoginRole.saloon
-                              ? AppTheme.primaryColor
-                              : AppTheme.textPrimaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            AppTranslations.getString(context, 'saloon'),
+                            style: TextStyle(
+                              color: state.selectedRole == LoginRole.saloon
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.textPrimaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -711,11 +736,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                 ),
               )
-            : Text(
-                AppTranslations.getString(context, 'login_to_account'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  AppTranslations.getString(context, 'login_to_account'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
       ),
@@ -766,11 +794,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // Title below logo
           Text(
             AppTranslations.getString(context, 'welcome_back'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTheme.headingStyle,
           ),
 
           const SizedBox(height: 20),

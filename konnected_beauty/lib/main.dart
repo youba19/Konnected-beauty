@@ -12,10 +12,20 @@ import 'core/bloc/login/login_bloc.dart';
 import 'core/bloc/reset_password/reset_password_bloc.dart';
 import 'core/bloc/auth/auth_bloc.dart';
 import 'core/bloc/salon_services/salon_services_bloc.dart';
+import 'core/bloc/influencers/influencers_bloc.dart';
+import 'core/bloc/influencers/influencer_profile_bloc.dart';
+import 'core/bloc/influencer_campaigns/influencer_campaign_bloc.dart';
+import 'core/bloc/salon_profile/salon_profile_bloc.dart';
+import 'core/services/api/salon_profile_service.dart';
+import 'core/bloc/salon_password/salon_password_bloc.dart';
+import 'core/services/api/salon_password_service.dart';
+import 'core/bloc/salon_info/salon_info_bloc.dart';
+import 'core/services/api/salon_info_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/translations/app_translations.dart';
 import 'features/auth/presentation/pages/welcome_screen.dart';
-import 'features/company/presentation/pages/salon_home_screen.dart';
+import 'features/company/presentation/pages/salon_main_wrapper.dart';
+import 'features/influencer/presentation/pages/influencer_home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,12 +66,36 @@ class KonnectedBeautyApp extends StatelessWidget {
         BlocProvider<AuthBloc>(
           create: (context) {
             print('🏗️ === CREATING AUTH BLOC ===');
-            print('🏗️ Adding CheckProfileStatus event');
-            return AuthBloc()..add(CheckProfileStatus());
+            print('🏗️ Adding CheckAuthStatus event');
+            return AuthBloc()..add(CheckAuthStatus());
           },
         ),
         BlocProvider<SalonServicesBloc>(
           create: (context) => SalonServicesBloc(),
+        ),
+        BlocProvider<InfluencersBloc>(
+          create: (context) => InfluencersBloc(),
+        ),
+        BlocProvider<InfluencerProfileBloc>(
+          create: (context) => InfluencerProfileBloc(),
+        ),
+        BlocProvider<InfluencerCampaignBloc>(
+          create: (context) => InfluencerCampaignBloc(),
+        ),
+        BlocProvider<SalonProfileBloc>(
+          create: (context) => SalonProfileBloc(
+            salonProfileService: SalonProfileService(),
+          ),
+        ),
+        BlocProvider<SalonPasswordBloc>(
+          create: (context) => SalonPasswordBloc(
+            salonPasswordService: SalonPasswordService(),
+          ),
+        ),
+        BlocProvider<SalonInfoBloc>(
+          create: (context) => SalonInfoBloc(
+            salonInfoService: SalonInfoService(),
+          ),
         ),
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(
@@ -76,7 +110,7 @@ class KonnectedBeautyApp extends StatelessWidget {
                   brightness: Brightness.dark,
                   primaryColor: AppTheme.primaryColor,
                   scaffoldBackgroundColor: AppTheme.transparentBackground,
-                  fontFamily: AppTheme.fontFamily,
+                  fontFamily: GoogleFonts.poppins().fontFamily,
                   // Force all text to use Poppins with aggressive override using Google Fonts
                   textTheme:
                       GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme)
@@ -158,7 +192,11 @@ class KonnectedBeautyApp extends StatelessWidget {
   }
 
   Widget _buildHomeScreen(AuthState authState) {
+    print('🏠 === BUILDING HOME SCREEN ===');
+    print('🏠 Auth State Type: ${authState.runtimeType}');
+
     if (authState is AuthLoading) {
+      print('🏠 Showing loading screen');
       return const Scaffold(
         backgroundColor: AppTheme.primaryColor,
         body: Center(
@@ -168,18 +206,29 @@ class KonnectedBeautyApp extends StatelessWidget {
         ),
       );
     } else if (authState is AuthAuthenticated) {
+      print('🏠 User is authenticated');
+      print('🏠 Role: "${authState.role}"');
+      print('🏠 Role length: ${authState.role.length}');
+      print('🏠 Role bytes: ${authState.role.codeUnits}');
+      print('🏠 Role == "saloon": ${authState.role == "saloon"}');
+      print('🏠 Role == "influencer": ${authState.role == "influencer"}');
+      print('🏠 Email: ${authState.email}');
+
       if (authState.role == 'saloon') {
-        return const SalonHomeScreen();
+        print('🏠 Navigating to SalonMainWrapper');
+        return const SalonMainWrapper();
+      } else if (authState.role == 'influencer') {
+        print('🏠 Navigating to InfluencerHomeScreen');
+        return const InfluencerHomeScreen();
       } else {
+        print('🏠 Unknown role, showing WelcomeScreen');
         return const WelcomeScreen();
       }
     } else if (authState is AuthProfileIncomplete) {
-      // User is authenticated but profile is incomplete
-      // Navigate to welcome screen which will handle registration flow
+      print('🏠 Profile incomplete, showing WelcomeScreen');
       return const WelcomeScreen();
     } else {
-      // User is not authenticated
-      // Show welcome screen which will handle navigation to appropriate registration
+      print('🏠 User not authenticated, showing WelcomeScreen');
       return const WelcomeScreen();
     }
   }

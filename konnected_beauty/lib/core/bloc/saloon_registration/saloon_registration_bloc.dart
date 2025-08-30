@@ -654,7 +654,37 @@ class SaloonRegistrationBloc
           );
 
           if (result['success']) {
-            // Signup successful, proceed to OTP verification
+            // Signup successful, save tokens and proceed to OTP verification
+            print('🔐 === INITIAL SIGNUP SUCCESS ===');
+            
+            try {
+              final data = result['data'] as Map<String, dynamic>?;
+              final accessToken = data?['access_token'] as String?;
+              final refreshToken = data?['refresh_token'] as String?;
+              
+              print('🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
+              print('🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
+              
+              if (accessToken != null && accessToken.isNotEmpty) {
+                await TokenStorageService.saveAccessToken(accessToken);
+                print('🔐 Access token saved from signup');
+              }
+              
+              if (refreshToken != null && refreshToken.isNotEmpty) {
+                await TokenStorageService.saveRefreshToken(refreshToken);
+                print('🔐 Refresh token saved from signup');
+              }
+              
+              // Also save user email and role for authentication
+              await TokenStorageService.saveUserEmail(state.email);
+              await TokenStorageService.saveUserRole('saloon');
+              print('🔐 User email and role saved');
+              
+              print('🔐 === END SIGNUP SUCCESS ===');
+            } catch (e) {
+              print('❌ Error saving tokens from signup: $e');
+            }
+            
             final nextStep = state.currentStep + 1;
             emit(SaloonRegistrationState(
               currentStep: nextStep,
@@ -935,7 +965,37 @@ class SaloonRegistrationBloc
       );
 
       if (result['success']) {
-        // Signup successful, proceed to OTP step
+        // Signup successful, save tokens and proceed to OTP step
+        print('🔐 === SUBMIT SIGNUP SUCCESS ===');
+        
+        try {
+          final data = result['data'] as Map<String, dynamic>?;
+          final accessToken = data?['access_token'] as String?;
+          final refreshToken = data?['refresh_token'] as String?;
+          
+          print('🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
+          print('🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
+          
+          if (accessToken != null && accessToken.isNotEmpty) {
+            await TokenStorageService.saveAccessToken(accessToken);
+            print('🔐 Access token saved from submit signup');
+          }
+          
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            await TokenStorageService.saveRefreshToken(refreshToken);
+            print('🔐 Refresh token saved from submit signup');
+          }
+          
+          // Also save user email and role for authentication
+          await TokenStorageService.saveUserEmail(state.email);
+          await TokenStorageService.saveUserRole('saloon');
+          print('🔐 User email and role saved');
+          
+          print('🔐 === END SUBMIT SIGNUP SUCCESS ===');
+        } catch (e) {
+          print('❌ Error saving tokens from submit signup: $e');
+        }
+        
         emit(SaloonRegistrationState(
           currentStep: 1,
           isLoading: false,
@@ -1103,13 +1163,51 @@ class SaloonRegistrationBloc
           final data = result['data'] as Map<String, dynamic>?;
           final accessToken = data?['access_token'] as String?;
           final refreshToken = data?['refresh_token'] as String?;
+
+          print('🔐 === REGISTRATION SUCCESS - TOKEN HANDLING ===');
+          print(
+              '🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
+          print(
+              '🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
+
           if (accessToken != null && accessToken.isNotEmpty) {
             await TokenStorageService.saveAccessToken(accessToken);
+            print('🔐 Access token saved from API response');
+          } else {
+            print(
+                '🔐 No access token in API response, checking if we have stored tokens');
+            // If no tokens returned, check if we have stored tokens from previous steps
+            final storedAccessToken =
+                await TokenStorageService.getAccessToken();
+            if (storedAccessToken != null && storedAccessToken.isNotEmpty) {
+              print('🔐 Using stored access token from previous steps');
+            } else {
+              print(
+                  '⚠️  No access token available - user may not be authenticated on restart');
+            }
           }
+
           if (refreshToken != null && refreshToken.isNotEmpty) {
             await TokenStorageService.saveRefreshToken(refreshToken);
+            print('🔐 Refresh token saved from API response');
+          } else {
+            print(
+                '🔐 No refresh token in API response, checking if we have stored tokens');
+            // If no tokens returned, check if we have stored tokens from previous steps
+            final storedRefreshToken =
+                await TokenStorageService.getRefreshToken();
+            if (storedRefreshToken != null && storedRefreshToken.isNotEmpty) {
+              print('🔐 Using stored refresh token from previous steps');
+            } else {
+              print(
+                  '⚠️  No refresh token available - user may not be authenticated on restart');
+            }
           }
-        } catch (_) {}
+
+          print('🔐 === END TOKEN HANDLING ===');
+        } catch (e) {
+          print('❌ Error handling tokens: $e');
+        }
 
         emit(SaloonRegistrationSuccess(
           state,

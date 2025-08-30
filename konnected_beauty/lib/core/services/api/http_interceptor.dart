@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../storage/token_storage_service.dart';
+import 'influencer_auth_service.dart';
+import 'salon_auth_service.dart';
 
 class HttpInterceptor {
   static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
@@ -65,8 +67,7 @@ class HttpInterceptor {
       // Determine which refresh endpoint to use based on user role
       String refreshEndpoint;
       if (userRole == 'influencer') {
-        // Temporarily use salon refresh endpoint for testing
-        refreshEndpoint = '/salon-auth/refresh-token';
+        refreshEndpoint = '/influencer-auth/refresh-token';
       } else {
         refreshEndpoint = '/salon-auth/refresh-token';
       }
@@ -74,36 +75,34 @@ class HttpInterceptor {
       print(
           '🔄 Refreshing token for role: $userRole using endpoint: $refreshEndpoint');
 
-      // Call the appropriate refresh token endpoint
-      final response = await http.post(
-        Uri.parse('$baseUrl$refreshEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $refreshToken',
-        },
-      );
+      // Call the appropriate refresh token endpoint using the service
+      Map<String, dynamic> refreshResult;
+      if (userRole == 'influencer') {
+        refreshResult = await InfluencerAuthService.refreshToken(
+          refreshToken: refreshToken,
+        );
+      } else {
+        refreshResult = await SalonAuthService.refreshToken(
+          refreshToken: refreshToken,
+        );
+      }
 
-      final responseData = jsonDecode(response.body);
-      print('📊 Refresh response data: $responseData');
+      print('📊 Refresh result: $refreshResult');
 
-      if (response.statusCode == 200) {
+      if (refreshResult['success'] == true) {
         // Extract new tokens from response (API uses snake_case)
-        final newAccessToken = responseData['data']?['access_token'] ??
-            responseData['access_token'] ??
-            responseData['accessToken'];
-        final newRefreshToken = responseData['data']?['refresh_token'] ??
-            responseData['refresh_token'] ??
-            responseData['refreshToken'];
+        final newAccessToken = refreshResult['data']?['access_token'] ??
+            refreshResult['data']?['accessToken'];
+        final newRefreshToken = refreshResult['data']?['refresh_token'] ??
+            refreshResult['data']?['refreshToken'];
 
         print('🔍 === TOKEN EXTRACTION DEBUG ===');
-        print('🔍 Response Data: $responseData');
-        print('🔍 Data Object: ${responseData['data']}');
+        print('🔍 Refresh Result: $refreshResult');
+        print('🔍 Data Object: ${refreshResult['data']}');
         print(
-            '🔍 Access Token from data.access_token: ${responseData['data']?['access_token']}');
+            '🔍 Access Token from data.access_token: ${refreshResult['data']?['access_token']}');
         print(
-            '🔍 Access Token from access_token: ${responseData['access_token']}');
-        print(
-            '🔍 Access Token from accessToken: ${responseData['accessToken']}');
+            '🔍 Access Token from data.accessToken: ${refreshResult['data']?['accessToken']}');
         print('🔍 Final Access Token: $newAccessToken');
         print('🔍 === END TOKEN EXTRACTION ===');
 
@@ -124,7 +123,7 @@ class HttpInterceptor {
           };
         } else {
           print('❌ No valid access token found in refresh response');
-          print('❌ Response structure: $responseData');
+          print('❌ Response structure: $refreshResult');
           return {
             'success': false,
             'message': 'No access token in refresh response',
@@ -134,9 +133,9 @@ class HttpInterceptor {
       } else {
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Token refresh failed',
-          'error': responseData['error'],
-          'statusCode': response.statusCode,
+          'message': refreshResult['message'] ?? 'Token refresh failed',
+          'error': refreshResult['error'],
+          'statusCode': refreshResult['statusCode'],
         };
       }
     } catch (e) {

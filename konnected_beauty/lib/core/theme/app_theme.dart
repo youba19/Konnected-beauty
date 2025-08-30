@@ -24,7 +24,7 @@ class AppTheme {
   static const Color errorLightColor = Color(0xFFFFEBEE);
 
   // Font Family
-  static const String fontFamily = 'Poppins';
+  static String get fontFamily => GoogleFonts.poppins().fontFamily ?? 'Poppins';
 
   // Google Fonts Poppins
   static TextStyle get poppinsFont => GoogleFonts.poppins();
@@ -35,31 +35,31 @@ class AppTheme {
   }
 
   // Text Styles with comprehensive font weights and sizes
-  static TextStyle get headingStyle => const TextStyle(
-        fontSize: 28,
+  static TextStyle get headingStyle => GoogleFonts.poppins(
+        fontSize: 24,
         fontWeight: FontWeight.bold,
         color: textPrimaryColor,
       );
 
-  static TextStyle get subtitleStyle => TextStyle(
+  static TextStyle get subtitleStyle => GoogleFonts.poppins(
         fontSize: 16,
         color: textSecondaryColor,
         height: 1.4,
       );
 
-  static TextStyle get buttonTextStyle => TextStyle(
+  static TextStyle get buttonTextStyle => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: primaryColor,
       );
 
-  static TextStyle get loginButtonTextStyle => TextStyle(
+  static TextStyle get loginButtonTextStyle => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: textPrimaryColor,
       );
 
-  static TextStyle get dividerTextStyle => TextStyle(
+  static TextStyle get dividerTextStyle => GoogleFonts.poppins(
         fontSize: 14,
         color: textSecondaryColor,
       );
@@ -72,7 +72,7 @@ class AppTheme {
     double? height,
     TextDecoration? decoration,
   }) {
-    return TextStyle(
+    return GoogleFonts.poppins(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color ?? textPrimaryColor,
@@ -116,7 +116,7 @@ class AppTheme {
   }
 
   // Global text style that overrides everything
-  static TextStyle get globalText => TextStyle(
+  static TextStyle get globalText => GoogleFonts.poppins(
         fontSize: 16,
         color: textPrimaryColor,
       );
@@ -134,7 +134,7 @@ class AppTheme {
   }) {
     return Text(
       data,
-      style: TextStyle(
+      style: GoogleFonts.poppins(
         fontSize: fontSize ?? style?.fontSize ?? 16,
         fontWeight: fontWeight ?? style?.fontWeight,
         color: color ?? style?.color ?? textPrimaryColor,
@@ -145,7 +145,7 @@ class AppTheme {
     );
   }
 
-  // Create a TextStyle with guaranteed Montserrat font
+  // Create a TextStyle with guaranteed Poppins font
   static TextStyle createStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -153,8 +153,7 @@ class AppTheme {
     double? height,
     TextDecoration? decoration,
   }) {
-    return TextStyle(
-      fontFamily: fontFamily,
+    return GoogleFonts.poppins(
       fontSize: fontSize ?? 16,
       fontWeight: fontWeight ?? FontWeight.normal,
       color: color ?? textPrimaryColor,
@@ -163,12 +162,12 @@ class AppTheme {
     );
   }
 
-  // Global font override - use this to force Montserrat anywhere
+  // Global font override - use this to force Poppins anywhere
   static TextStyle overrideFont(TextStyle? style) {
     if (style == null) {
-      return TextStyle(fontFamily: fontFamily);
+      return GoogleFonts.poppins();
     }
-    return style.copyWith(fontFamily: fontFamily);
+    return GoogleFonts.poppins().merge(style);
   }
 
   // Theme Data

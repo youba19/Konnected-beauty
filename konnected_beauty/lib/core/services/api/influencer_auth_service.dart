@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../storage/token_storage_service.dart';
+import 'http_interceptor.dart';
 
 class InfluencerAuthService {
   static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
@@ -348,20 +349,18 @@ class InfluencerAuthService {
     required String refreshToken,
   }) async {
     print('🔄 === REFRESH TOKEN REQUEST ===');
-    print('🔗 URL: $baseUrl/salon-auth/refresh-token');
+    print('🔗 URL: $baseUrl/influencer-auth/refresh-token');
     print('🔄 Refresh Token: ${refreshToken.substring(0, 20)}...');
     print('🔄 Full Refresh Token: $refreshToken');
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/salon-auth/refresh-token'),
+        Uri.parse('$baseUrl/influencer-auth/refresh-token'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Authorization': 'Bearer $refreshToken',
         },
-        body: jsonEncode({
-          'refreshToken': refreshToken,
-        }),
       );
 
       print('📡 Response Status: ${response.statusCode}');
@@ -741,7 +740,7 @@ class InfluencerAuthService {
 
       // Get access token from storage
       print('💾 === GETTING ACCESS TOKEN ===');
-      final accessToken = await TokenStorageService.getAccessToken();
+      var accessToken = await TokenStorageService.getAccessToken();
       print('🔑 Access Token: ${accessToken != null ? 'Present' : 'Missing'}');
       print('🔑 Token Length: ${accessToken?.length ?? 0}');
       print(
@@ -755,6 +754,20 @@ class InfluencerAuthService {
 
       // Print all stored tokens for debugging
       await TokenStorageService.printStoredTokens();
+
+      // Additional debugging: Check if token was just refreshed
+      if (isExpired) {
+        print('🔍 === TOKEN REFRESH DEBUG ===');
+        print('🔍 Token was expired, checking if refresh was successful...');
+        final currentToken = await TokenStorageService.getAccessToken();
+        print(
+            '🔍 Current token after refresh: ${currentToken != null ? 'Present' : 'Missing'}');
+        print('🔍 Token changed: ${currentToken != accessToken}');
+        if (currentToken != null && currentToken != accessToken) {
+          print('🔍 Using refreshed token for API call');
+          accessToken = currentToken;
+        }
+      }
 
       if (accessToken == null || accessToken.isEmpty) {
         print('❌ No access token available for socials API call');
@@ -1002,6 +1015,256 @@ class InfluencerAuthService {
       }
     } catch (e) {
       print('❌ Exception in resetPassword: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'statusCode': 0,
+      };
+    }
+  }
+
+  /// Get influencer profile using HTTP interceptor for automatic token management
+  static Future<Map<String, dynamic>> getProfile() async {
+    try {
+      print('👤 === GETTING INFLUENCER PROFILE ===');
+      print('🔗 URL: $baseUrl/influencer/profile');
+
+      // Use HTTP interceptor to automatically handle token refresh
+      final response = await HttpInterceptor.interceptRequest(() async {
+        final accessToken = await TokenStorageService.getAccessToken();
+
+        if (accessToken == null || accessToken.isEmpty) {
+          throw Exception('No access token available');
+        }
+
+        return await http.get(
+          Uri.parse('$baseUrl/influencer/profile'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        );
+      });
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Profile fetched successfully');
+        print('📊 Profile Data: $responseData');
+
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Profile fetched successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        print('❌ Profile fetch failed');
+        print('📊 Error Response: $responseData');
+
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to fetch profile',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in getProfile: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'statusCode': 0,
+      };
+    }
+  }
+
+  /// Get influencer social media links using HTTP interceptor for automatic token management
+  static Future<Map<String, dynamic>> getSocials() async {
+    try {
+      print('📱 === GETTING INFLUENCER SOCIALS ===');
+      print('🔗 URL: $baseUrl/influencer/socials');
+
+      // Use HTTP interceptor to automatically handle token refresh
+      final response = await HttpInterceptor.interceptRequest(() async {
+        final accessToken = await TokenStorageService.getAccessToken();
+
+        if (accessToken == null || accessToken.isEmpty) {
+          throw Exception('No access token available');
+        }
+
+        return await http.get(
+          Uri.parse('$baseUrl/influencer/socials'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        );
+      });
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Socials fetched successfully');
+        print('📊 Socials Data: $responseData');
+
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Socials fetched successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        print('❌ Socials fetch failed');
+        print('📊 Error Response: $responseData');
+
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to fetch socials',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in getSocials: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'statusCode': 0,
+      };
+    }
+  }
+
+  /// Update influencer social media links using HTTP interceptor for automatic token management
+  static Future<Map<String, dynamic>> updateSocials(
+      List<Map<String, String>> socials) async {
+    try {
+      print('📱 === UPDATING INFLUENCER SOCIALS ===');
+      print('🔗 URL: $baseUrl/influencer/socials');
+      print('📊 Socials Data: $socials');
+
+      // Use HTTP interceptor to automatically handle token refresh
+      final response = await HttpInterceptor.interceptRequest(() async {
+        final accessToken = await TokenStorageService.getAccessToken();
+
+        if (accessToken == null || accessToken.isEmpty) {
+          throw Exception('No access token available');
+        }
+
+        return await http.patch(
+          Uri.parse('$baseUrl/influencer/socials'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'socials': socials,
+          }),
+        );
+      });
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Socials updated successfully');
+        print('📊 Response Data: $responseData');
+
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Socials updated successfully',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        print('❌ Socials update failed');
+        print('📊 Error Response: $responseData');
+
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to update socials',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in updateSocials: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'statusCode': 0,
+      };
+    }
+  }
+
+  /// Change influencer password using HTTP interceptor for automatic token management
+  static Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      print('🔐 === CHANGING INFLUENCER PASSWORD ===');
+      print('🔗 URL: $baseUrl/influencer/change-password');
+      print(
+          '📊 Password Data: {oldPassword: ${'*' * oldPassword.length}, newPassword: ${'*' * newPassword.length}, confirmPassword: ${'*' * confirmPassword.length}}');
+
+      // Use HTTP interceptor to automatically handle token refresh
+      final response = await HttpInterceptor.interceptRequest(() async {
+        final accessToken = await TokenStorageService.getAccessToken();
+
+        if (accessToken == null || accessToken.isEmpty) {
+          throw Exception('No access token available');
+        }
+
+        return await http.post(
+          Uri.parse('$baseUrl/influencer/change-password'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'oldPassword': oldPassword,
+            'newPassword': newPassword,
+            'confirmPassword': confirmPassword,
+          }),
+        );
+      });
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Password changed successfully');
+        print('📊 Response Data: $responseData');
+
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Password changed successfully',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        print('❌ Password change failed');
+        print('📊 Error Response: $responseData');
+
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to change password',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in changePassword: $e');
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',

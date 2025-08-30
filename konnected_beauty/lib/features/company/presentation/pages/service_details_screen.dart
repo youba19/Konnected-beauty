@@ -5,7 +5,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
-import 'salon_home_screen.dart';
 import 'edit_service_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
@@ -134,13 +133,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               size: 32,
             ),
             onPressed: () {
-              // Navigate back to home screen
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const SalonHomeScreen(),
-                ),
-                (route) => false,
-              );
+              // Navigate back to previous screen
+              Navigator.of(context).pop();
             },
           ),
         ],

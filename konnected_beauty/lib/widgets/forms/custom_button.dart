@@ -24,12 +24,13 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.accentColor,
-          foregroundColor: AppTheme.primaryColor,
+          backgroundColor: AppTheme.transparentBackground,
+          foregroundColor: AppTheme.transparentBackground,
           padding: const EdgeInsets.symmetric(
               horizontal: 12, vertical: 16), // Reduced from 20 to 12
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: AppTheme.textSecondaryColor),
           ),
           elevation: 0,
         ),
@@ -40,7 +41,7 @@ class CustomButton extends StatelessWidget {
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor:
-                      AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      AlwaysStoppedAnimation<Color>(AppTheme.textPrimaryColor),
                 ),
               )
             : Row(
@@ -48,7 +49,7 @@ class CustomButton extends StatelessWidget {
                 children: [
                   Text(
                     text,
-                    style: AppTheme.buttonTextStyle,
+                    style: TextStyle(color: AppTheme.textPrimaryColor),
                   ),
                   const SizedBox(
                     width: 5,

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/storage/token_storage_service.dart';
 import '../../services/api/salon_auth_service.dart';
+import '../../services/api/influencer_auth_service.dart';
 
 // Events
 abstract class AuthEvent {}
@@ -77,26 +78,57 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       if (!isLoggedIn) {
         print('🔐 User not logged in, emitting AuthUnauthenticated');
+        print('🔐 This means either:');
+        print('🔐   1. No tokens stored');
+        print('🔐   2. Tokens were cleared');
+        print('🔐   3. TokenStorageService.isLoggedIn() returned false');
         emit(AuthUnauthenticated());
         return;
       }
 
+      // Get user info first to debug
+      final email = await TokenStorageService.getUserEmail();
+      final role = await TokenStorageService.getUserRole();
+      final accessToken = await TokenStorageService.getAccessToken();
+
+      print('🔐 Stored user info:');
+      print('   📧 Email: $email');
+      print('   👤 Role: $role');
+      print('   🔑 Access Token: ${accessToken?.substring(0, 50)}...');
+
       // Check if access token is expired
       final isExpired = await TokenStorageService.isAccessTokenExpired();
+      print('🔐 Token expired check: $isExpired');
 
       if (isExpired) {
+        print('🔐 Token is expired, attempting refresh...');
         // Try to refresh the token
         final refreshToken = await TokenStorageService.getRefreshToken();
         if (refreshToken != null) {
-          final refreshResult =
-              await SalonAuthService.refreshToken(refreshToken: refreshToken);
+          print('🔐 Refresh token found, attempting refresh...');
+          // Get user role to determine which service to use
+          final userRole = await TokenStorageService.getUserRole();
+          print('🔐 Using role for refresh: $userRole');
+
+          final refreshResult = userRole == 'influencer'
+              ? await InfluencerAuthService.refreshToken(
+                  refreshToken: refreshToken)
+              : await SalonAuthService.refreshToken(refreshToken: refreshToken);
+
+          print('🔐 Refresh result: $refreshResult');
+
           if (refreshResult['success']) {
             final newAccessToken = refreshResult['data']['access_token'];
             await TokenStorageService.saveAccessToken(newAccessToken);
+            print('🔐 New access token saved');
 
             // Get user info
             final email = await TokenStorageService.getUserEmail();
-            final role = await TokenStorageService.getUserEmail();
+            final role = await TokenStorageService.getUserRole();
+
+            print('🔐 Emitting AuthAuthenticated after refresh:');
+            print('   📧 Email: $email');
+            print('   👤 Role: $role');
 
             emit(AuthAuthenticated(
               email: email ?? '',
@@ -104,21 +136,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               accessToken: newAccessToken,
             ));
             return;
+          } else {
+            print('🔐 Token refresh failed');
           }
+        } else {
+          print('🔐 No refresh token found');
         }
 
         // If refresh failed, logout
+        print('🔐 Clearing auth data due to refresh failure');
         await TokenStorageService.clearAuthData();
         emit(AuthUnauthenticated());
         return;
       }
 
       // Token is valid, get user info
-      final email = await TokenStorageService.getUserEmail();
-      final role = await TokenStorageService.getUserRole();
-      final accessToken = await TokenStorageService.getAccessToken();
-
-      print('🔐 Token is valid, user info:');
+      print('🔐 Token is valid, emitting AuthAuthenticated');
+      print('🔐 Final user info:');
       print('   📧 Email: $email');
       print('   👤 Role: $role');
       print('   🔑 Access Token: ${accessToken?.substring(0, 50)}...');
@@ -130,6 +164,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
       print('🔐 Emitted AuthAuthenticated state');
     } catch (e) {
+      print('🔐 Error during auth check: $e');
+      print('🔐 Stack trace: ${StackTrace.current}');
       emit(AuthError('Authentication check failed: ${e.toString()}'));
     }
   }
@@ -197,8 +233,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               print('🔄 Status is email-verified, refreshing token...');
               final refreshToken = await TokenStorageService.getRefreshToken();
               if (refreshToken != null) {
-                final refreshResult = await SalonAuthService.refreshToken(
-                    refreshToken: refreshToken);
+                final userRole = await TokenStorageService.getUserRole();
+                final refreshResult = userRole == 'influencer'
+                    ? await InfluencerAuthService.refreshToken(
+                        refreshToken: refreshToken)
+                    : await SalonAuthService.refreshToken(
+                        refreshToken: refreshToken);
+
                 if (refreshResult['success']) {
                   final newAccessToken = refreshResult['data']['access_token'];
                   await TokenStorageService.saveAccessToken(newAccessToken);
@@ -266,8 +307,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final refreshToken = await TokenStorageService.getRefreshToken();
       if (refreshToken != null) {
-        final refreshResult =
-            await SalonAuthService.refreshToken(refreshToken: refreshToken);
+        final userRole = await TokenStorageService.getUserRole();
+        final refreshResult = userRole == 'influencer'
+            ? await InfluencerAuthService.refreshToken(
+                refreshToken: refreshToken)
+            : await SalonAuthService.refreshToken(refreshToken: refreshToken);
+
         if (refreshResult['success']) {
           final newAccessToken = refreshResult['data']['access_token'];
           await TokenStorageService.saveAccessToken(newAccessToken);

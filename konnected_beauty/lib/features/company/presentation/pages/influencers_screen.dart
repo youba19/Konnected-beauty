@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../../core/bloc/influencers/influencers_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'influencer_details_screen.dart';
+import 'influencers_filter_screen.dart';
 
 class InfluencersScreen extends StatefulWidget {
   const InfluencersScreen({super.key});
@@ -18,91 +20,110 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
   final TextEditingController searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  // Mock data for influencers - replace with real API data later
-  final List<Map<String, dynamic>> influencers = [
-    {
-      'id': '1',
-      'username': 'lastradamir',
-      'rating': 5,
-      'zone': 'Zone',
-      'phone': '+33 6 12 34 56 78',
-      'email': 'lastradamir@example.com',
-      'description':
-          'Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges...',
-      'profileImage':
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    },
-    {
-      'id': '2',
-      'username': 'antpiebass',
-      'rating': 4,
-      'zone': 'Zone',
-      'phone': '+33 6 23 45 67 89',
-      'email': 'antpiebass@example.com',
-      'description':
-          'Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges...',
-      'profileImage':
-          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-    },
-    {
-      'id': '3',
-      'username': 'farmlandpie',
-      'rating': 3,
-      'zone': 'Zone',
-      'description':
-          'Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges...',
-      'profileImage':
-          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    },
-    {
-      'id': '4',
-      'username': 'volleyball',
-      'rating': 5,
-      'zone': 'Zone',
-      'description':
-          'Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges...',
-      'profileImage':
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    },
-    {
-      'id': '5',
-      'username': 'beautyexpert',
-      'rating': 4,
-      'zone': 'Zone',
-      'description':
-          'Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges...',
-      'profileImage':
-          'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
-    },
-    {
-      'id': '6',
-      'username': 'styleguru',
-      'rating': 5,
-      'zone': 'Zone',
-      'description':
-          'Vous avez les cheveux bouclés s\'ils forment des spirales plus ou moins larges...',
-      'profileImage':
-          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    },
-  ];
+  Timer? _searchDebounceTimer;
+
+  // Filter state
+  int? _currentMinRating;
+  int? _currentMaxRating;
+  String? _currentZone;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Load influencers on screen initialization
+    context.read<InfluencersBloc>().add(LoadInfluencers());
+
+    // Add search listener with debounce
+    searchController.addListener(() => _onSearchChanged(searchController.text));
+
+    // Add scroll listener for pagination
+    _scrollController.addListener(_onScrollChanged);
+  }
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged(String value) {
-    // TODO: Implement search functionality
-    print('Searching for: $value');
+    // Cancel previous timer
+    _searchDebounceTimer?.cancel();
+
+    // Set new timer for debounced search
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        if (value.isEmpty) {
+          // If search is empty, load all influencers
+          context.read<InfluencersBloc>().add(LoadInfluencers());
+        } else {
+          // Search influencers with current filters
+          final currentState = context.read<InfluencersBloc>().state;
+          if (currentState is InfluencersLoaded) {
+            context.read<InfluencersBloc>().add(SearchInfluencers(
+                  search: value,
+                  zone: currentState.currentZone,
+                  sortOrder: currentState.currentSortOrder,
+                ));
+          } else {
+            context
+                .read<InfluencersBloc>()
+                .add(SearchInfluencers(search: value));
+          }
+        }
+      }
+    });
+  }
+
+  void _onScrollChanged() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Load more influencers when near the bottom
+      final currentState = context.read<InfluencersBloc>().state;
+      if (currentState is InfluencersLoaded && currentState.hasMoreData) {
+        context.read<InfluencersBloc>().add(LoadMoreInfluencers(
+              page: currentState.currentPage + 1,
+              search: currentState.currentSearch,
+              zone: currentState.currentZone,
+              sortOrder: currentState.currentSortOrder,
+            ));
+      }
+    }
   }
 
   void _showFilterScreen() {
-    // TODO: Implement filter functionality
-    TopNotificationService.showInfo(
+    final currentState = context.read<InfluencersBloc>().state;
+    int? currentMinRating;
+    int? currentMaxRating;
+    String? currentZone;
+
+    if (currentState is InfluencersLoaded) {
+      // Extract current filter values from state if available
+      currentZone = currentState.currentZone;
+      // Note: Rating filters are not yet implemented in the API, so we'll use defaults
+      currentMinRating = 1;
+      currentMaxRating = 5;
+    }
+
+    showModalBottomSheet(
       context: context,
-      message: AppTranslations.getString(context, 'filter_coming_soon'),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => InfluencersFilterScreen(
+        currentMinRating: currentMinRating,
+        currentMaxRating: currentMaxRating,
+        currentZone: currentZone,
+        onFilterApplied: (minRating, maxRating, zone) {
+          // Apply the filter by loading influencers with new parameters
+          context.read<InfluencersBloc>().add(LoadInfluencers(
+                zone: zone,
+                sortOrder: 'DESC',
+              ));
+        },
+      ),
     );
   }
 
@@ -131,7 +152,105 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
 
                   // Main Content
                   Expanded(
-                    child: _buildMainContent(),
+                    child: BlocBuilder<InfluencersBloc, InfluencersState>(
+                      builder: (context, state) {
+                        if (state is InfluencersLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.accentColor,
+                            ),
+                          );
+                        } else if (state is InfluencersError) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 16),
+                                if (state.error
+                                        .contains('Account not active') ||
+                                    state.error.contains('Forbidden') ||
+                                    state.error.contains('403'))
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Your salon account is not yet active. Please contact support to activate your account.',
+                                        style: const TextStyle(
+                                          color: AppTheme.textSecondaryColor,
+                                          fontSize: 14,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  )
+                                else
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      final currentState =
+                                          context.read<InfluencersBloc>().state;
+                                      if (currentState is InfluencersLoaded) {
+                                        context
+                                            .read<InfluencersBloc>()
+                                            .add(LoadInfluencers(
+                                              zone: currentState.currentZone,
+                                              sortOrder:
+                                                  currentState.currentSortOrder,
+                                            ));
+                                      } else {
+                                        context
+                                            .read<InfluencersBloc>()
+                                            .add(LoadInfluencers());
+                                      }
+                                    },
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'retry'),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        } else if (state is InfluencersLoaded) {
+                          if (state.influencers.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.people_outline,
+                                    color: AppTheme.textSecondaryColor,
+                                    size: 48,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    state.currentSearch != null
+                                        ? 'No influencers found for "${state.currentSearch}"'
+                                        : 'No influencers available',
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondaryColor,
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return _buildMainContent(state.influencers);
+                        } else {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.accentColor,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -227,7 +346,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     );
   }
 
-  Widget _buildMainContent() {
+  Widget _buildMainContent(List<Map<String, dynamic>> influencers) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -276,24 +395,36 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
               children: [
                 // Profile Picture
                 ClipOval(
-                  child: Image.network(
-                    influencer['profileImage'],
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 40,
-                        height: 40,
-                        color: AppTheme.textSecondaryColor.withOpacity(0.3),
-                        child: const Icon(
-                          Icons.person,
-                          color: AppTheme.textSecondaryColor,
-                          size: 20,
+                  child: influencer['profile']?['profilePicture'] != null
+                      ? Image.network(
+                          influencer['profile']['profilePicture'],
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 40,
+                              height: 40,
+                              color:
+                                  AppTheme.textSecondaryColor.withOpacity(0.3),
+                              child: const Icon(
+                                Icons.person,
+                                color: AppTheme.textSecondaryColor,
+                                size: 20,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          width: 40,
+                          height: 40,
+                          color: AppTheme.textSecondaryColor.withOpacity(0.3),
+                          child: const Icon(
+                            Icons.person,
+                            color: AppTheme.textPrimaryColor,
+                            size: 20,
+                          ),
                         ),
-                      );
-                    },
-                  ),
                 ),
                 const SizedBox(width: 10),
 
@@ -307,7 +438,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '@${influencer['username']}',
+                            '@${influencer['profile']?['pseudo'] ?? 'unknown'}',
                             style: const TextStyle(
                               color: AppTheme.textPrimaryColor,
                               fontSize: 16,
@@ -318,25 +449,17 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                       ),
                       const SizedBox(height: 4),
 
-                      // Rating
+                      // Zone
                       Row(
                         children: [
-                          Text(
-                            '${influencer['rating']} ',
-                            style: const TextStyle(
-                              color: AppTheme.textPrimaryColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
                           const Icon(
-                            Icons.star,
-                            color: Colors.amber,
+                            Icons.location_on,
+                            color: AppTheme.textSecondaryColor,
                             size: 16,
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 4),
                           Text(
-                            influencer['zone'],
+                            influencer['profile']?['zone'] ?? 'Unknown',
                             style: const TextStyle(
                               color: AppTheme.textPrimaryColor,
                               fontSize: 13,
@@ -356,7 +479,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
             // Description with "See more"
             LayoutBuilder(
               builder: (context, constraints) {
-                final text = influencer['description'] ?? '';
+                final text = influencer['profile']?['bio'] ?? '';
                 final seeMore =
                     "...${AppTranslations.getString(context, 'see_more')}     "; // 5 spaces
 
@@ -390,6 +513,29 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showContactSupportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Contact Support'),
+          content: const Text(
+            'To activate your salon account, please contact our support team:\n\n'
+            '📧 Email: support@konnectedbeauty.com\n'
+            '📱 Phone: +1 (555) 123-4567\n\n'
+            'We\'ll help you get your account activated quickly!',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
