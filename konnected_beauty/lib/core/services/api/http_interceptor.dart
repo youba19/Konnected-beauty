@@ -163,11 +163,13 @@ class HttpInterceptor {
     required String endpoint,
     Map<String, String>? headers,
     Object? body,
-    Map<String, String>? queryParameters,
+    Map<String, dynamic>? queryParameters,
   }) async {
     print('🔐 === AUTHENTICATED REQUEST ===');
     print('🔗 Method: $method');
     print('🔗 Endpoint: $endpoint');
+    print('🔗 Query Parameters: $queryParameters');
+    print('🔗 Query Parameters Type: ${queryParameters.runtimeType}');
     print('🔗 Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
 
     return interceptRequest(() async {
@@ -190,22 +192,54 @@ class HttpInterceptor {
         print('❌ No access token available - request will fail with 401');
       }
 
-      final uri = Uri.parse('$baseUrl$endpoint')
-          .replace(queryParameters: queryParameters);
+      // Use Uri.replace for proper query parameter handling
+      final uri = Uri.parse('$baseUrl$endpoint').replace(
+        queryParameters: queryParameters
+            ?.map((key, value) => MapEntry(key, value.toString())),
+      );
 
       print('🔗 Full URL: $uri');
+      print('🔗 Query Parameters in Interceptor: $queryParameters');
+      print('🔗 Query Parameters Type: ${queryParameters.runtimeType}');
+      print('🔗 URL Query String: ${uri.query}');
+      print('🔗 URL Query Parameters: ${uri.queryParameters}');
+      print('🔗 Expected Format: status=pending&page=1&limit=100 (in body)');
+      print('🔗 Actual URL: $uri');
+
+      // Convert body based on content type
+      Object? requestBody = body;
+      if (body is Map<String, dynamic>) {
+        if (requestHeaders['Content-Type']?.contains('application/json') ==
+            true) {
+          requestBody = jsonEncode(body);
+          print('📤 Body converted to JSON: $requestBody');
+        } else if (requestHeaders['Content-Type']
+                ?.contains('application/x-www-form-urlencoded') ==
+            true) {
+          // Convert to form data
+          final formData = body.entries
+              .map((e) =>
+                  '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
+              .join('&');
+          requestBody = formData;
+          print('📤 Body converted to form data: $requestBody');
+        }
+      }
 
       switch (method.toUpperCase()) {
         case 'GET':
           return await http.get(uri, headers: requestHeaders);
         case 'POST':
-          return await http.post(uri, headers: requestHeaders, body: body);
+          return await http.post(uri,
+              headers: requestHeaders, body: requestBody);
         case 'PUT':
-          return await http.put(uri, headers: requestHeaders, body: body);
+          return await http.put(uri,
+              headers: requestHeaders, body: requestBody);
         case 'DELETE':
-          return await http.delete(uri, headers: requestHeaders);
+          return await http.delete(uri, headers: requestHeaders, body: requestBody);
         case 'PATCH':
-          return await http.patch(uri, headers: requestHeaders, body: body);
+          return await http.patch(uri,
+              headers: requestHeaders, body: requestBody);
         default:
           throw ArgumentError('Unsupported HTTP method: $method');
       }

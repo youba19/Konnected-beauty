@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../../core/bloc/campaigns/campaigns_bloc.dart';
+import '../../../../core/bloc/campaigns/campaigns_event.dart';
+import '../../../../core/bloc/campaigns/campaigns_state.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 
 class CampaignDetailsScreen extends StatefulWidget {
@@ -116,18 +120,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         Row(
           children: [
             // Profile Picture
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: Colors.grey[600],
-              child: Icon(
-                Icons.person,
-                color: AppTheme.textPrimaryColor,
-                size: 30,
-              ),
-            ),
+            _buildProfilePicture(),
             const SizedBox(width: 12),
             Text(
-              '@${widget.campaign['influencer']['pseudo']}',
+              '@${widget.campaign['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -153,7 +149,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          widget.campaign['date'],
+          _formatDate(widget.campaign['createdAt'] ?? ''),
           style: const TextStyle(
             color: AppTheme.textPrimaryColor,
             fontSize: 24,
@@ -180,7 +176,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                widget.campaign['promotionType'] ?? 'Pourcentage',
+                widget.campaign['promotionType'] ?? 'percentage',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -203,7 +199,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               ),
               const SizedBox(height: 3),
               Text(
-                widget.campaign['promotionValue'] ?? '20%',
+                _formatPromotionValue(widget.campaign['promotion'],
+                    widget.campaign['promotionType']),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -321,7 +318,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           ],
         ),
       );
-    } else if (status == 'waiting for influencer') {
+    } else if (status == 'pending') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
@@ -402,8 +399,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     if (status == 'finished') {
       // No buttons for finished campaigns
       return const SizedBox.shrink();
-    } else if (status == 'waiting for influencer') {
-      // Only delete button for waiting campaigns
+    } else if (status == 'pending') {
+      // Only delete button for pending campaigns
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
@@ -432,7 +429,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 ),
               ),
               SizedBox(width: 8),
-              Icon(Icons.delete, size: 24),
+              Icon(LucideIcons.xCircle, size: 24),
             ],
           ),
         ),
@@ -562,22 +559,36 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 ),
               ),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                // TODO: Implement delete campaign functionality
-                TopNotificationService.showSuccess(
-                  context: context,
-                  message: 'Campaign deleted successfully!',
-                );
-                Navigator.of(context).pop(); // Go back to campaigns screen
+            BlocListener<CampaignsBloc, CampaignsState>(
+              listener: (context, state) {
+                if (state is CampaignDeleted) {
+                  Navigator.of(context).pop(); // Close dialog
+                  TopNotificationService.showSuccess(
+                    context: context,
+                    message: state.message,
+                  );
+                  Navigator.of(context).pop(); // Go back to campaigns screen
+                } else if (state is CampaignsError) {
+                  Navigator.of(context).pop(); // Close dialog
+                  TopNotificationService.showError(
+                    context: context,
+                    message: state.message,
+                  );
+                }
               },
-              child: const Text(
-                'Delete',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              child: TextButton(
+                onPressed: () {
+                  context.read<CampaignsBloc>().add(
+                        DeleteCampaign(campaignId: widget.campaign['id']),
+                      );
+                },
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -585,5 +596,77 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         );
       },
     );
+  }
+
+  String _formatDate(String dateString) {
+    if (dateString.isEmpty) return 'Unknown';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  String _formatPromotionValue(dynamic promotion, String? promotionType) {
+    if (promotion == null) return '0';
+
+    final promotionValue = promotion.toString();
+    if (promotionType == 'percentage') {
+      return '$promotionValue%';
+    } else {
+      return '$promotionValue EUR';
+    }
+  }
+
+  Widget _buildProfilePicture() {
+    final profilePicture =
+        widget.campaign['influencer']?['profile']?['profilePicture'];
+
+    if (profilePicture != null && profilePicture.toString().isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          profilePicture.toString(),
+          width: 50,
+          height: 50,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return CircleAvatar(
+              radius: 25,
+              backgroundColor: Colors.grey[600],
+              child: Icon(
+                Icons.person,
+                color: AppTheme.textPrimaryColor,
+                size: 30,
+              ),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return CircleAvatar(
+              radius: 25,
+              backgroundColor: Colors.grey[600],
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                color: AppTheme.textPrimaryColor,
+              ),
+            );
+          },
+        ),
+      );
+    } else {
+      return CircleAvatar(
+        radius: 25,
+        backgroundColor: Colors.grey[600],
+        child: Icon(
+          Icons.person,
+          color: AppTheme.textPrimaryColor,
+          size: 30,
+        ),
+      );
+    }
   }
 }

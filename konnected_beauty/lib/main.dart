@@ -15,12 +15,15 @@ import 'core/bloc/salon_services/salon_services_bloc.dart';
 import 'core/bloc/influencers/influencers_bloc.dart';
 import 'core/bloc/influencers/influencer_profile_bloc.dart';
 import 'core/bloc/influencer_campaigns/influencer_campaign_bloc.dart';
+import 'core/bloc/campaigns/campaigns_bloc.dart';
 import 'core/bloc/salon_profile/salon_profile_bloc.dart';
 import 'core/services/api/salon_profile_service.dart';
 import 'core/bloc/salon_password/salon_password_bloc.dart';
 import 'core/services/api/salon_password_service.dart';
 import 'core/bloc/salon_info/salon_info_bloc.dart';
 import 'core/services/api/salon_info_service.dart';
+import 'core/bloc/saloons/saloons_bloc.dart';
+import 'core/bloc/salon_details/salon_details_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'core/translations/app_translations.dart';
 import 'features/auth/presentation/pages/welcome_screen.dart';
@@ -82,6 +85,9 @@ class KonnectedBeautyApp extends StatelessWidget {
         BlocProvider<InfluencerCampaignBloc>(
           create: (context) => InfluencerCampaignBloc(),
         ),
+        BlocProvider<CampaignsBloc>(
+          create: (context) => CampaignsBloc(),
+        ),
         BlocProvider<SalonProfileBloc>(
           create: (context) => SalonProfileBloc(
             salonProfileService: SalonProfileService(),
@@ -96,6 +102,12 @@ class KonnectedBeautyApp extends StatelessWidget {
           create: (context) => SalonInfoBloc(
             salonInfoService: SalonInfoService(),
           ),
+        ),
+        BlocProvider<SaloonsBloc>(
+          create: (context) => SaloonsBloc(),
+        ),
+        BlocProvider<SalonDetailsBloc>(
+          create: (context) => SalonDetailsBloc(),
         ),
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(
@@ -218,7 +230,8 @@ class KonnectedBeautyApp extends StatelessWidget {
         print('🏠 Navigating to SalonMainWrapper');
         return const SalonMainWrapper();
       } else if (authState.role == 'influencer') {
-        print('🏠 Navigating to InfluencerHomeScreen');
+        print(
+            '🏠 User is influencer, navigating directly to InfluencerHomeScreen');
         return const InfluencerHomeScreen();
       } else {
         print('🏠 Unknown role, showing WelcomeScreen');

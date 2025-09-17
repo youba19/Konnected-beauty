@@ -946,7 +946,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Email
+                        // Email (Read-only)
                         CustomTextField(
                           label: AppTranslations.getString(context, 'email') ??
                               'Email',
@@ -955,6 +955,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                               'Enter your email',
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          enabled: false, // Make it read-only
                         ),
                         const SizedBox(height: 20),
 

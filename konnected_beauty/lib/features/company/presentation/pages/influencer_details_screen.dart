@@ -3,16 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
-
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../../core/bloc/influencer_details/influencer_details_bloc.dart';
+import '../../../../core/bloc/influencer_details/influencer_details_event.dart';
+import '../../../../core/bloc/influencer_details/influencer_details_state.dart';
+import '../../../../core/services/api/influencers_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 
 class InfluencerDetailsScreen extends StatefulWidget {
-  final Map<String, dynamic> influencer;
+  final String influencerId;
 
   const InfluencerDetailsScreen({
     super.key,
-    required this.influencer,
+    required this.influencerId,
   });
 
   @override
@@ -24,11 +27,25 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedPromotionType;
   final _promotionValueController = TextEditingController();
+  final _messageController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    print('👤 === INFLUENCER DETAILS SCREEN INIT ===');
+    print('🆔 Influencer ID: ${widget.influencerId}');
+
+    // Load influencer details
+    context.read<InfluencerDetailsBloc>().add(
+          LoadInfluencerDetails(influencerId: widget.influencerId),
+        );
+  }
 
   @override
   void dispose() {
     _promotionValueController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -36,48 +53,214 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E),
-                Color(0xFF3B3B3B),
+        return BlocBuilder<InfluencerDetailsBloc, InfluencerDetailsState>(
+          builder: (context, state) {
+            print('🎨 === INFLUENCER DETAILS SCREEN BUILD ===');
+            print('🎨 State: ${state.runtimeType}');
+
+            if (state is InfluencerDetailsLoading) {
+              return _buildLoadingState();
+            } else if (state is InfluencerDetailsError) {
+              return _buildErrorState(state);
+            } else if (state is InfluencerDetailsLoaded) {
+              return _buildLoadedState(state);
+            } else {
+              return _buildInitialState();
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF1F1E1E),
+            Color(0xFF3B3B3B),
+          ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(
+                color: AppTheme.accentColor,
+                strokeWidth: 2,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                AppTranslations.getString(
+                    context, 'loading_influencer_details'),
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(InfluencerDetailsError state) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF1F1E1E),
+            Color(0xFF3B3B3B),
+          ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  LucideIcons.alertCircle,
+                  size: 64,
+                  color: AppTheme.errorColor,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppTranslations.getString(context, 'error_loading_details'),
+                  style: const TextStyle(
+                    color: AppTheme.textPrimaryColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  state.message,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    context.read<InfluencerDetailsBloc>().add(
+                          RefreshInfluencerDetails(
+                              influencerId: widget.influencerId),
+                        );
+                  },
+                  icon: const Icon(LucideIcons.refreshCw),
+                  label: Text(AppTranslations.getString(context, 'retry')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentColor,
+                    foregroundColor: AppTheme.primaryColor,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                  ),
+                ),
               ],
             ),
           ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Column(
-                        children: [
-                          _buildProfileSection(),
-                          const SizedBox(height: 24),
-                          _buildInviteButton(),
-                          const SizedBox(height: 32),
-                          _buildInformationSection(),
-                          const SizedBox(height: 32),
-                          _buildSocialMediaSection(),
-                          const SizedBox(height: 32),
-                          _buildReviewsSection(),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialState() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF1F1E1E),
+            Color(0xFF3B3B3B),
+          ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Text(
+            AppTranslations.getString(context, 'initializing'),
+            style: const TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 16,
             ),
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadedState(InfluencerDetailsLoaded state) {
+    final data = state.influencerData;
+    final profile = data['profile'] ?? {};
+    final socials = data['socials'] ?? [];
+    final receivedRatings = data['receivedRatings'] ?? [];
+
+    print('🎨 === BUILDING LOADED STATE ===');
+    print('🎨 Profile: $profile');
+    print('🎨 Socials: $socials');
+    print('🎨 Received Ratings: $receivedRatings');
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF1F1E1E),
+            Color(0xFF3B3B3B),
+          ],
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildProfileSection(profile),
+                      const SizedBox(height: 24),
+                      _buildInviteButton(),
+                      const SizedBox(height: 32),
+                      _buildInformationSection(profile),
+                      const SizedBox(height: 32),
+                      _buildSocialMediaSection(socials),
+                      const SizedBox(height: 32),
+                      _buildReviewsSection(receivedRatings),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -99,7 +282,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildProfileSection() {
+  Widget _buildProfileSection(Map<String, dynamic> profile) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,25 +298,34 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
             ),
           ),
           child: ClipOval(
-            child: Image.network(
-              widget.influencer['profileImage'] ?? '',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: Colors.white.withOpacity(0.1),
-                  child: const Icon(
-                    LucideIcons.user,
-                    color: Colors.white54,
-                    size: 60,
+            child: profile['profilePicture'] != null
+                ? Image.network(
+                    profile['profilePicture'],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.white.withOpacity(0.1),
+                        child: const Icon(
+                          LucideIcons.user,
+                          color: Colors.white54,
+                          size: 60,
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    color: Colors.white.withOpacity(0.1),
+                    child: const Icon(
+                      LucideIcons.user,
+                      color: Colors.white54,
+                      size: 60,
+                    ),
                   ),
-                );
-              },
-            ),
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          '@${widget.influencer['username'] ?? ''}',
+          '@${profile['pseudo'] ?? 'Unknown'}',
           style: const TextStyle(
             color: AppTheme.textPrimaryColor,
             fontSize: 24,
@@ -142,13 +334,14 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          widget.influencer['description'] ?? '',
+          profile['bio'] ??
+              AppTranslations.getString(context, 'no_bio_available'),
           style: const TextStyle(
             color: AppTheme.textSecondaryColor,
             fontSize: 16,
             height: 1.4,
           ),
-          maxLines: 2,
+          maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
       ],
@@ -172,10 +365,10 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Text(
-              'Invite for a campaign',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              AppTranslations.getString(context, 'invite_for_campaign'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             SizedBox(width: 8),
             Icon(LucideIcons.plus, size: 20),
@@ -185,21 +378,24 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildInformationSection() {
+  Widget _buildInformationSection(Map<String, dynamic> profile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Zone', widget.influencer['zone'] ?? 'Not specified'),
-        const SizedBox(height: 16),
-        _buildInfoRow('Phone', widget.influencer['phone'] ?? 'Not specified'),
-        const SizedBox(height: 16),
-        _buildInfoRow('Email', widget.influencer['email'] ?? 'Not specified'),
+        _buildInfoRow(
+            AppTranslations.getString(context, 'zone'),
+            profile['zone'] ??
+                AppTranslations.getString(context, 'not_specified')),
         const SizedBox(height: 16),
         _buildInfoRow(
-          'Rating',
-          '${widget.influencer['rating'] ?? 0}',
-          isRating: true,
-        ),
+            AppTranslations.getString(context, 'pseudo'),
+            profile['pseudo'] ??
+                AppTranslations.getString(context, 'not_specified')),
+        const SizedBox(height: 16),
+        _buildInfoRow(
+            AppTranslations.getString(context, 'bio'),
+            profile['bio'] ??
+                AppTranslations.getString(context, 'not_specified')),
       ],
     );
   }
@@ -235,7 +431,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildSocialMediaSection() {
+  Widget _buildSocialMediaSection(List<dynamic> socials) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -247,9 +443,9 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
               size: 24,
             ),
             const SizedBox(width: 8),
-            const Text(
-              'Social Media',
-              style: TextStyle(
+            Text(
+              AppTranslations.getString(context, 'social_media'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -258,23 +454,25 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        _buildSocialMediaButton(
-          'Instagram',
-          LucideIcons.instagram,
-          widget.influencer['instagram'],
-        ),
-        const SizedBox(height: 12),
-        _buildSocialMediaButton(
-          'LinkedIn',
-          LucideIcons.linkedin,
-          widget.influencer['linkedin'],
-        ),
-        const SizedBox(height: 12),
-        _buildSocialMediaButton(
-          'Snapchat',
-          LucideIcons.smartphone,
-          widget.influencer['snapchat'],
-        ),
+        if (socials.isEmpty)
+          Text(
+            AppTranslations.getString(context, 'no_social_media_available'),
+            style: const TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 16,
+            ),
+          )
+        else
+          ...socials.map<Widget>((social) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildSocialMediaButton(
+                social['name'] ?? 'Unknown',
+                _getSocialIcon(social['name']),
+                social['link'],
+              ),
+            );
+          }).toList(),
       ],
     );
   }
@@ -329,7 +527,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildReviewsSection() {
+  Widget _buildReviewsSection(List<dynamic> receivedRatings) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -341,9 +539,9 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
               size: 24,
             ),
             const SizedBox(width: 8),
-            const Text(
-              'Reviews',
-              style: TextStyle(
+            Text(
+              AppTranslations.getString(context, 'reviews'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -352,28 +550,34 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        // Sample reviews for design preview
-        _buildReviewCard(
-          'Beauty Salon Pro',
-          'Excellent work! Very professional and creative content. Highly recommend! 💪',
-          '2 hours ago',
-        ),
+        if (receivedRatings.isEmpty)
+          Text(
+            AppTranslations.getString(context, 'no_reviews_available'),
+            style: const TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 16,
+            ),
+          )
+        else
+          ...receivedRatings.map<Widget>((rating) {
+            final salonInfo = rating['ratedBy']?['salonInfo'] ?? {};
+            final salonName = salonInfo['name'] ??
+                AppTranslations.getString(context, 'unknown_salon');
+            final domain = salonInfo['domain'] ??
+                AppTranslations.getString(context, 'unknown_domain');
+            final address = salonInfo['address'] ??
+                AppTranslations.getString(context, 'unknown_address');
+            final createdAt = rating['createdAt'] ?? '';
 
-        const SizedBox(height: 12),
-
-        _buildReviewCard(
-          'Glamour Studio',
-          'Amazing collaboration! The influencer delivered exactly what we needed. ⭐',
-          '1 day ago',
-        ),
-
-        const SizedBox(height: 12),
-
-        _buildReviewCard(
-          'Style & Beauty Co.',
-          'Great communication and timely delivery. Will definitely work together again! ✨',
-          '3 days ago',
-        ),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildReviewCard(
+                salonName,
+                '${AppTranslations.getString(context, 'domain')}: $domain\n${AppTranslations.getString(context, 'address')}: $address',
+                _formatDate(createdAt),
+              ),
+            );
+          }).toList(),
       ],
     );
   }
@@ -515,16 +719,9 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                           },
                           items: const [
                             DropdownMenuItem(
-                                value: 'Discount', child: Text('Discount')),
+                                value: 'percentage', child: Text('Percentage')),
                             DropdownMenuItem(
-                                value: 'Free Service',
-                                child: Text('Free Service')),
-                            DropdownMenuItem(
-                                value: 'Special Offer',
-                                child: Text('Special Offer')),
-                            DropdownMenuItem(
-                                value: 'Package Deal',
-                                child: Text('Package Deal')),
+                                value: 'fixed', child: Text('Fixed Amount')),
                           ],
                         ),
                       ),
@@ -541,7 +738,9 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                       TextFormField(
                         controller: _promotionValueController,
                         decoration: InputDecoration(
-                          hintText: 'XX',
+                          hintText: _selectedPromotionType == 'percentage'
+                              ? '20'
+                              : '100',
                           hintStyle: const TextStyle(color: Colors.white70),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -566,6 +765,75 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                           if (value == null || value.isEmpty) {
                             return AppTranslations.getString(
                                 context, 'please_enter_promotion_value');
+                          }
+
+                          // Parse the value as integer
+                          final intValue = int.tryParse(value);
+                          if (intValue == null) {
+                            return 'Please enter a valid number';
+                          }
+
+                          // Validate based on promotion type
+                          if (_selectedPromotionType == 'percentage') {
+                            if (intValue < 0 || intValue > 100) {
+                              return AppTranslations.getString(
+                                  context, 'percentage_validation');
+                            }
+                          } else if (_selectedPromotionType == 'fixed') {
+                            if (intValue <= 0) {
+                              return AppTranslations.getString(
+                                  context, 'fixed_amount_validation');
+                            }
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        AppTranslations.getString(
+                            context, 'message_to_influencer'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _messageController,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: AppTranslations.getString(
+                              context, 'message_placeholder'),
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppTranslations.getString(
+                                context, 'please_enter_message');
+                          }
+                          if (value.length < 10) {
+                            return AppTranslations.getString(
+                                context, 'message_min_length');
                           }
                           return null;
                         },
@@ -668,23 +936,115 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
       _isLoading = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Get form data
+      final promotionType = _selectedPromotionType!;
+      final promotionValue = int.parse(_promotionValueController.text);
+      final message = _messageController.text;
 
-    if (!mounted) return;
+      print('📝 === CREATING CAMPAIGN INVITE ===');
+      print('📝 Promotion Type: $promotionType');
+      print('📝 Promotion Value: $promotionValue');
+      print('📝 Message: $message');
+      print('📝 Influencer ID: ${widget.influencerId}');
 
-    setState(() {
-      _isLoading = false;
-    });
+      // Call the API
+      final result = await InfluencersService.inviteInfluencer(
+        receiverId: widget.influencerId,
+        promotion: promotionValue,
+        promotionType: promotionType,
+        invitationMessage: message,
+      );
 
-    // Close dialog
-    Navigator.of(context).pop();
+      if (!mounted) return;
 
-    // Show success message
-    TopNotificationService.showSuccess(
-      context: context,
-      message:
-          AppTranslations.getString(context, 'campaign_created_successfully'),
-    );
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Close dialog
+      Navigator.of(context).pop();
+
+      // Show result message
+      if (result['success'] == true) {
+        print('✅ Campaign invite sent successfully');
+        print('📊 Campaign Data: ${result['data']}');
+
+        TopNotificationService.showSuccess(
+          context: context,
+          message: result['message'] ??
+              AppTranslations.getString(
+                  context, 'campaign_created_successfully'),
+        );
+      } else {
+        print('❌ Failed to send campaign invite: ${result['message']}');
+
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to send campaign invite',
+        );
+      }
+    } catch (e) {
+      print('❌ Exception in _createCampaignAndInvite: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Close dialog
+      Navigator.of(context).pop();
+
+      // Show error message
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error sending campaign invite: $e',
+      );
+    }
+  }
+
+  IconData _getSocialIcon(String platform) {
+    switch (platform.toLowerCase()) {
+      case 'instagram':
+        return LucideIcons.instagram;
+      case 'tiktok':
+        return LucideIcons.video;
+      case 'youtube':
+        return LucideIcons.youtube;
+      case 'twitter':
+        return LucideIcons.twitter;
+      case 'facebook':
+        return LucideIcons.facebook;
+      case 'linkedin':
+        return LucideIcons.linkedin;
+      case 'snapchat':
+        return LucideIcons.smartphone;
+      default:
+        return LucideIcons.share2;
+    }
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays > 0) {
+        final days = difference.inDays;
+        return '$days ${days == 1 ? AppTranslations.getString(context, 'day_ago') : AppTranslations.getString(context, 'days_ago')} ago';
+      } else if (difference.inHours > 0) {
+        final hours = difference.inHours;
+        return '$hours ${hours == 1 ? AppTranslations.getString(context, 'hour_ago') : AppTranslations.getString(context, 'hours_ago')} ago';
+      } else if (difference.inMinutes > 0) {
+        final minutes = difference.inMinutes;
+        return '$minutes ${minutes == 1 ? AppTranslations.getString(context, 'minute_ago') : AppTranslations.getString(context, 'minutes_ago')} ago';
+      } else {
+        return AppTranslations.getString(context, 'just_now');
+      }
+    } catch (e) {
+      return AppTranslations.getString(context, 'unknown');
+    }
   }
 }

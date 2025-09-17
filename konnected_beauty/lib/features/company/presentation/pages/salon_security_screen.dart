@@ -24,6 +24,35 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
 
+  // Track if text fields have content for color changes
+  bool _hasCurrentPassword = false;
+  bool _hasNewPassword = false;
+  bool _hasConfirmPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Add listeners to track text changes for color updates
+    _currentPasswordController.addListener(() {
+      setState(() {
+        _hasCurrentPassword = _currentPasswordController.text.isNotEmpty;
+      });
+    });
+
+    _newPasswordController.addListener(() {
+      setState(() {
+        _hasNewPassword = _newPasswordController.text.isNotEmpty;
+      });
+    });
+
+    _confirmPasswordController.addListener(() {
+      setState(() {
+        _hasConfirmPassword = _confirmPasswordController.text.isNotEmpty;
+      });
+    });
+  }
+
   @override
   void dispose() {
     _currentPasswordController.dispose();
@@ -68,6 +97,7 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
                 // Navigate back to settings screen after successful password change
                 Navigator.of(context).pop();
               } else if (state is SalonPasswordError) {
+                // Show only the clean error message (no API response details)
                 TopNotificationService.showError(
                   context: context,
                   message: state.error,
@@ -148,6 +178,7 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           hintText:
               AppTranslations.getString(context, 'enter_current_password'),
           showPassword: _showCurrentPassword,
+          hasText: _hasCurrentPassword,
           onTogglePassword: () {
             setState(() {
               _showCurrentPassword = !_showCurrentPassword;
@@ -162,6 +193,7 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           controller: _newPasswordController,
           hintText: AppTranslations.getString(context, 'set_new_password'),
           showPassword: _showNewPassword,
+          hasText: _hasNewPassword,
           onTogglePassword: () {
             setState(() {
               _showNewPassword = !_showNewPassword;
@@ -176,6 +208,7 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           controller: _confirmPasswordController,
           hintText: AppTranslations.getString(context, 'confirm_new_password'),
           showPassword: _showConfirmPassword,
+          hasText: _hasConfirmPassword,
           onTogglePassword: () {
             setState(() {
               _showConfirmPassword = !_showConfirmPassword;
@@ -195,6 +228,7 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
     required TextEditingController controller,
     required String hintText,
     required bool showPassword,
+    required bool hasText,
     required VoidCallback onTogglePassword,
   }) {
     return Column(
@@ -228,7 +262,9 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
-                color: AppTheme.textSecondaryColor,
+                color: hasText
+                    ? Colors.white.withOpacity(0.7)
+                    : AppTheme.textSecondaryColor,
                 fontSize: 16,
               ),
               prefixIcon: Icon(
@@ -261,6 +297,10 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
       builder: (context, state) {
         final isLoading = state is SalonPasswordChanging;
 
+        // Check if any text field has content to determine button colors
+        final hasAnyText =
+            _hasCurrentPassword || _hasNewPassword || _hasConfirmPassword;
+
         return SizedBox(
           width: double.infinity,
           height: 56,
@@ -268,12 +308,13 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
             onPressed: isLoading ? null : _savePasswordChanges,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.transparentBackground,
-              foregroundColor: AppTheme.textSecondaryColor,
+              foregroundColor:
+                  hasAnyText ? Colors.white : AppTheme.textSecondaryColor,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
                 side: BorderSide(
-                  color: AppTheme.secondaryColor,
+                  color: hasAnyText ? Colors.white : AppTheme.secondaryColor,
                   width: 1,
                 ),
               ),
@@ -291,7 +332,7 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
                 : Text(
                     AppTranslations.getString(context, 'save_changes'),
                     style: TextStyle(
-                      color: AppTheme.border2,
+                      color: hasAnyText ? Colors.white : AppTheme.border2,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

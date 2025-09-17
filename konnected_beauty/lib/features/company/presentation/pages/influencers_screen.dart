@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/influencers/influencers_bloc.dart';
-import '../../../../widgets/common/top_notification_banner.dart';
+import '../../../../core/bloc/influencer_details/influencer_details_bloc.dart';
+import '../../../../core/models/filter_model.dart';
 import 'influencer_details_screen.dart';
 import 'influencers_filter_screen.dart';
 
@@ -22,17 +24,44 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
 
   Timer? _searchDebounceTimer;
 
-  // Filter state
-  int? _currentMinRating;
-  int? _currentMaxRating;
-  String? _currentZone;
-
   @override
   void initState() {
     super.initState();
 
-    // Load influencers on screen initialization
-    context.read<InfluencersBloc>().add(LoadInfluencers());
+    print('🎬 === INFLUENCERS SCREEN INIT ===');
+    print('🎬 Screen initialized, loading influencers...');
+    print('🎬 Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+
+    // Load influencers on screen initialization using filter system
+    final defaultFilters = [
+      FilterModel(
+        key: 'page',
+        value: '1',
+        description: 'Page number',
+        enabled: true,
+        equals: true,
+        uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+      FilterModel(
+        key: 'limit',
+        value: '10',
+        description: 'Items per page',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+      ),
+      FilterModel(
+        key: 'sortOrder',
+        value: 'DESC',
+        description: 'Sort order',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
+      ),
+    ];
+    context
+        .read<InfluencersBloc>()
+        .add(FilterInfluencers(filters: defaultFilters));
 
     // Add search listener with debounce
     searchController.addListener(() => _onSearchChanged(searchController.text));
@@ -56,24 +85,116 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     // Set new timer for debounced search
     _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
-        if (value.isEmpty) {
-          // If search is empty, load all influencers
-          context.read<InfluencersBloc>().add(LoadInfluencers());
-        } else {
-          // Search influencers with current filters
-          final currentState = context.read<InfluencersBloc>().state;
-          if (currentState is InfluencersLoaded) {
-            context.read<InfluencersBloc>().add(SearchInfluencers(
-                  search: value,
-                  zone: currentState.currentZone,
-                  sortOrder: currentState.currentSortOrder,
-                ));
-          } else {
-            context
-                .read<InfluencersBloc>()
-                .add(SearchInfluencers(search: value));
-          }
+        print('🔍 === SEARCH CHANGED ===');
+        print('🔍 Search Value: "$value"');
+
+        // Get current filters from state
+        final currentState = context.read<InfluencersBloc>().state;
+        List<FilterModel> filters = [];
+
+        if (currentState is InfluencersLoaded) {
+          filters = List.from(currentState.currentFilters);
         }
+
+        // Create or update search filter
+        if (value.isEmpty) {
+          // Remove search filter if search is empty and reset to page 1
+          filters.removeWhere((filter) => filter.key == 'search');
+
+          // Reset page to 1 when clearing search
+          final pageFilterIndex =
+              filters.indexWhere((filter) => filter.key == 'page');
+          if (pageFilterIndex != -1) {
+            filters[pageFilterIndex] = filters[pageFilterIndex].copyWith(
+              value: '1',
+              enabled: true,
+            );
+          } else {
+            filters.add(FilterModel(
+              key: 'page',
+              value: '1',
+              description: 'Page number',
+              enabled: true,
+              equals: true,
+              uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+            ));
+          }
+
+          print('🔍 Cleared search, reset to page 1');
+        } else {
+          // Add or update search filter
+          final searchFilterIndex =
+              filters.indexWhere((filter) => filter.key == 'search');
+          if (searchFilterIndex != -1) {
+            filters[searchFilterIndex] = filters[searchFilterIndex].copyWith(
+              value: value,
+              enabled: true,
+            );
+          } else {
+            filters.add(FilterModel(
+              key: 'search',
+              value: value,
+              description: 'Search by name or bio',
+              enabled: true,
+              equals: true,
+              uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+            ));
+          }
+
+          // Reset page to 1 when searching
+          final pageFilterIndex =
+              filters.indexWhere((filter) => filter.key == 'page');
+          if (pageFilterIndex != -1) {
+            filters[pageFilterIndex] = filters[pageFilterIndex].copyWith(
+              value: '1',
+              enabled: true,
+            );
+          } else {
+            filters.add(FilterModel(
+              key: 'page',
+              value: '1',
+              description: 'Page number',
+              enabled: true,
+              equals: true,
+              uuid: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+            ));
+          }
+
+          print('🔍 Added search filter: "$value", reset to page 1');
+        }
+
+        // Ensure we have default filters
+        if (!filters.any((f) => f.key == 'limit' && f.enabled)) {
+          filters.add(FilterModel(
+            key: 'limit',
+            value: '10',
+            description: 'Items per page',
+            enabled: true,
+            equals: true,
+            uuid: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
+          ));
+        }
+
+        if (!filters.any((f) => f.key == 'sortOrder' && f.enabled)) {
+          filters.add(FilterModel(
+            key: 'sortOrder',
+            value: 'DESC',
+            description: 'Sort order',
+            enabled: true,
+            equals: true,
+            uuid: (DateTime.now().millisecondsSinceEpoch + 3).toString(),
+          ));
+        }
+
+        print('🔍 Final filters count: ${filters.length}');
+        for (final filter in filters.where((f) => f.enabled)) {
+          print('🔍   - ${filter.key}: ${filter.value}');
+        }
+
+        // Apply filters using the new filter system
+        context
+            .read<InfluencersBloc>()
+            .add(FilterInfluencers(filters: filters));
       }
     });
   }
@@ -84,51 +205,150 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       // Load more influencers when near the bottom
       final currentState = context.read<InfluencersBloc>().state;
       if (currentState is InfluencersLoaded && currentState.hasMoreData) {
-        context.read<InfluencersBloc>().add(LoadMoreInfluencers(
-              page: currentState.currentPage + 1,
-              search: currentState.currentSearch,
-              zone: currentState.currentZone,
-              sortOrder: currentState.currentSortOrder,
-            ));
+        print('📄 === LOADING MORE INFLUENCERS ===');
+        print('📄 Current Page: ${currentState.currentPage}');
+        print('📄 Total Pages: ${currentState.totalPages}');
+        print('📄 Has More Data: ${currentState.hasMoreData}');
+
+        // Create filters for pagination
+        List<FilterModel> filters = List.from(currentState.currentFilters);
+
+        // Update page filter
+        final pageFilterIndex =
+            filters.indexWhere((filter) => filter.key == 'page');
+        if (pageFilterIndex != -1) {
+          filters[pageFilterIndex] = filters[pageFilterIndex].copyWith(
+            value: (currentState.currentPage + 1).toString(),
+            enabled: true,
+          );
+        } else {
+          filters.add(FilterModel(
+            key: 'page',
+            value: (currentState.currentPage + 1).toString(),
+            description: 'Page number',
+            enabled: true,
+            equals: true,
+            uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+          ));
+        }
+
+        print('📄 Loading page: ${currentState.currentPage + 1}');
+        context
+            .read<InfluencersBloc>()
+            .add(FilterInfluencers(filters: filters));
       }
     }
   }
 
   void _showFilterScreen() {
     final currentState = context.read<InfluencersBloc>().state;
-    int? currentMinRating;
-    int? currentMaxRating;
     String? currentZone;
 
     if (currentState is InfluencersLoaded) {
-      // Extract current filter values from state if available
-      currentZone = currentState.currentZone;
-      // Note: Rating filters are not yet implemented in the API, so we'll use defaults
-      currentMinRating = 1;
-      currentMaxRating = 5;
+      // Extract current zone filter from the current filters
+      final zoneFilter = currentState.currentFilters.firstWhere(
+        (f) => f.key == 'zone' && f.enabled,
+        orElse: () => FilterModel(
+          key: 'zone',
+          value: '',
+          description: 'Location zone',
+          enabled: false,
+          equals: true,
+          uuid: '',
+        ),
+      );
+
+      currentZone = zoneFilter.enabled ? zoneFilter.value : null;
+    } else {
+      // Default values
+      currentZone = null;
     }
+
+    print('🔍 === SHOWING FILTER SCREEN ===');
+    print('🔍 Current Zone: $currentZone');
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => InfluencersFilterScreen(
-        currentMinRating: currentMinRating,
-        currentMaxRating: currentMaxRating,
         currentZone: currentZone,
-        onFilterApplied: (minRating, maxRating, zone) {
-          // Apply the filter by loading influencers with new parameters
-          context.read<InfluencersBloc>().add(LoadInfluencers(
-                zone: zone,
-                sortOrder: 'DESC',
-              ));
+        onFilterApplied: (zone) {
+          print('🔍 Filter applied: Zone=$zone');
+          // This callback is called when filters are applied
+          // The actual filtering is handled by the InfluencersFilterScreen
         },
       ),
     );
   }
 
+  void _clearFilters() {
+    print('🔍 === CLEARING ALL FILTERS ===');
+
+    // Create default filters (no zone filter)
+    List<FilterModel> filters = [
+      FilterModel(
+        key: 'page',
+        value: '1',
+        description: 'Page number',
+        enabled: true,
+        equals: true,
+        uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+      FilterModel(
+        key: 'limit',
+        value: '10',
+        description: 'Items per page',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+      ),
+      FilterModel(
+        key: 'sortOrder',
+        value: 'DESC',
+        description: 'Sort order',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
+      ),
+    ];
+
+    // Clear search
+    searchController.clear();
+
+    // Apply filters to reload without any zone filter
+    context.read<InfluencersBloc>().add(FilterInfluencers(filters: filters));
+
+    print('🔍 All filters cleared');
+  }
+
+  bool _hasActiveZoneFilter(InfluencersState state) {
+    if (state is InfluencersLoaded) {
+      // Check if there's an active zone filter only
+      final zoneFilter = state.currentFilters.firstWhere(
+        (f) => f.key == 'zone' && f.enabled,
+        orElse: () => FilterModel(
+          key: 'zone',
+          value: '',
+          description: 'Location zone',
+          enabled: false,
+          equals: true,
+          uuid: '',
+        ),
+      );
+
+      // Only show reset button when zone filter is active
+      return zoneFilter.enabled;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    print('🎨 === INFLUENCERS SCREEN BUILD ===');
+    print('🎨 Screen is being built...');
+    print('🎨 Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+
     return BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
         return Container(
@@ -147,19 +367,19 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
             body: SafeArea(
               child: Column(
                 children: [
-                  // Header Section
-                  _buildHeader(),
+                  // Header Section with BLoC state management
+                  BlocBuilder<InfluencersBloc, InfluencersState>(
+                    builder: (context, state) {
+                      return _buildHeader(state);
+                    },
+                  ),
 
                   // Main Content
                   Expanded(
                     child: BlocBuilder<InfluencersBloc, InfluencersState>(
                       builder: (context, state) {
                         if (state is InfluencersLoading) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: AppTheme.accentColor,
-                            ),
-                          );
+                          return _buildShimmerList();
                         } else if (state is InfluencersError) {
                           return Center(
                             child: Column(
@@ -261,7 +481,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(InfluencersState state) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -323,7 +543,9 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.transparentBackground,
+                  color: _hasActiveZoneFilter(state)
+                      ? AppTheme.textPrimaryColor
+                      : AppTheme.transparentBackground,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: AppTheme.textPrimaryColor,
@@ -331,14 +553,38 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                   ),
                 ),
                 child: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.filter_list,
-                    color: AppTheme.textPrimaryColor,
+                    color: _hasActiveZoneFilter(state)
+                        ? AppTheme.primaryColor
+                        : AppTheme.textPrimaryColor,
                     size: 20,
                   ),
                   onPressed: _showFilterScreen,
                 ),
               ),
+              if (_hasActiveZoneFilter(state)) ...[
+                const SizedBox(width: 8),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.red.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.clear,
+                      color: Colors.red,
+                    ),
+                    onPressed: _clearFilters,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -366,13 +612,21 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
   Widget _buildInfluencerCard(Map<String, dynamic> influencer) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => InfluencerDetailsScreen(
-              influencer: influencer,
+        final influencerId = influencer['id'];
+        if (influencerId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => BlocProvider(
+                create: (context) => InfluencerDetailsBloc(),
+                child: InfluencerDetailsScreen(
+                  influencerId: influencerId,
+                ),
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          print('❌ Influencer ID is null, cannot navigate to detail screen');
+        }
       },
       child: Container(
         width: double.infinity,
@@ -449,22 +703,47 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                       ),
                       const SizedBox(height: 4),
 
-                      // Zone
+                      // Rating + Zone Row
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Icon(
-                            Icons.location_on,
-                            color: AppTheme.textSecondaryColor,
-                            size: 16,
+                          // Rating (left side)
+                          Row(
+                            children: [
+                              Text(
+                                '${influencer['averageRating']?.toStringAsFixed(1) ?? '0.0'}',
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.star,
+                                color: AppTheme.textSecondaryColor,
+                                size: 16,
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            influencer['profile']?['zone'] ?? 'Unknown',
-                            style: const TextStyle(
-                              color: AppTheme.textPrimaryColor,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                            ),
+                          // Zone (right side)
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on,
+                                color: AppTheme.textSecondaryColor,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                influencer['profile']?['zone'] ?? 'Unknown',
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -536,6 +815,96 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[600]!,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 5, // Show 5 shimmer items
+        itemBuilder: (context, index) {
+          return _buildShimmerInfluencerCard();
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmerInfluencerCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor),
+      ),
+      child: Row(
+        children: [
+          // Shimmer avatar
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Shimmer content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name
+                Container(
+                  height: 18,
+                  width: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Bio
+                Container(
+                  height: 14,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Zone and rating row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      height: 12,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    Container(
+                      height: 12,
+                      width: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

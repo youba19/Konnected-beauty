@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
@@ -10,6 +11,7 @@ import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/services/storage/token_storage_service.dart';
 import '../../../../core/services/api/salon_services_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../auth/presentation/pages/welcome_screen.dart';
 import 'create_service_screen.dart';
@@ -735,14 +737,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     return BlocBuilder<SalonServicesBloc, SalonServicesState>(
       builder: (context, state) {
         if (state is SalonServicesLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(
-                color: AppTheme.textPrimaryColor,
-              ),
-            ),
-          );
+          return _buildShimmerList();
         } else if (state is SalonServicesLoaded) {
           if (state.services.isEmpty) {
             return Center(
@@ -1232,19 +1227,19 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
           child: Row(
             children: [
               Expanded(
-                  child: _buildNavItem(0, Icons.list_alt,
+                  child: _buildNavItem(0, LucideIcons.clipboardList,
                       AppTranslations.getString(context, 'services'))),
               Expanded(
-                  child: _buildNavItem(1, Icons.campaign,
+                  child: _buildNavItem(1, LucideIcons.ticket,
                       AppTranslations.getString(context, 'campaigns'))),
               Expanded(
-                  child: _buildNavItem(2, Icons.account_balance_wallet,
+                  child: _buildNavItem(2, LucideIcons.wallet,
                       AppTranslations.getString(context, 'wallet'))),
               Expanded(
-                  child: _buildNavItem(3, Icons.people,
+                  child: _buildNavItem(3, LucideIcons.users,
                       AppTranslations.getString(context, 'influencers'))),
               Expanded(
-                  child: _buildNavItem(4, Icons.settings,
+                  child: _buildNavItem(4, LucideIcons.settings2,
                       AppTranslations.getString(context, 'settings'))),
             ],
           ),
@@ -1420,6 +1415,105 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     TopNotificationService.showInfo(
       context: context,
       message: AppTranslations.getString(context, 'qr_scanning_coming_soon'),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[600]!,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 5, // Show 5 shimmer items
+        itemBuilder: (context, index) {
+          return _buildShimmerServiceCard();
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmerServiceCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Service name and price row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Service name shimmer
+              Container(
+                height: 20,
+                width: 150,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              // Price shimmer
+              Container(
+                height: 18,
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Description shimmer
+          Container(
+            height: 14,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 14,
+            width: 200,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Action buttons row shimmer
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Edit button shimmer
+              Container(
+                height: 36,
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              // Delete button shimmer
+              Container(
+                height: 36,
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

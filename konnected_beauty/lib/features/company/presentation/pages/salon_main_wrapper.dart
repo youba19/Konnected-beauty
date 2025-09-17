@@ -111,27 +111,41 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: IndexedStack(
-          index: selectedIndex,
-          children: [
-            // Services Tab
-            SalonHomeScreen(
-              showDeleteSuccess: _showDeleteSuccess,
-            ),
-            // Campaigns Tab
-            const CampaignsScreen(),
-            // Wallet Tab
-            const Center(
-              child: Text(
-                'Wallet Screen - Coming Soon',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-            // Influencers Tab
-            const InfluencersScreen(),
-            // Settings Tab
-            const SalonSettingsScreen(),
-          ],
+        body: Builder(
+          builder: (context) {
+            print('🏗️ === INDEXED STACK BUILD ===');
+            print('🏗️ Selected Index: $selectedIndex');
+            print('🏗️ Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+
+            // Force rebuild of the InfluencersScreen when index changes to 3
+            if (selectedIndex == 3) {
+              print('🎯 === FORCING INFLUENCERS SCREEN REBUILD ===');
+              return const InfluencersScreen();
+            }
+
+            return IndexedStack(
+              index: selectedIndex,
+              children: [
+                // Services Tab
+                SalonHomeScreen(
+                  showDeleteSuccess: _showDeleteSuccess,
+                ),
+                // Campaigns Tab
+                const CampaignsScreen(),
+                // Wallet Tab
+                const Center(
+                  child: Text(
+                    'Wallet Screen - Coming Soon',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+                // Influencers Tab
+                const InfluencersScreen(),
+                // Settings Tab
+                const SalonSettingsScreen(),
+              ],
+            );
+          },
         ),
         bottomNavigationBar: _buildBottomNavigation(),
         floatingActionButton: _buildFloatingActionButton(),
@@ -159,7 +173,7 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
                   child: _buildNavItem(0, LucideIcons.clipboardList,
                       AppTranslations.getString(context, 'services'))),
               Expanded(
-                  child: _buildNavItem(1, LucideIcons.trendingUp,
+                  child: _buildNavItem(1, LucideIcons.badgePercent,
                       AppTranslations.getString(context, 'campaigns'))),
               Expanded(
                   child: _buildNavItem(2, LucideIcons.wallet,
@@ -168,7 +182,7 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
                   child: _buildNavItem(3, LucideIcons.users,
                       AppTranslations.getString(context, 'influencers'))),
               Expanded(
-                  child: _buildNavItem(4, LucideIcons.settings,
+                  child: _buildNavItem(4, LucideIcons.settings2,
                       AppTranslations.getString(context, 'settings'))),
             ],
           ),
@@ -181,9 +195,14 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
     final isSelected = selectedIndex == index;
     return GestureDetector(
       onTap: () {
+        print('🎯 === NAVIGATION TAP ===');
+        print('🎯 Tapped on tab: $label (index: $index)');
+        print('🎯 Previous selected index: $selectedIndex');
         setState(() {
           selectedIndex = index;
         });
+        print('🎯 New selected index: $selectedIndex');
+        print('🎯 === END NAVIGATION TAP ===');
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/influencers_service.dart';
+import '../../models/filter_model.dart';
 
 // Events
 abstract class InfluencersEvent {}
@@ -66,6 +67,14 @@ class RefreshInfluencers extends InfluencersEvent {
   });
 }
 
+class FilterInfluencers extends InfluencersEvent {
+  final List<FilterModel> filters;
+
+  FilterInfluencers({
+    required this.filters,
+  });
+}
+
 // States
 abstract class InfluencersState {}
 
@@ -82,6 +91,7 @@ class InfluencersLoaded extends InfluencersState {
   final String? currentSearch;
   final String? currentZone;
   final String? currentSortOrder;
+  final List<FilterModel> currentFilters;
 
   InfluencersLoaded({
     required this.influencers,
@@ -92,6 +102,7 @@ class InfluencersLoaded extends InfluencersState {
     this.currentSearch,
     this.currentZone,
     this.currentSortOrder,
+    this.currentFilters = const [],
   });
 }
 
@@ -112,12 +123,17 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
     on<LoadMoreInfluencers>(_onLoadMoreInfluencers);
     on<SearchInfluencers>(_onSearchInfluencers);
     on<RefreshInfluencers>(_onRefreshInfluencers);
+    on<FilterInfluencers>(_onFilterInfluencers);
   }
 
   Future<void> _onLoadInfluencers(
     LoadInfluencers event,
     Emitter<InfluencersState> emit,
   ) async {
+    print('🎯 === INFLUENCERS BLOC: LOAD INFLUENCERS EVENT ===');
+    print('🎯 Event received: LoadInfluencers');
+    print('🎯 Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+
     emit(InfluencersLoading());
 
     try {
@@ -161,6 +177,7 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
           currentSearch: event.search,
           currentZone: event.zone,
           currentSortOrder: event.sortOrder,
+          currentFilters: const [],
         ));
       } else {
         print('❌ Failed to load influencers: ${result['message']}');
@@ -231,6 +248,7 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
             currentSearch: event.search,
             currentZone: event.zone,
             currentSortOrder: event.sortOrder,
+            currentFilters: const [],
           ));
         }
       } else {
@@ -292,6 +310,7 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
           currentSearch: event.search,
           currentZone: event.zone,
           currentSortOrder: event.sortOrder,
+          currentFilters: const [],
         ));
       } else {
         print('❌ Influencers search failed: ${result['message']}');
@@ -354,6 +373,7 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
           currentSearch: event.search,
           currentZone: event.zone,
           currentSortOrder: event.sortOrder,
+          currentFilters: const [],
         ));
       } else {
         print('❌ Failed to refresh influencers: ${result['message']}');
@@ -366,6 +386,190 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
       print('❌ Exception in _onRefreshInfluencers: $e');
       emit(InfluencersError(
         error: 'Refresh error: ${e.toString()}',
+      ));
+    }
+  }
+
+  Future<void> _onFilterInfluencers(
+    FilterInfluencers event,
+    Emitter<InfluencersState> emit,
+  ) async {
+    print('🔍 === FILTERING INFLUENCERS ===');
+    print('🔍 Filters Count: ${event.filters.length}');
+
+    // Log enabled filters
+    final enabledFilters = event.filters.where((f) => f.enabled).toList();
+    print('🔍 Enabled Filters: ${enabledFilters.length}');
+    for (final filter in enabledFilters) {
+      print('🔍   - ${filter.key}: ${filter.value}');
+    }
+
+    // Check if this is a pagination request (page > 1)
+    final pageFilter = event.filters.firstWhere(
+      (f) => f.key == 'page' && f.enabled,
+      orElse: () => FilterModel(
+        key: 'page',
+        value: '1',
+        description: 'Page number',
+        enabled: true,
+        equals: true,
+        uuid: '',
+      ),
+    );
+    final currentPage = int.tryParse(pageFilter.value) ?? 1;
+    final isPagination = currentPage > 1;
+
+    // If it's pagination, don't show loading state to avoid UI flicker
+    if (!isPagination) {
+      emit(InfluencersLoading());
+    }
+
+    try {
+      final result = await InfluencersService.getInfluencersWithFilters(
+        filters: event.filters,
+      );
+
+      if (result['success']) {
+        final newInfluencers =
+            List<Map<String, dynamic>>.from(result['data'] ?? []);
+        final resultCurrentPage =
+            int.tryParse(result['currentPage']?.toString() ?? '1') ?? 1;
+        final totalPages =
+            int.tryParse(result['totalPages']?.toString() ?? '1') ?? 1;
+        final total = int.tryParse(result['total']?.toString() ?? '0') ?? 0;
+        final hasMoreData = resultCurrentPage < totalPages;
+
+        print('✅ Influencers filtered successfully');
+        print('📊 Total: $total');
+        print('📄 Current Page: $resultCurrentPage');
+        print('📄 Total Pages: $totalPages');
+        print('🔄 Has More Data: $hasMoreData');
+
+        // If this is pagination, append to existing list
+        List<Map<String, dynamic>> finalInfluencers;
+        if (isPagination) {
+          final currentState = state;
+          if (currentState is InfluencersLoaded) {
+            finalInfluencers = List.from(currentState.influencers)
+              ..addAll(newInfluencers);
+            print(
+                '📄 Appending ${newInfluencers.length} new influencers to existing ${currentState.influencers.length}');
+          } else {
+            finalInfluencers = newInfluencers;
+          }
+        } else {
+          finalInfluencers = newInfluencers;
+        }
+
+        // Apply client-side search filtering if search parameter exists
+        final searchFilter = event.filters.firstWhere(
+          (f) => f.key == 'search' && f.enabled,
+          orElse: () => FilterModel(
+            key: 'search',
+            value: '',
+            description: 'Search by name or bio',
+            enabled: false,
+            equals: true,
+            uuid: '',
+          ),
+        );
+
+        if (searchFilter.enabled && searchFilter.value.isNotEmpty) {
+          print(
+              '🔍 Applying client-side search filter: "${searchFilter.value}"');
+          final searchTerm = searchFilter.value.toLowerCase();
+          finalInfluencers = finalInfluencers.where((influencer) {
+            final pseudo =
+                influencer['profile']?['pseudo']?.toString().toLowerCase() ??
+                    '';
+            final bio =
+                influencer['profile']?['bio']?.toString().toLowerCase() ?? '';
+            final zone =
+                influencer['profile']?['zone']?.toString().toLowerCase() ?? '';
+
+            return pseudo.contains(searchTerm) ||
+                bio.contains(searchTerm) ||
+                zone.contains(searchTerm);
+          }).toList();
+          print(
+              '🔍 After search filter: ${finalInfluencers.length} influencers');
+        }
+
+        // Apply zone filter
+        print('🔍 === CHECKING FOR ZONE FILTER ===');
+        print('🔍 Total filters received: ${event.filters.length}');
+        for (final filter in event.filters) {
+          print(
+              '🔍 Filter: ${filter.key} = ${filter.value} (enabled: ${filter.enabled})');
+        }
+
+        // Debug: Show available zones in the data
+        print('🔍 Available zones in current data:');
+        final availableZones = <String>{};
+        for (final influencer in finalInfluencers) {
+          final zone = influencer['profile']?['zone']?.toString() ?? 'No zone';
+          availableZones.add(zone);
+        }
+        print('🔍 Zones: ${availableZones.toList()}');
+
+        final zoneFilter = event.filters.firstWhere(
+          (f) => f.key == 'zone' && f.enabled,
+          orElse: () => FilterModel(
+            key: 'zone',
+            value: '',
+            description: 'Location zone',
+            enabled: false,
+            equals: true,
+            uuid: '',
+          ),
+        );
+
+        print(
+            '🔍 Zone filter found: enabled=${zoneFilter.enabled}, value="${zoneFilter.value}"');
+
+        if (zoneFilter.enabled && zoneFilter.value.isNotEmpty) {
+          print('🔍 Applying client-side zone filter: "${zoneFilter.value}"');
+          final zoneTerm = zoneFilter.value.toLowerCase();
+          print('🔍 Zone term for filtering: "$zoneTerm"');
+          print(
+              '🔍 Influencers before zone filter: ${finalInfluencers.length}');
+
+          finalInfluencers = finalInfluencers.where((influencer) {
+            final zone =
+                influencer['profile']?['zone']?.toString().toLowerCase() ?? '';
+            final matches = zone.contains(zoneTerm);
+            if (matches) {
+              print(
+                  '🔍 ✅ Match found: ${influencer['profile']?['pseudo']} in zone "$zone"');
+            }
+            return matches;
+          }).toList();
+          print('🔍 After zone filter: ${finalInfluencers.length} influencers');
+        } else {
+          print(
+              '🔍 No zone filter applied (enabled: ${zoneFilter.enabled}, value: "${zoneFilter.value}")');
+        }
+        print('🔍 === END ZONE FILTER CHECK ===');
+
+        emit(InfluencersLoaded(
+          influencers: finalInfluencers,
+          currentPage: resultCurrentPage,
+          totalPages: totalPages,
+          total: total,
+          hasMoreData: hasMoreData,
+          currentFilters: event.filters,
+        ));
+      } else {
+        print('❌ Failed to filter influencers: ${result['message']}');
+        emit(InfluencersError(
+          error: result['message'] ?? 'Failed to filter influencers',
+          details: result['errorDetails']?.toString(),
+        ));
+      }
+    } catch (e) {
+      print('❌ Exception in _onFilterInfluencers: $e');
+      emit(InfluencersError(
+        error: 'Filter error: ${e.toString()}',
       ));
     }
   }

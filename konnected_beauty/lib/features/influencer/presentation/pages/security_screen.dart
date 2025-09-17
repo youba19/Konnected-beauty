@@ -55,6 +55,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           // Navigate back to profile screen after successful password change
           Navigator.of(context).pop();
         } else if (state is PasswordChangeError) {
+          // Show only the clean error message (no API response details)
           TopNotificationService.showError(
             context: context,
             message: state.error,

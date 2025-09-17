@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
 
@@ -403,7 +404,7 @@ class InfluencerAuthService {
     required String pseudo,
     required String bio,
     required String zone,
-    String? profilePicture,
+    File? profilePicture,
   }) async {
     print('🔐 === ADD PROFILE DEBUG ===');
     print('🔗 URL: $baseUrl/influencer/add-profile');
@@ -506,33 +507,29 @@ class InfluencerAuthService {
       }
 
       final uri = Uri.parse('$baseUrl/influencer/add-profile');
+
+      // Create multipart request for file upload
       final request = http.MultipartRequest('POST', uri);
 
-      // Only set Authorization here; let http set Content-Type with boundary
+      // Set authorization header
       if (accessToken != null && accessToken.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $accessToken';
         print(
             '🔐 Authorization header set: Bearer ${accessToken.substring(0, 20)}...');
-        print(
-            '🔐 Full authorization header: ${request.headers['Authorization']}');
       } else {
         print('❌ No access token available for authorization header');
-        print('❌ Access token: ${accessToken ?? 'NULL'}');
       }
 
-      // Add text fields
+      // Add text fields as form data
       request.fields['pseudo'] = pseudo;
       request.fields['bio'] = bio;
       request.fields['zone'] = zone;
 
-      // Attach profile picture if provided
+      // Add profile picture if provided
       if (profilePicture != null) {
         try {
-          final file = File(profilePicture);
-          if (await file.exists()) {
-            final stream = http.ByteStream(file.openRead());
-            final length = await file.length();
-            final filename = profilePicture.split('/').last;
+          if (await profilePicture.exists()) {
+            final filename = profilePicture.path.split('/').last;
 
             // Validate file type - only allow image files
             final validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
@@ -545,6 +542,13 @@ class InfluencerAuthService {
                   '❌ Invalid file type: $filename. Only JPG, PNG, GIF, WEBP are allowed.');
               print('❌ File extension: $fileExtension');
             } else {
+              print(
+                  '📁 File: $filename, Size: ${await profilePicture.length()} bytes');
+
+              // Create multipart file with proper content type
+              final stream = http.ByteStream(profilePicture.openRead());
+              final length = await profilePicture.length();
+
               // Determine MIME type based on file extension
               String mimeType = 'image/jpeg'; // default
               if (fileExtension.endsWith('.png')) {
@@ -558,13 +562,12 @@ class InfluencerAuthService {
                 mimeType = 'image/webp';
               }
 
-              print('📁 File: $filename, MIME: $mimeType, Size: $length bytes');
-
               final multipartFile = http.MultipartFile(
                 'profilePicture',
                 stream,
                 length,
                 filename: filename,
+                contentType: MediaType.parse(mimeType), // ✅ Add content type
               );
               request.files.add(multipartFile);
             }
@@ -579,8 +582,8 @@ class InfluencerAuthService {
       print('📦 Request fields: ${request.fields}');
       print('📁 Request files: ${request.files.length}');
       print('🔐 Request headers: ${request.headers}');
-      print('🔐 Authorization header: ${request.headers['Authorization']}');
 
+      // Send multipart request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
@@ -744,7 +747,7 @@ class InfluencerAuthService {
       print('🔑 Access Token: ${accessToken != null ? 'Present' : 'Missing'}');
       print('🔑 Token Length: ${accessToken?.length ?? 0}');
       print(
-          '🔑 Token Preview: ${accessToken != null ? '${accessToken!.substring(0, 20)}...' : 'NULL'}');
+          '🔑 Token Preview: ${accessToken != null ? '${accessToken.substring(0, 20)}...' : 'NULL'}');
 
       // Also check refresh token
       final refreshToken = await TokenStorageService.getRefreshToken();
@@ -969,9 +972,6 @@ class InfluencerAuthService {
         'confirmPassword': confirmPassword,
       };
 
-      if (resetToken != null) {
-        requestBody['resetToken'] = resetToken;
-      }
       if (email != null) {
         requestBody['email'] = email;
       }
@@ -985,7 +985,11 @@ class InfluencerAuthService {
       if (resetToken != null) {
         headers['Authorization'] = 'Bearer $resetToken';
         print('🔑 Adding Authorization header with reset token');
+        print('🔑 Reset Token Preview: ${resetToken.substring(0, 20)}...');
       }
+
+      print('📤 Request Headers: $headers');
+      print('📤 Request Body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/reset-password'),
@@ -1078,6 +1082,76 @@ class InfluencerAuthService {
         'success': false,
         'message': 'Network error: ${e.toString()}',
         'statusCode': 0,
+      };
+    }
+  }
+
+  /// Check if influencer registration is complete
+  static Future<Map<String, dynamic>> checkRegistrationComplete() async {
+    try {
+      print('🔍 === CHECKING INFLUENCER REGISTRATION COMPLETION ===');
+
+      // First check if profile exists
+      final profileResponse = await getProfile();
+      if (!profileResponse['success']) {
+        print('❌ Profile not found or incomplete');
+        return {
+          'success': false,
+          'isComplete': false,
+          'message': 'Profile not found',
+          'hasProfile': false,
+          'hasSocials': false,
+        };
+      }
+
+      // Check if socials exist
+      final socialsResponse = await getSocials();
+      if (!socialsResponse['success']) {
+        print('❌ Socials not found or incomplete');
+        return {
+          'success': false,
+          'isComplete': false,
+          'message': 'Socials not found',
+          'hasProfile': true,
+          'hasSocials': false,
+        };
+      }
+
+      // Check if both profile and socials have data
+      final profileData = profileResponse['data'];
+      final socialsData = socialsResponse['data'];
+
+      final hasProfileData = profileData != null &&
+          profileData['pseudo'] != null &&
+          profileData['bio'] != null &&
+          profileData['zone'] != null;
+
+      final hasSocialsData =
+          socialsData != null && socialsData is List && socialsData.isNotEmpty;
+
+      final isComplete = hasProfileData && hasSocialsData;
+
+      print('✅ Registration check complete');
+      print('📊 Has Profile Data: $hasProfileData');
+      print('📊 Has Socials Data: $hasSocialsData');
+      print('📊 Is Complete: $isComplete');
+
+      return {
+        'success': true,
+        'isComplete': isComplete,
+        'message':
+            isComplete ? 'Registration complete' : 'Registration incomplete',
+        'hasProfile': hasProfileData,
+        'hasSocials': hasSocialsData,
+      };
+    } catch (e) {
+      print('❌ Exception in checkRegistrationComplete: $e');
+      return {
+        'success': false,
+        'isComplete': false,
+        'message': 'Network error: ${e.toString()}',
+        'hasProfile': false,
+        'hasSocials': false,
       };
     }
   }
@@ -1257,9 +1331,29 @@ class InfluencerAuthService {
         print('❌ Password change failed');
         print('📊 Error Response: $responseData');
 
+        // Extract clean error message from response
+        String cleanErrorMessage = 'Failed to change password';
+
+        if (responseData['message'] != null) {
+          final messageData = responseData['message'];
+
+          if (messageData is List && messageData.isNotEmpty) {
+            // Handle array of error messages
+            cleanErrorMessage = messageData.join(', ');
+          } else if (messageData is String) {
+            // Handle single string message
+            cleanErrorMessage = messageData;
+          } else {
+            // Fallback for other formats
+            cleanErrorMessage = messageData.toString();
+          }
+        }
+
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Failed to change password',
+          'message': cleanErrorMessage,
+          'details': responseData
+              .toString(), // Include full error response for debugging
           'statusCode': response.statusCode,
         };
       }
@@ -1268,6 +1362,7 @@ class InfluencerAuthService {
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',
+        'details': e.toString(),
         'statusCode': 0,
       };
     }

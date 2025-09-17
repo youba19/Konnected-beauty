@@ -13,6 +13,7 @@ import '../../../../core/bloc/salon_info/salon_info_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
+import 'image_preview_screen.dart';
 
 class SalonInformationScreen extends StatefulWidget {
   const SalonInformationScreen({super.key});
@@ -311,6 +312,25 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
       // Force reload of data to get the latest images
       context.read<SalonInfoBloc>().add(LoadAllSalonData());
     });
+  }
+
+  void _previewImages(int initialIndex) {
+    // Combine all images (existing + new) for preview
+    List<File> allImages = [];
+    allImages.addAll(_existingPictureFiles);
+    allImages.addAll(_uploadedImages);
+
+    if (allImages.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ImagePreviewScreen(
+            images: allImages,
+            initialIndex: initialIndex,
+            imageData: _existingPictureData,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -924,7 +944,6 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                 // Determine if this is an existing picture or new image
                 if (index < _existingPictureFiles.length) {
                   // Existing picture file (already converted)
-                  final existingFile = _existingPictureFiles[index];
                   final pictureData = _existingPictureData[index];
 
                   // Extract meaningful name from original URL or use generic name
@@ -943,43 +962,47 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                     }
                   }
 
-                  return Container(
-                    width: 120, // Fixed width for consistent size
-                    height: 32, // Fixed height for consistent size
-                    margin: const EdgeInsets.only(right: 12),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.borderColor, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            imageName,
-                            style: const TextStyle(
-                              color: AppTheme.secondaryColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                  return GestureDetector(
+                    onTap: () => _previewImages(index),
+                    child: Container(
+                      width: 120, // Fixed width for consistent size
+                      height: 32, // Fixed height for consistent size
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                        border:
+                            Border.all(color: AppTheme.borderColor, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              imageName,
+                              style: const TextStyle(
+                                color: AppTheme.secondaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow
+                                  .ellipsis, // Add ... when text is too long
+                              maxLines: 1, // Limit to single line
                             ),
-                            overflow: TextOverflow
-                                .ellipsis, // Add ... when text is too long
-                            maxLines: 1, // Limit to single line
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => _removeExistingPicture(index),
-                          child: const Icon(
-                            LucideIcons.trash2,
-                            color: Colors.red,
-                            size: 16,
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _removeExistingPicture(index),
+                            child: const Icon(
+                              LucideIcons.trash2,
+                              color: Colors.red,
+                              size: 16,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 } else {
@@ -1000,43 +1023,47 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                     imageName = fileName;
                   }
 
-                  return Container(
-                    width: 120, // Fixed width for consistent size
-                    height: 32, // Fixed height for consistent size
-                    margin: const EdgeInsets.only(right: 12),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.borderColor, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            imageName,
-                            style: const TextStyle(
-                              color: AppTheme.primaryColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                  return GestureDetector(
+                    onTap: () => _previewImages(index),
+                    child: Container(
+                      width: 120, // Fixed width for consistent size
+                      height: 32, // Fixed height for consistent size
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border:
+                            Border.all(color: AppTheme.borderColor, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              imageName,
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow
+                                  .ellipsis, // Add ... when text is too long
+                              maxLines: 1, // Limit to single line
                             ),
-                            overflow: TextOverflow
-                                .ellipsis, // Add ... when text is too long
-                            maxLines: 1, // Limit to single line
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => _removeImage(newImageIndex),
-                          child: const Icon(
-                            LucideIcons.trash2,
-                            color: Colors.red,
-                            size: 16,
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _removeImage(newImageIndex),
+                            child: const Icon(
+                              LucideIcons.trash2,
+                              color: Colors.red,
+                              size: 16,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 }

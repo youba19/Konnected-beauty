@@ -2,21 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/influencers/influencers_bloc.dart';
-import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_dropdown.dart';
+import '../../../../core/models/filter_model.dart';
 
 class InfluencersFilterScreen extends StatefulWidget {
-  final int? currentMinRating;
-  final int? currentMaxRating;
   final String? currentZone;
-  final Function(int? minRating, int? maxRating, String? zone)? onFilterApplied;
+  final Function(String? zone)? onFilterApplied;
 
   const InfluencersFilterScreen({
     super.key,
-    this.currentMinRating,
-    this.currentMaxRating,
     this.currentZone,
     this.onFilterApplied,
   });
@@ -28,123 +22,174 @@ class InfluencersFilterScreen extends StatefulWidget {
 
 class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController minRatingController = TextEditingController();
-  final TextEditingController maxRatingController = TextEditingController();
   String? selectedZone;
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
 
-  // French departments (départements) for zone selection
-  final List<String> frenchDepartments = [
-    'Ain (01)',
-    'Aisne (02)',
-    'Allier (03)',
-    'Alpes-de-Haute-Provence (04)',
-    'Hautes-Alpes (05)',
-    'Alpes-Maritimes (06)',
-    'Ardèche (07)',
-    'Ardennes (08)',
-    'Ariège (09)',
-    'Aube (10)',
-    'Aude (11)',
-    'Aveyron (12)',
-    'Bouches-du-Rhône (13)',
-    'Calvados (14)',
-    'Cantal (15)',
-    'Charente (16)',
-    'Charente-Maritime (17)',
-    'Cher (18)',
-    'Corrèze (19)',
-    'Corse (2A)',
-    'Côte-d\'Or (21)',
-    'Côtes-d\'Armor (22)',
-    'Creuse (23)',
-    'Dordogne (24)',
-    'Doubs (25)',
-    'Drôme (26)',
-    'Eure (27)',
-    'Eure-et-Loir (28)',
-    'Finistère (29)',
-    'Gard (30)',
-    'Haute-Garonne (31)',
-    'Gers (32)',
-    'Gironde (33)',
-    'Hérault (34)',
-    'Ille-et-Vilaine (35)',
-    'Indre (36)',
-    'Indre-et-Loire (37)',
-    'Isère (38)',
-    'Jura (39)',
-    'Landes (40)',
-    'Loir-et-Cher (41)',
-    'Loire (42)',
-    'Haute-Loire (43)',
-    'Loire-Atlantique (44)',
-    'Loiret (45)',
-    'Lot (46)',
-    'Lot-et-Garonne (47)',
-    'Lozère (48)',
-    'Maine-et-Loire (49)',
-    'Manche (50)',
-    'Marne (51)',
-    'Haute-Marne (52)',
-    'Mayenne (53)',
-    'Meurthe-et-Moselle (54)',
-    'Meuse (55)',
-    'Morbihan (56)',
-    'Moselle (57)',
-    'Nièvre (58)',
-    'Nord (59)',
-    'Oise (60)',
-    'Orne (61)',
-    'Pas-de-Calais (62)',
-    'Puy-de-Dôme (63)',
-    'Pyrénées-Atlantiques (64)',
-    'Hautes-Pyrénées (65)',
-    'Pyrénées-Orientales (66)',
-    'Bas-Rhin (67)',
-    'Haut-Rhin (68)',
-    'Rhône (69)',
-    'Haute-Saône (70)',
-    'Saône-et-Loire (71)',
-    'Sarthe (72)',
-    'Savoie (73)',
-    'Haute-Savoie (74)',
-    'Paris (75)',
-    'Seine-Maritime (76)',
-    'Seine-et-Marne (77)',
-    'Yvelines (78)',
-    'Deux-Sèvres (79)',
-    'Somme (80)',
-    'Tarn (81)',
-    'Tarn-et-Garonne (82)',
-    'Var (83)',
-    'Vaucluse (84)',
-    'Vendée (85)',
-    'Vienne (86)',
-    'Haute-Vienne (87)',
-    'Vosges (88)',
-    'Yonne (89)',
-    'Territoire de Belfort (90)',
-    'Essonne (91)',
-    'Hauts-de-Seine (92)',
-    'Seine-Saint-Denis (93)',
-    'Val-de-Marne (94)',
-    'Val-d\'Oise (95)',
-    'Guadeloupe (971)',
-    'Martinique (972)',
-    'Guyane (973)',
-    'La Réunion (974)',
-    'Mayotte (976)'
+  // Zones used in influencer profile (same as personal_information_screen.dart)
+  final List<String> zones = [
+    // Île-de-France
+    'Paris',
+    'Boulogne-Billancourt',
+    'Saint-Denis',
+    'Argenteuil',
+    'Montreuil',
+    'Nanterre',
+    'Vitry-sur-Seine',
+    'Créteil',
+    'Aulnay-sous-Bois',
+    'Versailles',
+
+    // Auvergne-Rhône-Alpes
+    'Lyon',
+    'Grenoble',
+    'Saint-Étienne',
+    'Annecy',
+    'Chambéry',
+    'Clermont-Ferrand',
+    'Saint-Priest',
+    'Vaulx-en-Velin',
+    'Villeurbanne',
+    'Le Puy-en-Velay',
+
+    // Provence-Alpes-Côte d'Azur
+    'Marseille',
+    'Nice',
+    'Toulon',
+    'Aix-en-Provence',
+    'Avignon',
+    'Cannes',
+    'Antibes',
+    'La Seyne-sur-Mer',
+    'Hyères',
+    'Fréjus',
+
+    // Nouvelle-Aquitaine
+    'Bordeaux',
+    'Limoges',
+    'Poitiers',
+    'La Rochelle',
+    'Angoulême',
+    'Pau',
+    'Bayonne',
+    'Biarritz',
+    'Périgueux',
+    'Arcachon',
+
+    // Occitanie
+    'Toulouse',
+    'Montpellier',
+    'Nîmes',
+    'Perpignan',
+    'Béziers',
+    'Narbonne',
+    'Albi',
+    'Carcassonne',
+    'Tarbes',
+    'Castres',
+
+    // Pays de la Loire
+    'Nantes',
+    'Angers',
+    'Le Mans',
+    'Saint-Nazaire',
+    'Cholet',
+    'Saint-Herblain',
+    'Saint-Sébastien-sur-Loire',
+    'Rezé',
+    'Saint-Avertin',
+    'La Roche-sur-Yon',
+
+    // Grand Est
+    'Strasbourg',
+    'Reims',
+    'Metz',
+    'Nancy',
+    'Mulhouse',
+    'Colmar',
+    'Troyes',
+    'Charleville-Mézières',
+    'Châlons-en-Champagne',
+    'Épinal',
+
+    // Hauts-de-France
+    'Lille',
+    'Amiens',
+    'Roubaix',
+    'Tourcoing',
+    'Dunkerque',
+    'Valenciennes',
+    'Villeneuve-d\'Ascq',
+    'Saint-Quentin',
+    'Beauvais',
+    'Arras',
+
+    // Bourgogne-Franche-Comté
+    'Dijon',
+    'Besançon',
+    'Chalon-sur-Saône',
+    'Nevers',
+    'Auxerre',
+    'Mâcon',
+    'Sens',
+    'Le Creusot',
+    'Montceau-les-Mines',
+    'Beaune',
+
+    // Centre-Val de Loire
+    'Tours',
+    'Orléans',
+    'Blois',
+    'Bourges',
+    'Chartres',
+    'Châteauroux',
+    'Joué-lès-Tours',
+    'Vierzon',
+    'Fleury-les-Aubrais',
+    'Saint-Jean-de-Braye',
+
+    // Normandie
+    'Rouen',
+    'Le Havre',
+    'Caen',
+    'Cherbourg-en-Cotentin',
+    'Évreux',
+    'Dieppe',
+    'Saint-Étienne-du-Rouvray',
+    'Sotteville-lès-Rouen',
+    'Le Grand-Quevilly',
+    'Petit-Quevilly',
+
+    // Bretagne
+    'Rennes',
+    'Brest',
+    'Quimper',
+    'Vannes',
+    'Saint-Malo',
+    'Saint-Brieuc',
+    'Lorient',
+    'Lanester',
+    'Fougères',
+    'Concarneau',
+
+    // Corse
+    'Ajaccio',
+    'Bastia',
+    'Porto-Vecchio',
+    'Calvi',
+    'Corte',
+    'Sartène',
+    'Propriano',
+    'L\'Île-Rousse',
+    'Bonifacio',
+    'Penta-di-Casinca'
   ];
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize controllers with current values
-    minRatingController.text = widget.currentMinRating?.toString() ?? '1';
-    maxRatingController.text = widget.currentMaxRating?.toString() ?? '5';
+    // Initialize with current zone
     selectedZone = widget.currentZone;
 
     // Setup animation
@@ -167,57 +212,65 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
 
   @override
   void dispose() {
-    minRatingController.dispose();
-    maxRatingController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
   void _applyFilter() {
-    final minRating = int.tryParse(minRatingController.text);
-    final maxRating = int.tryParse(maxRatingController.text);
+    print('🔍 === APPLYING ZONE FILTER ===');
+    print('🔍 Selected Zone: $selectedZone');
 
-    if (minRating == null || maxRating == null) {
-      // Show error for invalid input
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter valid ratings'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    // Create filters using the new filter system
+    List<FilterModel> filters = [
+      FilterModel(
+        key: 'page',
+        value: '1',
+        description: 'Page number',
+        enabled: true,
+        equals: true,
+        uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+      FilterModel(
+        key: 'limit',
+        value: '10',
+        description: 'Items per page',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+      ),
+      FilterModel(
+        key: 'sortOrder',
+        value: 'DESC',
+        description: 'Sort order',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
+      ),
+    ];
+
+    // Add zone filter if selected
+    if (selectedZone != null && selectedZone!.isNotEmpty) {
+      print('🔍 Adding zone filter: $selectedZone');
+      filters.add(FilterModel(
+        key: 'zone',
+        value: selectedZone!,
+        description: 'Location zone',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 3).toString(),
+      ));
+    } else {
+      print('🔍 No zone selected, will show all zones');
     }
 
-    if (minRating < 1 || maxRating > 5) {
-      // Show error for invalid range
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Rating must be between 1 and 5'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+    print('🔍 Total filters: ${filters.length}');
+    print('🔍 === END ZONE FILTER CREATION ===');
 
-    if (minRating > maxRating) {
-      // Show error for invalid range
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Min rating cannot be greater than max rating'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Apply filter
-    context.read<InfluencersBloc>().add(LoadInfluencers(
-          zone: selectedZone,
-          sortOrder: 'DESC',
-        ));
+    // Apply filters using the new filter system
+    context.read<InfluencersBloc>().add(FilterInfluencers(filters: filters));
 
     // Update parent widget with filter values
-    widget.onFilterApplied?.call(minRating, maxRating, selectedZone);
+    widget.onFilterApplied?.call(selectedZone);
 
     // Close the filter screen
     Navigator.of(context).pop();
@@ -229,8 +282,6 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
 
   void _resetFilter() {
     setState(() {
-      minRatingController.text = '1';
-      maxRatingController.text = '5';
       selectedZone = null;
     });
   }
@@ -296,132 +347,9 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Rating Section
-                          Text(
-                            'Rating & Zone',
-                            style: const TextStyle(
-                              color: AppTheme.textPrimaryColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Min/Max Rating Inputs
-                          Row(
-                            children: [
-                              // Min Rating
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Min',
-                                      style: const TextStyle(
-                                        color: AppTheme.textSecondaryColor,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.secondaryColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: AppTheme.borderColor,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: TextField(
-                                        controller: minRatingController,
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.allow(
-                                              RegExp(r'[1-5]')),
-                                        ],
-                                        style: const TextStyle(
-                                          color: AppTheme.textPrimaryColor,
-                                          fontSize: 16,
-                                        ),
-                                        decoration: const InputDecoration(
-                                          hintText: '1',
-                                          hintStyle: TextStyle(
-                                            color: AppTheme.textSecondaryColor,
-                                            fontSize: 16,
-                                          ),
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(width: 8),
-
-                              // Max Rating
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Max',
-                                      style: const TextStyle(
-                                        color: AppTheme.textSecondaryColor,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.secondaryColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: AppTheme.borderColor,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: TextField(
-                                        controller: maxRatingController,
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.allow(
-                                              RegExp(r'[1-5]')),
-                                        ],
-                                        style: const TextStyle(
-                                          color: AppTheme.textPrimaryColor,
-                                          fontSize: 16,
-                                        ),
-                                        decoration: const InputDecoration(
-                                          hintText: '5',
-                                          hintStyle: TextStyle(
-                                            color: AppTheme.textSecondaryColor,
-                                            fontSize: 16,
-                                          ),
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 24),
-
                           // Zone Section
                           Text(
-                            'Zone',
+                            'Filter by Zone',
                             style: const TextStyle(
                               color: AppTheme.textPrimaryColor,
                               fontSize: 16,
@@ -454,10 +382,6 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                                   horizontal: 12,
                                   vertical: 12,
                                 ),
-                                suffixIcon: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: AppTheme.textSecondaryColor,
-                                ),
                               ),
                               style: const TextStyle(
                                 color: AppTheme.textPrimaryColor,
@@ -469,11 +393,10 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                                   value: null,
                                   child: Text('All zones'),
                                 ),
-                                ...frenchDepartments
-                                    .map((zone) => DropdownMenuItem<String>(
-                                          value: zone,
-                                          child: Text(zone),
-                                        )),
+                                ...zones.map((zone) => DropdownMenuItem<String>(
+                                      value: zone,
+                                      child: Text(zone),
+                                    )),
                               ],
                               onChanged: (value) {
                                 setState(() {
@@ -523,26 +446,30 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
 
                               const SizedBox(width: 8),
 
-                              // Reset Filter Button
+                              // Confirm Filter Button
                               Expanded(
                                 child: SizedBox(
                                   height: 48,
                                   child: ElevatedButton(
-                                    onPressed: _resetFilter,
+                                    onPressed: _applyFilter,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: AppTheme.primaryColor,
+                                      backgroundColor:
+                                          AppTheme.transparentBackground,
+                                      foregroundColor: Colors.white,
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(
+                                          color: AppTheme.textPrimaryColor
+                                              .withOpacity(0.3),
+                                          width: 1,
+                                        ),
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 12),
                                     ),
                                     child: const Text(
-                                      'Reset filter',
+                                      'Confirm',
                                       style: TextStyle(
-                                        color: AppTheme.primaryColor,
+                                        color: Colors.white,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                       ),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/influencer_auth_service.dart';
 import '../../services/storage/token_storage_service.dart';
@@ -28,7 +29,7 @@ class UpdateProfileInfo extends InfluencerRegistrationEvent {
   final String pseudo;
   final String bio;
   final String zone;
-  final String? profilePicture;
+  final File? profilePicture;
   UpdateProfileInfo({
     required this.pseudo,
     required this.bio,
@@ -97,7 +98,7 @@ class InfluencerRegistrationState {
   final String pseudo;
   final String bio;
   final String zone;
-  final String? profilePicture;
+  final File? profilePicture;
   final bool isPseudoValid;
   final bool isBioValid;
   final bool isZoneValid;
@@ -262,6 +263,9 @@ class InfluencerRegistrationError extends InfluencerRegistrationState {
 // Bloc
 class InfluencerRegistrationBloc
     extends Bloc<InfluencerRegistrationEvent, InfluencerRegistrationState> {
+  // Track the last known profile picture to handle state transitions
+  File? _lastKnownProfilePicture;
+
   InfluencerRegistrationBloc({int? initialStep})
       : super(InfluencerRegistrationState(
           currentStep: initialStep ?? 0,
@@ -382,9 +386,46 @@ class InfluencerRegistrationBloc
 
   void _onUpdateProfileInfo(
       UpdateProfileInfo event, Emitter<InfluencerRegistrationState> emit) {
+    print('🔄 === UPDATE PROFILE INFO EVENT ===');
+    print('👤 Pseudo: ${event.pseudo}');
+    print('📝 Bio: ${event.bio}');
+    print('📍 Zone: ${event.zone}');
+    print('🖼️ Profile Picture: ${event.profilePicture}');
+    print('🖼️ Profile Picture path: ${event.profilePicture?.path}');
+    print(
+        '🖼️ Profile Picture exists: ${event.profilePicture != null ? 'File object' : 'null'}');
+
     final isPseudoValid = event.pseudo.trim().isNotEmpty;
     final isBioValid = event.bio.trim().isNotEmpty;
     final isZoneValid = event.zone.trim().isNotEmpty;
+
+    // IMPORTANT: Preserve existing profile picture if new one is null
+    // Also check if we're in a state transition where profilePicture might be temporarily null
+    final profilePictureToKeep = event.profilePicture ??
+        (state.profilePicture ?? _lastKnownProfilePicture);
+
+    // Update our last known profile picture for state transitions
+    if (event.profilePicture != null) {
+      _lastKnownProfilePicture = event.profilePicture;
+      print(
+          '🖼️ Updated _lastKnownProfilePicture with new file: ${event.profilePicture?.path}');
+    } else if (state.profilePicture != null) {
+      _lastKnownProfilePicture = state.profilePicture;
+      print(
+          '🖼️ Updated _lastKnownProfilePicture with state file: ${state.profilePicture?.path}');
+    } else if (_lastKnownProfilePicture != null) {
+      print(
+          '🖼️ Keeping existing _lastKnownProfilePicture: ${_lastKnownProfilePicture?.path}');
+    } else {
+      print('🖼️ No profile picture available anywhere');
+    }
+
+    print(
+        '🖼️ Preserving profile picture: ${profilePictureToKeep?.path ?? 'null'}');
+    print(
+        '🖼️ Last known profile picture: ${_lastKnownProfilePicture?.path ?? 'null'}');
+    print(
+        '🖼️ Final profilePictureToKeep: ${profilePictureToKeep?.path ?? 'null'}');
 
     emit(InfluencerRegistrationState(
       currentStep: state.currentStep,
@@ -403,7 +444,7 @@ class InfluencerRegistrationBloc
       pseudo: event.pseudo,
       bio: event.bio,
       zone: event.zone,
-      profilePicture: event.profilePicture,
+      profilePicture: profilePictureToKeep, // Use preserved picture
       isPseudoValid: isPseudoValid,
       isBioValid: isBioValid,
       isZoneValid: isZoneValid,
@@ -411,6 +452,10 @@ class InfluencerRegistrationBloc
       tiktok: state.tiktok,
       youtube: state.youtube,
     ));
+
+    print('✅ Profile info updated in state');
+    print('🖼️ New state profilePicture: ${profilePictureToKeep}');
+    print('🖼️ New state profilePicture path: ${profilePictureToKeep?.path}');
   }
 
   void _onUpdateSocials(
@@ -788,12 +833,20 @@ class InfluencerRegistrationBloc
       print('📝 Bio: ${state.bio}');
       print('📍 Zone: ${state.zone}');
       print('🖼️ Profile Picture: ${state.profilePicture}');
+      print('🖼️ Profile Picture path: ${state.profilePicture?.path}');
+      print('🖼️ _lastKnownProfilePicture: ${_lastKnownProfilePicture?.path}');
+
+      // IMPORTANT: Use preserved profile picture if state.profilePicture is null
+      final profilePictureToSend =
+          state.profilePicture ?? _lastKnownProfilePicture;
+      print(
+          '🖼️ Final profile picture to send: ${profilePictureToSend?.path ?? 'null'}');
 
       final response = await InfluencerAuthService.addProfile(
         pseudo: state.pseudo,
         bio: state.bio,
         zone: state.zone,
-        profilePicture: state.profilePicture,
+        profilePicture: profilePictureToSend,
       );
 
       print('📊 === PROFILE SUBMISSION RESPONSE ===');

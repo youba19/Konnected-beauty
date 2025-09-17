@@ -48,15 +48,14 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
       return;
     }
 
-    // Only send fields that have values
+    // Only send fields that have values (email is read-only, so don't send it)
     final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
     final phoneNumber = _phoneController.text.trim();
 
     // Use BLoC to update profile
     context.read<SalonProfileBloc>().add(UpdateSalonProfile(
           name: name.isNotEmpty ? name : null,
-          email: email.isNotEmpty ? email : null,
+          email: null, // Email is read-only, don't send it
           phoneNumber: phoneNumber.isNotEmpty ? phoneNumber : null,
         ));
   }
@@ -159,26 +158,13 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
 
                           const SizedBox(height: 24),
 
-                          // Email Field
-                          _buildFormField(
+                          // Email Field (Read-only)
+                          _buildReadOnlyField(
                             label: AppTranslations.getString(context, 'email'),
                             controller: _emailController,
                             placeholder: AppTranslations.getString(
                                 context, 'enter_your_email'),
                             icon: LucideIcons.mail,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'email_required');
-                              }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                  .hasMatch(value)) {
-                                return AppTranslations.getString(
-                                    context, 'invalid_email');
-                              }
-                              return null;
-                            },
                           ),
 
                           const SizedBox(height: 24),
@@ -278,6 +264,63 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
     );
   }
 
+  Widget _buildReadOnlyField({
+    required String label,
+    required TextEditingController controller,
+    required String placeholder,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.textSecondaryColor.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: TextFormField(
+            controller: controller,
+            enabled: false, // Make it read-only
+            style: TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: placeholder,
+              hintStyle: TextStyle(
+                color: AppTheme.textSecondaryColor.withOpacity(0.5),
+                fontSize: 16,
+              ),
+              prefixIcon: Icon(
+                icon,
+                color: AppTheme.textSecondaryColor.withOpacity(0.5),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSaveButton() {
     return BlocBuilder<SalonProfileBloc, SalonProfileState>(
         builder: (context, state) {
@@ -290,12 +333,12 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
           onPressed: isLoading ? null : _saveChanges,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.transparentBackground,
-            foregroundColor: AppTheme.textSecondaryColor,
+            foregroundColor: AppTheme.textPrimaryColor,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: AppTheme.secondaryColor,
+                color: AppTheme.textPrimaryColor,
                 width: 1,
               ),
             ),
@@ -312,7 +355,7 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
               : Text(
                   AppTranslations.getString(context, 'save_changes'),
                   style: TextStyle(
-                    color: AppTheme.border2,
+                    color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),

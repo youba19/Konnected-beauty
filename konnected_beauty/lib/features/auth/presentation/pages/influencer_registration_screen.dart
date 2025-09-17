@@ -161,9 +161,18 @@ class _InfluencerRegistrationScreenState
       );
 
       if (pickedFile != null) {
+        final selectedFile = File(pickedFile.path);
+        print('🖼️ === PROFILE PICTURE SELECTED ===');
+        print('📁 File path: ${pickedFile.path}');
+        print('📁 File exists: ${await selectedFile.exists()}');
+        print('📁 File size: ${await selectedFile.length()} bytes');
+
         setState(() {
-          _selectedImage = File(pickedFile.path);
+          _selectedImage = selectedFile;
         });
+
+        print('🖼️ _selectedImage set to: $_selectedImage');
+        print('🖼️ _selectedImage path: ${_selectedImage?.path}');
 
         // Update bloc state with the selected image
         context.read<InfluencerRegistrationBloc>().add(
@@ -171,9 +180,12 @@ class _InfluencerRegistrationScreenState
                 pseudo: pseudoController.text,
                 bio: bioController.text,
                 zone: zoneController.text,
-                profilePicture: pickedFile.path,
+                profilePicture: selectedFile,
               ),
             );
+
+        print(
+            '🔄 BLoC UpdateProfileInfo event sent with profilePicture: $selectedFile');
       }
     } catch (e) {
       print('Error picking image: $e');
@@ -347,6 +359,7 @@ class _InfluencerRegistrationScreenState
             pseudo: pseudoController.text,
             bio: bioController.text,
             zone: zoneController.text,
+            profilePicture: _selectedImage, // ✅ Include current profile picture
           ));
     });
 
@@ -358,6 +371,8 @@ class _InfluencerRegistrationScreenState
               pseudo: pseudoController.text,
               bio: bioController.text,
               zone: zoneController.text,
+              profilePicture:
+                  _selectedImage, // ✅ Include current profile picture
             ));
       });
     });
@@ -367,6 +382,7 @@ class _InfluencerRegistrationScreenState
             pseudo: pseudoController.text,
             bio: bioController.text,
             zone: zoneController.text,
+            profilePicture: _selectedImage, // ✅ Include current profile picture
           ));
     });
 
@@ -1205,7 +1221,8 @@ class _InfluencerRegistrationScreenState
                     pseudo: value,
                     bio: bioController.text,
                     zone: zoneController.text,
-                    profilePicture: null, // Will be set when image is picked
+                    profilePicture:
+                        _selectedImage, // ✅ Include current profile picture
                   ),
                 );
           },
@@ -1231,7 +1248,8 @@ class _InfluencerRegistrationScreenState
                     pseudo: pseudoController.text,
                     bio: value,
                     zone: zoneController.text,
-                    profilePicture: null, // Will be set when image is picked
+                    profilePicture:
+                        _selectedImage, // ✅ Include current profile picture
                   ),
                 );
           },
@@ -1253,7 +1271,8 @@ class _InfluencerRegistrationScreenState
                       pseudo: pseudoController.text,
                       bio: bioController.text,
                       zone: value,
-                      profilePicture: null, // Will be set when image is picked
+                      profilePicture:
+                          _selectedImage, // ✅ Include current profile picture
                     ),
                   );
             }

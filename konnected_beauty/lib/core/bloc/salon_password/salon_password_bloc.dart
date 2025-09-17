@@ -35,8 +35,9 @@ class SalonPasswordChanged extends SalonPasswordState {
 
 class SalonPasswordError extends SalonPasswordState {
   final String error;
+  final String? details;
 
-  const SalonPasswordError({required this.error});
+  const SalonPasswordError({required this.error, this.details});
 }
 
 // BLoC
@@ -69,10 +70,14 @@ class SalonPasswordBloc extends Bloc<SalonPasswordEvent, SalonPasswordState> {
       } else {
         emit(SalonPasswordError(
           error: result['message'] ?? 'Failed to change password',
+          details: result['details'],
         ));
       }
     } catch (e) {
-      emit(SalonPasswordError(error: e.toString()));
+      emit(SalonPasswordError(
+        error: 'Network error',
+        details: e.toString(),
+      ));
     }
   }
 }

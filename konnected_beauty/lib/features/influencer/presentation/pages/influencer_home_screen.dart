@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:konnected_beauty/core/theme/app_theme.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/bloc/influencers/influencer_profile_bloc.dart';
 
@@ -12,6 +13,7 @@ import 'social_information_screen.dart';
 import 'security_screen.dart';
 import 'influencer_campaigns_screen.dart';
 import 'influencer_campaign_detail_screen.dart';
+import 'saloons_screen.dart';
 
 class InfluencerHomeScreen extends StatefulWidget {
   const InfluencerHomeScreen({super.key});
@@ -115,12 +117,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   Widget _buildSaloonsContent() {
-    return const Center(
-      child: Text(
-        'Saloons Screen',
-        style: TextStyle(color: Colors.white, fontSize: 24),
-      ),
-    );
+    return const SaloonsScreen();
   }
 
   Widget _buildCampaignContent() {
@@ -372,8 +369,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   final profileData = state is InfluencerProfileUpdated
                       ? state.updatedProfile
                       : state as InfluencerProfileLoaded;
-                  username = profileData.pseudo.isNotEmpty
-                      ? profileData.pseudo
+                  username = profileData.name.isNotEmpty
+                      ? profileData.name
                       : profileData.name;
                 }
 
@@ -820,11 +817,11 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _navItem(0, Icons.home_outlined, "Home"),
-                _navItem(1, Icons.storefront_outlined, "Saloons"),
-                _navItem(2, Icons.campaign_outlined, "Campaign"),
-                _navItem(3, Icons.account_balance_wallet_outlined, "Wallet"),
-                _navItem(4, Icons.person_outline, "Profile"),
+                _navItem(0, LucideIcons.clipboardList, "Home"),
+                _navItem(1, LucideIcons.store, "Saloons"),
+                _navItem(2, LucideIcons.ticket, "Campaign"),
+                _navItem(3, LucideIcons.wallet, "Wallet"),
+                _navItem(4, LucideIcons.user, "Profile"),
               ],
             ),
           ],
