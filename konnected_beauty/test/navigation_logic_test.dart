@@ -10,7 +10,7 @@ void main() {
     testWidgets('LoginSuccess state includes userStatus',
         (WidgetTester tester) async {
       // Test that LoginSuccess state properly includes userStatus
-      final loginState = LoginInitial();
+      final loginState = const LoginInitial();
       final successState =
           LoginSuccess(loginState, userStatus: 'email-verified');
 

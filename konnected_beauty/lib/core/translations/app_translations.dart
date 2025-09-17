@@ -24,7 +24,7 @@ class AppTranslations {
   // French translations
   static const Map<String, String> _frenchTranslations = {
     // Welcome Screen
-    'welcome_title': 'Bienvenue sur Konnected Beauty',
+    'welcome_title': 'Bienvenue sur KBeauty',
     'welcome_subtitle':
         'Connectez-vous avec les meilleurs professionnels de beauté',
     'signup_saloon': 'S\'inscrire en tant que Salon',
@@ -51,13 +51,73 @@ class AppTranslations {
     'login_failed': 'Échec de la connexion',
     'influencer_home_not_implemented':
         'Écran d\'accueil influenceur pas encore implémenté',
+    'influencer_home': 'Accueil Influenceur',
+    'welcome_influencer': 'Bienvenue, Influenceur !',
+    'influencer_home_description':
+        'Votre inscription est terminée et vous faites maintenant partie de la communauté Konnected Beauty.',
+    'registration_complete': 'Inscription Terminée !',
+    'registration_complete_message':
+        'Félicitations ! Vous avez terminé avec succès votre inscription d\'influenceur. Vous pouvez maintenant commencer à collaborer avec des marques de beauté et développer votre audience.',
+    'socials_added_success':
+        'Liens de réseaux sociaux ajoutés avec succès ! Inscription terminée. Redirection vers la page d\'accueil...',
+    'account_created_successfully': 'Votre compte a été créé avec succès',
+    'otp_resent_success':
+        'Code OTP renvoyé avec succès ! Vérifiez votre email.',
+
+    // Influencer Home Screen
+    'good_morning': 'Bonjour,',
+    'total_revenue': 'Revenus totaux',
+    'total_orders': 'Commandes totales',
+    'received_invitations': 'Invitations reçues',
+    'no_requests_yet':
+        'Vous n\'avez encore reçu aucune demande,\ncontinuez à grandir et les opportunités viendront à vous',
+    'saloons': 'Salons',
+    'campaign': 'Campagne',
+    'wallet': 'Portefeuille',
+    'profile': 'Profil',
+    'social_information': 'Informations sociales',
+    'security': 'Sécurité',
+    'current_password': 'Mot de passe actuel',
+    'new_password': 'Nouveau mot de passe',
+    'confirm_new_password': 'Confirmer le nouveau mot de passe',
+    'enter_current_password': 'Entrer le mot de passe actuel',
+    'set_new_password': 'Définir le nouveau mot de passe',
+    'current_password_required': 'Le mot de passe actuel est requis',
+    'new_password_required': 'Le nouveau mot de passe est requis',
+    'confirm_password_required':
+        'Veuillez confirmer votre nouveau mot de passe',
+    'passwords_not_match': 'Les nouveaux mots de passe ne correspondent pas',
+    'password_too_short': 'Le mot de passe doit contenir au moins 6 caractères',
+    'new_password_too_short':
+        'Le nouveau mot de passe doit contenir au moins 6 caractères',
+    'password_changed_successfully': 'Mot de passe modifié avec succès',
+    'password_change_failed': 'Échec de la modification du mot de passe',
+    'notifications': 'Notifications',
+    'logout': 'Déconnexion',
+
+    // Settings Screen
+    'saloon_name': 'Nom du Salon',
+    'profile_details': 'Détails du profil',
+    'enter_your_name': 'Entrez votre nom',
+    'enter_your_email': 'Entrez votre email',
+    'set_your_password': 'Définissez votre mot de passe',
+    'save_changes': 'Sauvegarder les modifications',
+    'save_edits': 'Sauvegarder les modifications',
+    'profile_updated_successfully': 'Profil mis à jour avec succès',
+    'profile_update_failed': 'Échec de la mise à jour du profil',
+    'name_required': 'Le nom est requis',
+    'email_required': 'L\'email est requis',
+    'invalid_email': 'Veuillez entrer un email valide',
+    'phone_required': 'Le téléphone est requis',
+    'password_required': 'Le mot de passe est requis',
+    'saloon_information': 'Informations du salon',
 
     // Reset Password Screen
     'reset_password': 'Réinitialiser le mot de passe',
     'reset_password_subtitle':
         'Entrez votre email pour réinitialiser votre mot de passe',
     'reset_password_button': 'Réinitialiser le mot de passe',
-    'otp_verification_title': 'Vérification du code',
+    'otp_verification_title': 'Vérification du code OTP',
     'otp_verification_subtitle':
         'Nous avons envoyé un code de vérification à votre email',
     'otp_verification': 'Vérification OTP',
@@ -74,25 +134,33 @@ class AppTranslations {
 
     // Registration Screen
     'create_account': 'Créer un compte',
-    'join_konnected_beauty': 'Rejoignez Konnected Beauty',
+    'join_konnected_beauty':
+        'Terminez votre inscription pour créer votre compte et commencer à vendre.',
     'personal_information': 'Informations personnelles',
     'full_name': 'Nom complet',
     'full_name_placeholder': 'Entrez votre nom complet',
+    'full_name_required': 'Le nom complet est requis',
     'phone': 'Téléphone',
     'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continuer',
-    'phone_verification': 'Vérification du téléphone',
+    'phone_verification': 'Vérification du votre e-mail',
     'verification_code': 'Code de vérification',
+    'verify_code': 'Vérifier le code',
     'otp_placeholder': 'Entrez le code à 6 chiffres',
     'resend_code': 'Renvoyer le code',
     'submit_continue': 'Continuer',
     'wrong_code': 'Code incorrect',
+    'otp_verified_success':
+        'Code OTP vérifié avec succès ! Veuillez compléter votre profil.',
+    'invalid_verification_code': 'Code de vérification invalide',
+    'verification_failed': 'Échec de la vérification',
+    'network_error_try_again': 'Erreur réseau. Veuillez réessayer',
     'account_created_check_email':
         'Compte créé avec succès ! Veuillez vérifier votre e-mail pour le code de vérification.',
 
     // Salon Information
     'salon_information': 'Informations du salon',
-    'salon_name': 'Nom',
+    'salon_name': 'Nom du salon',
     'salon_name_placeholder': 'Entrez votre nom',
     'salon_address': 'Adresse du salon',
     'salon_address_placeholder': 'Entrez l\'adresse de votre salon',
@@ -108,6 +176,13 @@ class AppTranslations {
     'select': 'Sélectionner',
     'salon_description': 'Description du salon',
     'describe_salon_placeholder': 'Décrivez votre salon...',
+    'salon_address_required': 'L\'adresse du salon est requise',
+    'activity_domain_required': 'Le domaine d\'activité est requis',
+    'salon_information_updated_successfully':
+        'Informations du salon mises à jour avec succès',
+    'salon_information_update_failed':
+        'Échec de la mise à jour des informations du salon',
+    'notifications_empty_state': 'Il n\'y a pas encore de notifications !',
 
     // Service Management
     'service_name': 'Nom du service',
@@ -123,7 +198,6 @@ class AppTranslations {
         'Êtes-vous sûr de vouloir supprimer ce service ? Cette action ne peut pas être annulée.',
     'service_deleted': 'Service supprimé avec succès',
     'edit_service': 'Modifier le service',
-    'save_changes': 'Enregistrer les modifications',
     'service_updated': 'Service mis à jour avec succès',
     'service_created': 'Service créé avec succès',
     'update_service': 'Mettre à jour le service',
@@ -175,7 +249,27 @@ class AppTranslations {
     'view_details': 'Voir les détails',
     'edit': 'Modifier',
     'campaigns': 'Campagnes',
-    'wallet': 'Portefeuille',
+    'total_campaigns': 'Total des campagnes',
+    'total_clicks': 'Total des clics',
+    'clicks': 'Clics',
+    'no_campaigns_yet': 'Il n\'y a pas encore de campagnes !',
+    'go_to_influencers_message':
+        'Allez chez les Influenceurs et invitez-les pour des campagnes.',
+    'go_to_influencers': 'Aller chez les Influenceurs',
+    'filter_coming_soon': 'Fonctionnalité de filtre bientôt disponible',
+    'campaign_with': 'Campagne avec',
+    'created_at': 'Créé le',
+    'promotion_type': 'Type de promotion',
+    'value': 'Valeur',
+    'completed_orders': 'Commandes terminées',
+    'finish_campaign': 'Terminer la campagne',
+    'copy_link': 'Copier le lien',
+    'delete_campaign': 'Supprimer la campagne',
+    'delete_campaign_confirm':
+        'Êtes-vous sûr de vouloir supprimer cette campagne ?',
+    'campaign_finished_success': 'Campagne terminée avec succès !',
+    'campaign_link_copied': 'Lien de campagne copié dans le presse-papiers !',
+    'campaign_deleted_success': 'Campagne supprimée avec succès !',
     'influencers': 'Influenceurs',
     'settings': 'Paramètres',
 
@@ -233,12 +327,138 @@ class AppTranslations {
     'please_enter_number': 'Veuillez entrer un nombre',
     'please_enter_valid_number': 'Veuillez entrer un nombre valide',
     'number_must_be_positive': 'Le nombre doit être positif',
+
+    // Campaign Invite Dialog
+    'campaign_invite_title':
+        'Êtes-vous sûr de vouloir inviter cet influenceur et créer une campagne pour lui ?',
+    'campaign_invite_instructions':
+        'Si oui, donnez-nous les détails nécessaires si vous avez des promotions ci-dessous.',
+    'select_type': 'Sélectionner le type',
+    'promotion_value': 'Valeur de la promotion',
+    'please_select_promotion_type':
+        'Veuillez sélectionner le type de promotion',
+    'please_enter_promotion_value': 'Veuillez entrer la valeur de la promotion',
+    'create_campaign_invite': 'Créer une campagne et inviter',
+    'campaign_created_successfully': 'Campagne créée avec succès !',
+    'message_to_influencer': 'Message à l\'influenceur',
+    'message_placeholder':
+        'Écrivez un message personnalisé à l\'influenceur...',
+    'please_enter_message': 'Veuillez entrer un message pour l\'influenceur',
+    'message_min_length': 'Le message doit contenir au moins 10 caractères',
+    'percentage_validation': 'Le pourcentage doit être entre 0 et 100',
+    'fixed_amount_validation': 'Le montant fixe doit être supérieur à 0',
+
+    // Influencer Details Screen
+    'influencer_details': 'Détails de l\'influenceur',
+    'loading_influencer_details': 'Chargement des détails de l\'influenceur...',
+    'error_loading_details': 'Erreur lors du chargement des détails',
+    'initializing': 'Initialisation...',
+    'about': 'À propos',
+    'no_bio_available': 'Aucune bio disponible',
+    'invite_for_campaign': 'Inviter pour une campagne',
+    'information': 'Informations',
+    'pseudo': 'Pseudo',
+    'bio': 'Bio',
+    'not_specified': 'Non spécifié',
+    'social_media': 'Réseaux sociaux',
+    'no_social_media_available': 'Aucun lien de réseau social disponible',
+    'reviews': 'Avis',
+    'no_reviews_available': 'Aucun avis disponible pour le moment',
+    'unknown_salon': 'Salon inconnu',
+
+    // Saloons Screen
+    'saloons_title': 'Salons',
+    'search_saloons': 'Rechercher',
+    'search_placeholder': 'Rechercher',
+    'no_saloons_found': 'Aucun salon trouvé',
+    'no_saloons_message':
+        'Essayez d\'ajuster votre recherche ou revenez plus tard',
+    'error_loading_saloons': 'Erreur lors du chargement des salons',
+    'no_more_saloons': 'Aucun autre salon disponible',
+    'saloon_name_default': 'Nom du salon',
+    'saloon_domain_default': 'Domaine du salon',
+    'service_default': 'Service',
+
+    // Salon Details Screen
+    'salon_details_title': 'Détails du Salon',
+    'salon_description_default':
+        'La description du salon sera disponible bientôt',
+
+    'no_reviews_yet': 'Aucun avis pour le moment',
+    'service_name_default': 'Nom du service',
+    'unknown_domain': 'Domaine inconnu',
+    'unknown_address': 'Adresse inconnue',
+    'domain': 'Domaine',
+    'address': 'Adresse',
+    'unknown': 'Inconnu',
+    'just_now': 'À l\'instant',
+    'day_ago': 'jour',
+    'days_ago': 'jours',
+    'hour_ago': 'heure',
+    'hours_ago': 'heures',
+    'minute_ago': 'minute',
+    'minutes_ago': 'minutes',
+
+    // Influencer Registration
+    'create_influencer_account': 'Créer un compte',
+    'complete_influencer_registration':
+        'Complétez l\'inscription pour créer votre compte et commencer à faire des affaires.',
+    'your_information': 'Vos informations',
+    'profile_picture': 'Photo de profil',
+    'upload_profile_picture': 'Télécharger votre photo de profil',
+    'upload_your_profile_picture': 'Télécharger votre photo de profil',
+    'enter_pseudo': 'Entrez votre nom spécial',
+    'enter_your_special_name': 'Entrez votre nom spécial',
+    'enter_bio': 'Décrivez-vous rapidement',
+    'describe_yourself_quickly': 'Décrivez-vous rapidement',
+    'zone': 'Zone',
+    'select_zone': 'Sélectionnez votre zone',
+    'select_your_zone': 'Sélectionnez votre zone',
+    'your_socials': 'Vos réseaux sociaux',
+    'instagram': 'Instagram',
+    'snapchat': 'Snapchat',
+    'tiktok': 'TikTok',
+    'youtube': 'YouTube',
+    'enter_instagram_link': 'Entrez le lien Instagram',
+    'enter_tiktok_link': 'Entrez le lien TikTok',
+    'enter_youtube_link': 'Entrez le lien YouTube',
+    'add_more_later': 'Vous pouvez en ajouter plus plus tard !',
+    'account_created_success_message':
+        'Compte créé avec succès ! Veuillez vérifier votre email pour le code de vérification.',
+    'select_image_source': 'Sélectionner la source d\'image',
+    'camera': 'Caméra',
+    'gallery': 'Galerie',
+    'tap_to_change': 'Appuyez pour changer',
+    'tap_to_select': 'Appuyez pour sélectionner',
+    'remove_image': 'Supprimer l\'image',
+    'add_link': 'Ajouter un lien',
+    'link_name': 'Nom du lien',
+    'link': 'Lien',
+    'link_name_placeholder': 'Nom du lien',
+    'link_placeholder': 'www.....',
+
+    // Influencer Campaign
+    'accept_campaign': 'Accepter la campagne',
+    'refuse_campaign': 'Refuser la campagne',
+    'refuse_campaign_confirmation':
+        'Êtes-vous sûr de vouloir refuser cette campagne ? Cette action ne peut pas être annulée.',
+    'refuse': 'Refuser',
+    'waiting_for_you': 'En attente de vous',
+    'on_going': 'En cours',
+    'finished': 'Terminé',
+    'orders': 'Commandes',
+    'campaigns_will_appear_here':
+        'Les invitations de campagne et les collaborations apparaîtront ici',
+    'refresh': 'Actualiser',
+    'try_again': 'Réessayer',
+    'total': 'Total',
+    'message': 'Message',
   };
 
   // English translations
   static const Map<String, String> _englishTranslations = {
     // Welcome Screen
-    'welcome_title': 'Welcome to Konnected Beauty',
+    'welcome_title': 'Welcome to KBeauty',
     'welcome_subtitle': 'Connect with the best beauty professionals',
     'signup_saloon': 'Sign up as Salon',
     'signup_influencer': 'Sign up as Influencer',
@@ -264,12 +484,53 @@ class AppTranslations {
     'login_failed': 'Login failed',
     'influencer_home_not_implemented':
         'Influencer home screen not implemented yet',
+    'influencer_home': 'Influencer Home',
+    'welcome_influencer': 'Welcome, Influencer!',
+    'influencer_home_description':
+        'Your registration is complete and you are now part of the Konnected Beauty community.',
+    'registration_complete': 'Registration Complete!',
+    'registration_complete_message':
+        'Congratulations! You have successfully completed your influencer registration. You can now start collaborating with beauty brands and growing your audience.',
+    'socials_added_success':
+        'Social media links added successfully! Registration complete. Redirecting to home page...',
+    'account_created_successfully': 'Your account is created successfully',
+    'otp_resent_success':
+        'OTP code resent successfully! Please check your email.',
+
+    // Influencer Home Screen
+    'good_morning': 'Good morning,',
+    'total_revenue': 'Total Revenue',
+    'total_orders': 'Total Orders',
+    'received_invitations': 'Received invitations',
+    'no_requests_yet':
+        'You\'ve received no requests yet,\nkeep growing and opportunities will come for you',
+    'home': 'Home',
+    'saloons': 'Saloons',
+    'campaign': 'Campaign',
+    'wallet': 'Wallet',
+    'profile': 'Profile',
+    'social_information': 'Social Information',
+    'security': 'Security',
+    'current_password': 'Current password',
+    'new_password': 'New password',
+    'confirm_new_password': 'Confirm new password',
+    'enter_current_password': 'Enter Current password',
+    'set_new_password': 'Set New password',
+    'current_password_required': 'Current password is required',
+    'new_password_required': 'New password is required',
+    'confirm_password_required': 'Please confirm your new password',
+    'passwords_not_match': 'New passwords do not match',
+    'new_password_too_short': 'New password must be at least 6 characters',
+    'password_changed_successfully': 'Password changed successfully',
+    'password_change_failed': 'Failed to change password',
+    'notifications': 'Notifications',
+    'logout': 'Logout',
 
     // Reset Password Screen
     'reset_password': 'Reset Password',
     'reset_password_subtitle': 'Enter your email to reset your password',
     'reset_password_button': 'Reset Password',
-    'otp_verification_title': 'Code Verification',
+    'otp_verification_title': 'OTP Verification',
     'otp_verification_subtitle':
         'We have sent a verification code to your email',
     'otp_verification': 'OTP verification',
@@ -285,28 +546,36 @@ class AppTranslations {
 
     // Registration Screen
     'create_account': 'Create Account',
-    'join_konnected_beauty': 'Join Konnected Beauty',
+    'join_konnected_beauty':
+        'Complete registration to create your account and start selling.',
     'personal_information': 'Personal Information',
     'full_name': 'Full Name',
     'full_name_placeholder': 'Enter your full name',
+    'full_name_required': 'Full name is required',
     'phone': 'Phone',
     'phone_placeholder': '+33-XX-XX-XX-XX',
     'continue': 'Continue',
-    'phone_verification': 'Phone Verification',
-    'verification_code': 'Verification Code',
+    'phone_verification': 'Email Verification',
+    'verification_code': 'OTP Verification',
+    'verify_code': 'Verify Code',
     'otp_placeholder': 'Enter the 6-digit code',
     'resend_code': 'Resend Code',
     'submit_continue': 'Continue',
     'wrong_code': 'Wrong Code',
+    'otp_verified_success':
+        'OTP verified successfully! Please complete your profile.',
+    'invalid_verification_code': 'Invalid verification code',
+    'verification_failed': 'Verification failed',
+    'network_error_try_again': 'Network error. Please try again',
     'account_created_check_email':
         'Account created successfully! Please check your email for the verification code.',
 
     // Salon Information
-    'salon_information': 'Salon Information',
+    'salon_information': 'Saloon Information',
     'salon_name': 'Name',
     'salon_name_placeholder': 'Enter your name',
     'salon_address': 'Salon address',
-    'salon_address_placeholder': 'Enter your salon address',
+    'salon_address_placeholder': 'Enter your saloon address',
     'activity_domain': 'Salon domain of activity',
     'activity_domain_placeholder': 'Domain of activity',
 
@@ -318,7 +587,13 @@ class AppTranslations {
     'closing_hour': 'Closing Hour',
     'select': 'Select',
     'salon_description': 'Salon Description',
-    'describe_salon_placeholder': 'Describe your salon...',
+    'describe_salon_placeholder': 'Describe your saloon...',
+    'salon_address_required': 'Salon address is required',
+    'activity_domain_required': 'Activity domain is required',
+    'salon_information_updated_successfully':
+        'Salon information updated successfully',
+    'salon_information_update_failed': 'Failed to update salon information',
+    'notifications_empty_state': 'There are no notifications yet!',
 
     // Service Management
     'service_name': 'Service name',
@@ -334,7 +609,6 @@ class AppTranslations {
         'Are you sure you want to delete this service? This action cannot be undone.',
     'service_deleted': 'Service deleted successfully',
     'edit_service': 'Edit Service',
-    'save_changes': 'Save Changes',
     'service_updated': 'Service updated successfully',
     'service_created': 'Service created successfully',
     'update_service': 'Update Service',
@@ -384,9 +658,46 @@ class AppTranslations {
     'view_details': 'View details',
     'edit': 'Edit',
     'campaigns': 'Campaigns',
-    'wallet': 'Wallet',
+    'total_campaigns': 'Total campaigns',
+    'total_clicks': 'Total clicks',
+    'clicks': 'Clicks',
+    'no_campaigns_yet': 'There are no campaigns yet!',
+    'go_to_influencers_message':
+        'Go to Influencers and invite them for campaigns.',
+    'go_to_influencers': 'Go to Influencers',
+    'filter_coming_soon': 'Filter functionality coming soon',
+    'campaign_with': 'Campaign with',
+    'created_at': 'Created at',
+    'value': 'Value',
+    'completed_orders': 'Completed orders',
+    'finish_campaign': 'Finish campaign',
+    'copy_link': 'Copy link',
+    'delete_campaign': 'Delete campaign',
+    'delete_campaign_confirm': 'Are you sure you want to delete this campaign?',
+    'campaign_finished_success': 'Campaign finished successfully!',
+    'campaign_link_copied': 'Campaign link copied to clipboard!',
+    'campaign_deleted_success': 'Campaign deleted successfully!',
     'influencers': 'Influencers',
     'settings': 'Settings',
+
+    // Settings Screen
+    'name': 'Name',
+    'saloon_name': 'Salon Name',
+    'profile_details': 'Profile Details',
+    'enter_your_name': 'Enter your name',
+    'enter_your_email': 'Enter your email',
+    'set_your_password': 'Set your password',
+    'save_changes': 'Save Changes',
+    'save_edits': 'Save Edits',
+    'profile_updated_successfully': 'Profile updated successfully',
+    'profile_update_failed': 'Failed to update profile',
+    'name_required': 'Name is required',
+    'email_required': 'Email is required',
+    'invalid_email': 'Please enter a valid email',
+    'phone_required': 'Phone is required',
+    'password_required': 'Password is required',
+    'password_too_short': 'Password must be at least 6 characters',
+    'saloon_information': 'Salon Information',
 
     // Filter
     'filter': 'Filter',
@@ -423,11 +734,11 @@ class AppTranslations {
     'otp_numbers_only': 'OTP code must contain only numbers',
     'please_confirm_password': 'Please confirm your password',
     'passwords_do_not_match': 'Passwords do not match',
-    'please_enter_salon_name': 'Please enter the salon name',
+    'please_enter_salon_name': 'Please enter the saloon name',
     'salon_name_min_length': 'Salon name must contain at least 3 characters',
-    'please_enter_salon_address': 'Please enter the salon address',
+    'please_enter_salon_address': 'Please enter the saloon address',
     'salon_address_min_length': 'Address must contain at least 10 characters',
-    'please_enter_salon_domain': 'Please enter the salon domain',
+    'please_enter_salon_domain': 'Please enter the saloon domain',
     'salon_domain_min_length': 'Domain must contain at least 3 characters',
     'please_enter_description': 'Please enter a description',
     'description_min_length': 'Description must contain at least 10 characters',
@@ -436,5 +747,128 @@ class AppTranslations {
     'please_enter_number': 'Please enter a number',
     'please_enter_valid_number': 'Please enter a valid number',
     'number_must_be_positive': 'Number must be positive',
+
+    // Campaign Invite Dialog
+    'campaign_invite_title':
+        'Are you sure you want to invite this influencer and create a campaign for it?',
+    'campaign_invite_instructions':
+        'If yes, give us the details needed if you have promotions below.',
+    'promotion_type': 'Promotion type',
+    'select_type': 'Select type',
+    'promotion_value': 'Promotion value',
+    'please_select_promotion_type': 'Please select promotion type',
+    'please_enter_promotion_value': 'Please enter promotion value',
+    'create_campaign_invite': 'Create campaign & invite',
+    'campaign_created_successfully': 'Campaign created successfully!',
+    'message_to_influencer': 'Message to influencer',
+    'message_placeholder': 'Write a personalized message to the influencer...',
+    'please_enter_message': 'Please enter a message for the influencer',
+    'message_min_length': 'Message must be at least 10 characters long',
+    'percentage_validation': 'Percentage must be between 0 and 100',
+    'fixed_amount_validation': 'Fixed amount must be greater than 0',
+
+    // Influencer Details Screen
+    'influencer_details': 'Influencer Details',
+    'loading_influencer_details': 'Loading influencer details...',
+    'error_loading_details': 'Error Loading Details',
+    'initializing': 'Initializing...',
+    'about': 'About',
+    'no_bio_available': 'No bio available',
+    'invite_for_campaign': 'Invite for a campaign',
+    'information': 'Information',
+    'zone': 'Zone',
+    'pseudo': 'Pseudo',
+    'bio': 'Bio',
+    'not_specified': 'Not specified',
+    'no_social_media_available': 'No social media links available',
+    'reviews': 'Reviews',
+    'no_reviews_available': 'No reviews available yet',
+    'unknown_salon': 'Unknown Salon',
+
+    // Saloons Screen
+    'saloons_title': 'Saloons',
+    'search_saloons': 'Search',
+    'search_placeholder': 'Search',
+    'no_saloons_found': 'No saloons found',
+    'no_saloons_message': 'Try adjusting your search or check back later',
+    'error_loading_saloons': 'Error loading saloons',
+    'no_more_saloons': 'No more saloons available',
+    'saloon_name_default': 'Saloon name',
+    'saloon_domain_default': 'Saloon domain',
+    'service_default': 'Service',
+
+    // Salon Details Screen
+    'salon_details_title': 'Salon Details',
+    'salon_description_default': 'Salon description will be available soon',
+
+    'no_reviews_yet': 'No reviews yet',
+    'service_name_default': 'Service name',
+    'unknown_domain': 'Unknown Domain',
+    'unknown_address': 'Unknown Address',
+    'domain': 'Domain',
+    'address': 'Address',
+    'unknown': 'Unknown',
+    'just_now': 'Just now',
+    'day_ago': 'day',
+    'days_ago': 'days',
+    'hour_ago': 'hour',
+    'hours_ago': 'hours',
+    'minute_ago': 'minute',
+    'minutes_ago': 'minutes',
+
+    // Influencer Registration
+    'create_influencer_account': 'Create Account',
+    'complete_influencer_registration':
+        'Complete registration to create your account and start making deals.',
+    'your_information': 'Your information',
+    'profile_picture': 'Profile picture',
+    'upload_profile_picture': 'Upload your profile picture',
+    'upload_your_profile_picture': 'Upload your profile picture',
+    'enter_pseudo': 'Enter your special name',
+    'enter_your_special_name': 'Enter your special name',
+    'enter_bio': 'Describe yourself quickly',
+    'describe_yourself_quickly': 'Describe yourself quickly',
+    'select_zone': 'Select your zone',
+    'select_your_zone': 'Select your zone',
+    'your_socials': 'Your socials',
+    'instagram': 'Instagram',
+    'snapchat': 'Snapchat',
+    'tiktok': 'TikTok',
+    'youtube': 'YouTube',
+    'enter_instagram_link': 'Enter Instagram link',
+    'enter_tiktok_link': 'Enter TikTok link',
+    'enter_youtube_link': 'Enter YouTube link',
+    'add_more_later': 'You can add more later!',
+    'account_created_success_message':
+        'Account created successfully! Please check your email for the verification code.',
+    'social_media': 'Social Media',
+    'select_image_source': 'Select Image Source',
+    'camera': 'Camera',
+    'gallery': 'Gallery',
+    'tap_to_change': 'Tap to change',
+    'tap_to_select': 'Tap to select',
+    'remove_image': 'Remove image',
+    'add_link': 'Add link',
+    'link_name': 'Link name',
+    'link': 'Link',
+    'link_name_placeholder': 'Link name',
+    'link_placeholder': 'www.....',
+
+    // Influencer Campaign
+    'accept_campaign': 'Accept campaign',
+    'refuse_campaign': 'Refuse campaign',
+    'refuse_campaign_confirmation':
+        'Are you sure you want to refuse this campaign? This action cannot be undone.',
+    'refuse': 'Refuse',
+    'waiting_for_you': 'Waiting for you',
+    'on_going': 'On going',
+    'finished': 'Finished',
+    'orders': 'Orders',
+    'campaigns_will_appear_here':
+        'Campaign invitations and collaborations will appear here',
+    'refresh': 'Refresh',
+    'try_again': 'Try again',
+    'total': 'Total',
+    'message': 'Message',
   };
 }

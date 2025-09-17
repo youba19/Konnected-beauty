@@ -33,7 +33,7 @@ class CustomDropdown extends StatelessWidget {
           style: TextStyle(
             color: AppTheme.textPrimaryColor,
             fontSize: labelFont,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.bold,
           ),
         ),
         SizedBox(height: spacing),
@@ -42,7 +42,7 @@ class CustomDropdown extends StatelessWidget {
           padding:
               EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 4 : 8),
           decoration: BoxDecoration(
-            color: AppTheme.secondaryColor,
+            color: AppTheme.transparentBackground,
             border: Border.all(color: AppTheme.borderColor, width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -57,15 +57,17 @@ class CustomDropdown extends StatelessWidget {
                 style: TextStyle(
                   color: AppTheme.textSecondaryColor,
                   fontSize: compact ? 12 : 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               underline: const SizedBox.shrink(),
               isExpanded: true,
-              dropdownColor: AppTheme.secondaryColor,
+              dropdownColor: AppTheme.primaryColor,
               menuMaxHeight: compact ? 250 : 300,
               style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
+                color: AppTheme.textSecondaryColor,
                 fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
               icon: const Icon(
                 Icons.keyboard_arrow_down,

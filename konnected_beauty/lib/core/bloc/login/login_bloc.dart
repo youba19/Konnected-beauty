@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/salon_auth_service.dart';
+import '../../services/api/influencer_auth_service.dart';
 import '../../services/storage/token_storage_service.dart';
 
 // Events
@@ -171,9 +172,14 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           email: event.email,
           password: event.password,
         );
+      } else if (event.role == LoginRole.influencer) {
+        // Call influencer login API using exact same logic
+        result = await InfluencerAuthService.login(
+          email: event.email,
+          password: event.password,
+        );
       } else {
-        // For now, handle influencer login (you can add influencer API later)
-        emit(LoginError(state, 'Influencer login not implemented yet'));
+        emit(LoginError(state, 'Invalid role selected'));
         return;
       }
 

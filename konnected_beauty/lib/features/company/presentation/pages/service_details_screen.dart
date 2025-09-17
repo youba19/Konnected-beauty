@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
-import 'salon_home_screen.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'edit_service_screen.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
@@ -42,58 +43,78 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       listener: (context, state) {
         if (state is SalonServiceDeleted) {
           // Show success message as top-dropping dialog with service name
-          _showTopNotification(
-            context,
-            '✅ ${AppTranslations.getString(context, 'service_deleted')} - ${widget.serviceName}',
-            Colors.green,
-            Icons.check_circle,
+          TopNotificationService.showSuccess(
+            context: context,
+            message:
+                '${AppTranslations.getString(context, 'service_deleted')} - ${widget.serviceName}',
           );
 
           // Navigate back to home screen
           Navigator.of(context).pop();
         } else if (state is SalonServicesError) {
           // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
+          TopNotificationService.showError(
+            context: context,
+            message: state.message,
           );
         }
       },
-      child: Scaffold(
-        backgroundColor: AppTheme.primaryColor,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Color(0xFF1F1E1E), // Bottom color (darker)
+              Color(0xFF3B3B3B), // Top color (lighter)
+            ],
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                _buildHeader(),
 
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Success Message (if needed)
-                      if (widget.showSuccessMessage) ...[
-                        _buildSuccessMessage(),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Service Information
-                      _buildServiceInformation(),
-
-                      const SizedBox(height: 40),
-
-                      // Action Buttons
-                      _buildActionButtons(),
-                    ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Text(
+                    AppTranslations.getString(context, 'edit_service'),
+                    style: AppTheme.headingStyle,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
-              ),
-            ],
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Success Message (if needed)
+                        if (widget.showSuccessMessage) ...[
+                          _buildSuccessMessage(),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Service Information
+                        _buildServiceInformation(),
+
+                        const SizedBox(height: 40),
+
+                        // Action Buttons
+                        _buildActionButtons(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -102,28 +123,19 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.only(left: 10.0, bottom: 5),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(
-              Icons.arrow_back,
+              LucideIcons.arrowLeft,
               color: AppTheme.textPrimaryColor,
+              size: 32,
             ),
             onPressed: () {
-              // Navigate back to home screen
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const SalonHomeScreen(),
-                ),
-                (route) => false,
-              );
+              // Navigate back to previous screen
+              Navigator.of(context).pop();
             },
-          ),
-          const SizedBox(width: 16),
-          Text(
-            AppTranslations.getString(context, 'service_details'),
-            style: AppTheme.headingStyle,
           ),
         ],
       ),
@@ -141,7 +153,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       child: Row(
         children: [
           const Icon(
-            Icons.check_circle,
+            LucideIcons.checkCircle,
             color: Colors.white,
             size: 24,
           ),
@@ -176,8 +188,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
         // Service Price
         Text(
-          '${widget.servicePrice} €',
-          style: TextStyle(
+          '${widget.servicePrice}',
+          style: const TextStyle(
             color: AppTheme.accentColor,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -203,7 +215,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       children: [
         // Edit Button
         Expanded(
-          child: Container(
+          child: SizedBox(
             height: 48,
             child: ElevatedButton(
               onPressed: () {
@@ -233,7 +245,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
+                  side: const BorderSide(
                     color: AppTheme.textPrimaryColor,
                     width: 1,
                   ),
@@ -257,7 +269,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         Expanded(
           child: BlocBuilder<SalonServicesBloc, SalonServicesState>(
             builder: (context, state) {
-              return Container(
+              return SizedBox(
                 height: 48,
                 child: ElevatedButton(
                   onPressed: state is SalonServiceDeleting
@@ -271,7 +283,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
+                      side: const BorderSide(
                         color: Colors.red,
                         width: 1,
                       ),
@@ -363,75 +375,5 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         );
       },
     );
-  }
-
-  void _showTopNotification(
-    BuildContext context,
-    String message,
-    Color backgroundColor,
-    IconData icon,
-  ) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 40,
-        left: 16,
-        right: 16,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                  onPressed: () {
-                    overlayEntry.remove();
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(overlayEntry);
-
-    // Auto-remove after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
   }
 }

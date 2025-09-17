@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 // import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/bloc/saloon_registration/saloon_registration_bloc.dart';
@@ -9,11 +10,13 @@ import '../../../../core/bloc/welcome/welcome_bloc.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
+
 import '../../../../widgets/forms/custom_dropdown.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'welcome_screen.dart';
 import '../../../company/presentation/pages/salon_home_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../company/presentation/pages/salon_main_wrapper.dart';
 
 class SaloonRegistrationScreen extends StatefulWidget {
   const SaloonRegistrationScreen({super.key});
@@ -107,6 +110,12 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     saloonDomainController = TextEditingController();
     saloonDescriptionController = TextEditingController();
 
+    // TEMPORARY: Start directly at salon profile step for testing
+    // This will be removed when going back to normal flow
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   context.read<SaloonRegistrationBloc>().add(GoToStep(3));
+    // });
+
     // Add listeners to sync with Bloc state
     nameController.addListener(() {
       context.read<SaloonRegistrationBloc>().add(UpdatePersonalInfo(
@@ -115,6 +124,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             phone: phoneController.text,
             password: passwordController.text,
           ));
+      // Trigger validation for real-time error display
+      if (nameFormKey.currentState != null) {
+        nameFormKey.currentState!.validate();
+        setState(() {}); // Update UI to show validation errors
+      }
     });
 
     emailController.addListener(() {
@@ -124,6 +138,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             phone: phoneController.text,
             password: passwordController.text,
           ));
+      // Trigger validation for real-time error display
+      if (emailFormKey.currentState != null) {
+        emailFormKey.currentState!.validate();
+        setState(() {}); // Update UI to show validation errors
+      }
     });
 
     phoneController.addListener(() {
@@ -133,6 +152,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             phone: phoneController.text,
             password: passwordController.text,
           ));
+      // Trigger validation for real-time error display
+      if (phoneFormKey.currentState != null) {
+        phoneFormKey.currentState!.validate();
+        setState(() {}); // Update UI to show validation errors
+      }
     });
 
     passwordController.addListener(() {
@@ -142,6 +166,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             phone: phoneController.text,
             password: passwordController.text,
           ));
+      // Trigger validation for real-time error display
+      if (passwordFormKey.currentState != null) {
+        passwordFormKey.currentState!.validate();
+        setState(() {}); // Update UI to show validation errors
+      }
     });
 
     otpController.addListener(() {
@@ -173,38 +202,18 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     });
   }
 
-  void _showTopDropBanner(String message, Color color) {
-    final overlay = Overlay.of(context);
-    // Use overlay directly (non-null in a mounted tree)
-
-    final entry = OverlayEntry(
-      builder: (context) {
-        return SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  message,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+  void _showSuccessNotification(String message) {
+    TopNotificationService.showSuccess(
+      context: context,
+      message: message,
     );
+  }
 
-    overlay.insert(entry);
-    Future.delayed(const Duration(seconds: 2), () => entry.remove());
+  void _showErrorNotification(String message) {
+    TopNotificationService.showError(
+      context: context,
+      message: message,
+    );
   }
 
   void _syncDescriptionController(SaloonRegistrationState state) {
@@ -235,128 +244,136 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        elevation: 0,
-        leading: BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
-          builder: (context, state) {
-            return IconButton(
-              icon: const Icon(Icons.arrow_back,
-                  color: AppTheme.textPrimaryColor),
-              onPressed: () async {
-                // Dismiss keyboard before going back
-                FocusScope.of(context).unfocus();
-                await Future.delayed(const Duration(milliseconds: 100));
-
-                if (state.currentStep > 0) {
-                  // Go to previous step within registration flow
-                  context.read<SaloonRegistrationBloc>().add(PreviousStep());
-                } else {
-                  // Go back to welcome screen if we're on the first step
-                  context.read<WelcomeBloc>().add(SkipLogoAnimation());
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                        builder: (context) => const WelcomeScreen()),
-                  );
-                }
-              },
-            );
-          },
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Color(0xFF3B3B3B),
+            Color(0xFF1F1E1E), // Bottom color (darker)
+            // Top color (lighter)
+          ],
         ),
-        actions: [
-          BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
-            builder: (context, state) => _buildStepper(context, state),
-          ),
-        ],
       ),
-      body: SafeArea(
-        child: BlocListener<SaloonRegistrationBloc, SaloonRegistrationState>(
-          listener: (context, state) {
-            // On full success: navigate to Salon Home and show top green banner
-            if (state is SaloonRegistrationSuccess) {
-              _showTopDropBanner(state.successMessage, Colors.green);
-              // Navigate to Salon Home after a short delay
-              Future.delayed(const Duration(milliseconds: 500), () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => const SalonHomeScreen(),
-                  ),
-                  (route) => false,
-                );
-              });
-              return;
-            }
-            // Handle error messages (but not success messages that are handled by top banner)
-            if (state.errorMessage != null &&
-                state.errorMessage!.isNotEmpty &&
-                !state.errorMessage!.toLowerCase().contains('successfully') &&
-                !state.errorMessage!
-                    .toLowerCase()
-                    .contains('already verified')) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 4),
-                ),
-              );
-            }
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
+            builder: (context, state) {
+              return IconButton(
+                icon: const Icon(LucideIcons.arrowLeft,
+                    color: AppTheme.textPrimaryColor),
+                onPressed: () async {
+                  // Dismiss keyboard before going back
+                  FocusScope.of(context).unfocus();
+                  await Future.delayed(const Duration(milliseconds: 100));
 
-            // OTP validation success is handled by the top drop banner
-            // No need to show additional SnackBar messages for OTP verification
-          },
-          child: BlocBuilder<LanguageBloc, LanguageState>(
-            builder: (context, languageState) {
-              return BlocBuilder<SaloonRegistrationBloc,
-                  SaloonRegistrationState>(
-                builder: (context, state) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-                        _buildHeader(),
-                        const SizedBox(height: 32),
-
-                        // Content
-                        Expanded(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return SingleChildScrollView(
-                                physics: const BouncingScrollPhysics(),
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minHeight: constraints.maxHeight,
-                                  ),
-                                  child: IntrinsicHeight(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        _buildStepContent(context, state),
-                                        const SizedBox(height: 20),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                        // Bottom Button
-                        _buildBottomButton(context, state),
-                        // Add extra padding for keyboard
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  );
+                  if (state.currentStep > 0) {
+                    // Go to previous step within registration flow
+                    context.read<SaloonRegistrationBloc>().add(PreviousStep());
+                  } else {
+                    // Go back to welcome screen if we're on the first step
+                    context.read<WelcomeBloc>().add(SkipLogoAnimation());
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                          builder: (context) => const WelcomeScreen()),
+                    );
+                  }
                 },
               );
             },
+          ),
+          actions: [
+            BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
+              builder: (context, state) => _buildStepper(context, state),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: BlocListener<SaloonRegistrationBloc, SaloonRegistrationState>(
+            listener: (context, state) {
+              // On full success: navigate to Salon Home and show top green banner
+              if (state is SaloonRegistrationSuccess) {
+                _showSuccessNotification(state.successMessage);
+                // Navigate to Salon Main Wrapper after a short delay to preserve bottom navigation
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const SalonMainWrapper(),
+                    ),
+                    (route) => false,
+                  );
+                });
+                return;
+              }
+              // Handle error messages (but not success messages that are handled by top banner)
+              if (state.errorMessage != null &&
+                  state.errorMessage!.isNotEmpty &&
+                  !state.errorMessage!.toLowerCase().contains('successfully') &&
+                  !state.errorMessage!
+                      .toLowerCase()
+                      .contains('already verified')) {
+                _showErrorNotification(state.errorMessage!);
+              }
+
+              // OTP validation success is handled by the top drop banner
+              // No need to show additional SnackBar messages for OTP verification
+            },
+            child: BlocBuilder<LanguageBloc, LanguageState>(
+              builder: (context, languageState) {
+                return BlocBuilder<SaloonRegistrationBloc,
+                    SaloonRegistrationState>(
+                  builder: (context, state) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header
+                          _buildHeader(),
+                          const SizedBox(height: 20),
+
+                          // Content
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return SingleChildScrollView(
+                                  physics: const BouncingScrollPhysics(),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minHeight: constraints.maxHeight,
+                                    ),
+                                    child: IntrinsicHeight(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          _buildStepContent(context, state),
+                                          const SizedBox(height: 10),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // Bottom Button
+                          _buildBottomButton(context, state),
+                          // Add extra padding for keyboard
+                          const SizedBox(height: 5),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -418,15 +435,27 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          AppTranslations.getString(context, 'personal_information'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            const Icon(
+              LucideIcons.user,
+              color: AppTheme.textPrimaryColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              AppTranslations.getString(context, 'personal_information'),
+              style: const TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 24), // Normal spacing between title and fields
+
+        // Name Field
         CustomTextField(
           label: AppTranslations.getString(context, 'full_name'),
           placeholder:
@@ -435,8 +464,14 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           validator: (value) => Validators.validateName(value, context),
           autovalidateMode: true,
           formFieldKey: nameFormKey,
+          isError: nameFormKey.currentState?.hasError ?? false,
+          errorMessage: nameFormKey.currentState?.hasError == true
+              ? Validators.validateName(nameController.text, context)
+              : null,
         ),
         const SizedBox(height: 20),
+
+        // Email Field
         CustomTextField(
           label: AppTranslations.getString(context, 'email'),
           placeholder: AppTranslations.getString(context, 'email_placeholder'),
@@ -445,8 +480,14 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           validator: (value) => Validators.validateEmail(value, context),
           autovalidateMode: true,
           formFieldKey: emailFormKey,
+          isError: emailFormKey.currentState?.hasError ?? false,
+          errorMessage: emailFormKey.currentState?.hasError == true
+              ? Validators.validateEmail(emailController.text, context)
+              : null,
         ),
         const SizedBox(height: 20),
+
+        // Phone Field
         CustomTextField(
           label: AppTranslations.getString(context, 'phone'),
           placeholder: AppTranslations.getString(context, 'phone_placeholder'),
@@ -455,24 +496,35 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           validator: (value) => Validators.validatePhone(value, context),
           autovalidateMode: true,
           formFieldKey: phoneFormKey,
+          isError: phoneFormKey.currentState?.hasError ?? false,
+          errorMessage: phoneFormKey.currentState?.hasError == true
+              ? Validators.validatePhone(phoneController.text, context)
+              : null,
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
             LengthLimitingTextInputFormatter(13), // +33 + 9 digits
           ],
         ),
         const SizedBox(height: 20),
+
+        // Password Field
         CustomTextField(
           label: AppTranslations.getString(context, 'password'),
           placeholder:
               AppTranslations.getString(context, 'password_placeholder'),
           controller: passwordController,
           isPassword: true,
+          isPasswordVisible: isPasswordVisible,
           validator: (value) => Validators.validatePassword(value, context),
           autovalidateMode: true,
           formFieldKey: passwordFormKey,
+          isError: passwordFormKey.currentState?.hasError ?? false,
+          errorMessage: passwordFormKey.currentState?.hasError == true
+              ? Validators.validatePassword(passwordController.text, context)
+              : null,
           suffixIcon: IconButton(
             icon: Icon(
-              isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+              isPasswordVisible ? LucideIcons.eyeOff : LucideIcons.eye,
               color: AppTheme.textSecondaryColor,
             ),
             onPressed: () {
@@ -494,44 +546,27 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            AppTranslations.getString(context, 'phone_verification'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.shield,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                AppTranslations.getString(context, 'phone_verification'),
+                style: const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           // Success message for signup
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Account created successfully! Please check your email for the verification code.',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
+
           CustomTextField(
             label: AppTranslations.getString(context, 'verification_code'),
             placeholder: AppTranslations.getString(context, 'otp_placeholder'),
@@ -549,7 +584,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             autovalidateMode: true,
             formFieldKey: otpFormKey,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 5),
           GestureDetector(
             onTap: () {
               context.read<SaloonRegistrationBloc>().add(ResendOtp());
@@ -557,14 +592,16 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             child: Text(
               AppTranslations.getString(context, 'resend_code'),
               style: const TextStyle(
-                color: AppTheme.accentColor,
+                color: AppTheme.textPrimaryColor,
                 fontSize: 16,
                 decoration: TextDecoration.underline,
               ),
             ),
           ),
+          const SizedBox(
+            height: 10,
+          )
           // Add extra space for keyboard
-          const SizedBox(height: 100),
         ],
       ),
     );
@@ -577,13 +614,23 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            AppTranslations.getString(context, 'salon_information'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.building2,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                AppTranslations.getString(context, 'salon_information'),
+                style: const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           CustomTextField(
@@ -619,7 +666,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             autovalidateMode: true,
             formFieldKey: saloonDomainFormKey,
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -630,15 +677,25 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          AppTranslations.getString(context, 'salon_profile'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            const Icon(
+              LucideIcons.building,
+              color: AppTheme.textPrimaryColor,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              AppTranslations.getString(context, 'salon_profile'),
+              style: const TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 10),
 
         // Saloon Pictures Section
         Text(
@@ -666,9 +723,9 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
               child: Text(
                 AppTranslations.getString(context, 'upload_photos'),
                 style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
-                ),
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -680,56 +737,52 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             children: [
               const SizedBox(height: 16),
               SizedBox(
-                height: 80,
+                height: 40,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: state.uploadedImages.length,
                   itemBuilder: (context, index) {
+                    final imageFile = state.uploadedImages[index];
+                    final imageName = imageFile.path.split('/').last;
                     return Container(
-                      width: 80,
+                      width: 120, // Fixed width for consistent size
+                      height: 32, // Fixed height for consistent size
                       margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.borderColor),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border:
+                            Border.all(color: AppTheme.borderColor, width: 1),
                       ),
-                      child: Stack(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              state.uploadedImages[index],
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 80,
-                                  height: 80,
-                                  color: AppTheme.secondaryColor,
-                                  child: const Icon(
-                                    Icons.error,
-                                    color: Colors.red,
-                                    size: 24,
-                                  ),
-                                );
-                              },
+                          Expanded(
+                            child: Text(
+                              imageName,
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow
+                                  .ellipsis, // Add ... when text is too long
+                              maxLines: 1, // Limit to single line
                             ),
                           ),
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () {
-                                context
-                                    .read<SaloonRegistrationBloc>()
-                                    .add(RemoveImage(index));
-                              },
-                              child: const Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                                size: 16,
-                              ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              context
+                                  .read<SaloonRegistrationBloc>()
+                                  .add(RemoveImage(index));
+                            },
+                            child: const Icon(
+                              LucideIcons.trash2,
+                              color: Colors.red,
+                              size: 16,
                             ),
                           ),
                         ],
@@ -817,7 +870,69 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                 ));
           },
         ),
+        const SizedBox(height: 10),
       ],
+    );
+  }
+
+  Widget _buildWhiteButton({
+    required String text,
+    required VoidCallback onPressed,
+    bool isLoading = false,
+    IconData? leadingIcon,
+  }) {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primaryColor,
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                ),
+              )
+            : leadingIcon != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        text,
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        leadingIcon,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
+                    ],
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+      ),
     );
   }
 
@@ -825,25 +940,28 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
       BuildContext context, SaloonRegistrationState state) {
     switch (state.currentStep) {
       case 0:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'continue'),
           onPressed: state.isLoading
               ? () {}
               : () {
                   print('Continue button pressed for step 0');
-                  _validateCurrentStep(state);
+                  // First trigger validation to show inline errors
+                  _triggerValidationAndUpdateUI();
+
+                  // Check if we can proceed after validation
                   if (_canProceedToNextStep(state)) {
                     print('Calling submitSignup');
                     context.read<SaloonRegistrationBloc>().add(SubmitSignup());
                   } else {
-                    print('Validation failed');
+                    print('Validation failed - showing inline errors');
                   }
                 },
-          leadingIcon: Icons.arrow_forward_ios,
+          leadingIcon: LucideIcons.arrowRight,
           isLoading: state.isLoading,
         );
       case 1:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'submit_continue'),
           onPressed: state.isLoading
               ? () {}
@@ -856,7 +974,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           isLoading: state.isLoading,
         );
       case 2:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'continue'),
           onPressed: state.isLoading
               ? () {}
@@ -871,7 +989,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           isLoading: state.isLoading,
         );
       case 3:
-        return CustomButton(
+        return _buildWhiteButton(
           text: AppTranslations.getString(context, 'continue'),
           onPressed: state.isLoading
               ? () {}
@@ -933,6 +1051,25 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
         saloonDescriptionFormKey.currentState?.validate();
         break;
     }
+  }
+
+  void _triggerValidationAndUpdateUI() {
+    // Trigger validation for all fields in step 0
+    if (nameFormKey.currentState != null) {
+      nameFormKey.currentState!.validate();
+    }
+    if (emailFormKey.currentState != null) {
+      emailFormKey.currentState!.validate();
+    }
+    if (phoneFormKey.currentState != null) {
+      phoneFormKey.currentState!.validate();
+    }
+    if (passwordFormKey.currentState != null) {
+      passwordFormKey.currentState!.validate();
+    }
+
+    // Force UI rebuild to show validation errors
+    setState(() {});
   }
 
   bool _isValidEmail(String email) {

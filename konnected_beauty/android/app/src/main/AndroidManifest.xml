@@ -6,12 +6,29 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    
+    <!-- Declare the use of camera and photo features for Google Play -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+    
+    <!-- Declare photo and video functionality -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    
+    <!-- Declare compatibility with API 35 for Google Play -->
+    <uses-sdk android:targetSdkVersion="35" android:minSdkVersion="21" />
+    
+    <!-- Additional metadata for Google Play API 35 compliance -->
+    <meta-data android:name="android.max_aspect" android:value="2.4" />
+    <meta-data android:name="android.app.supports_size_changes" android:value="true" />
     <application
-        android:label="Konected Beauty"
+        android:label="Konected"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:targetSdkVersion="34">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/translations/app_translations.dart';
 
@@ -12,7 +13,7 @@ class LoginButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -32,8 +33,8 @@ class LoginButton extends StatelessWidget {
               style: AppTheme.loginButtonTextStyle,
             ),
             const SizedBox(width: 8),
-            Icon(
-              Icons.arrow_forward_ios,
+            const Icon(
+              LucideIcons.arrowRight, // Right arrow like in the image
               size: 16,
               color: AppTheme.textPrimaryColor,
             ),
