@@ -75,6 +75,15 @@ dependencies:
   
   # UUID generation for filter objects
   uuid: ^4.4.0
+  
+  # URL launcher for opening external links
+  url_launcher: ^6.2.2
+  
+  # Equatable for value equality
+  equatable: ^2.0.5
+  
+  # Confetti animation for celebrations
+  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -141,7 +150,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/app_icon_padded.png"
+  image_path: "assets/images/Konected beauty - Icon@10x.png"
   remove_alpha_ios: true
   adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/images/app_icon_padded.png"
+  adaptive_icon_foreground: "assets/images/Konected beauty - Icon@10x.png"

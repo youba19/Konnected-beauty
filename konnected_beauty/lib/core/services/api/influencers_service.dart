@@ -20,7 +20,16 @@ class InfluencersService {
       for (final filter in filters) {
         if (filter.enabled) {
           print('🔍 Adding filter: ${filter.key} = ${filter.value}');
-          queryParams[filter.key] = filter.value;
+          // Try different parameter names for search
+          if (filter.key == 'search') {
+            queryParams['q'] = filter.value; // Try 'q' instead of 'search'
+            queryParams['query'] = filter.value; // Try 'query' as well
+            queryParams['search'] = filter.value; // Keep original too
+            print(
+                '🔍 Added multiple search parameters: q=${filter.value}, query=${filter.value}, search=${filter.value}');
+          } else {
+            queryParams[filter.key] = filter.value;
+          }
         }
       }
 
@@ -36,11 +45,14 @@ class InfluencersService {
       }
 
       print('🔗 Query Parameters: $queryParams');
+      print('🔗 Search Parameter: ${queryParams['search']}');
 
       final uri = Uri.parse('$baseUrl/influencer')
           .replace(queryParameters: queryParams);
 
       print('🔗 Request URL: $uri');
+      print('🔗 Full URL with search: $uri');
+      print('🔗 Search in URL: ${uri.queryParameters['search']}');
       print('🔧 Using HTTP interceptor for automatic token management');
 
       // Check authentication status before making request
@@ -552,6 +564,8 @@ class InfluencersService {
       }
       queryParams['page'] = page; // Keep as int
       queryParams['limit'] = limit; // Keep as int
+      queryParams['sort'] = 'createdAt'; // Sort by creation date
+      queryParams['order'] = 'desc'; // Descending order (newest first)
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
         print('🔍 === SEARCH PARAMETER ADDED ===');
@@ -686,6 +700,789 @@ class InfluencersService {
         'success': false,
         'message': 'Error fetching campaigns: $e',
         'statusCode': 0,
+      };
+    }
+  }
+
+  /// Fetch influencer campaigns
+  static Future<Map<String, dynamic>> getInfluencerCampaigns({
+    int page = 1,
+    int limit = 10,
+    String? status,
+  }) async {
+    try {
+      print('📊 === FETCHING INFLUENCER CAMPAIGNS ===');
+      print('📄 Page: $page');
+      print('📏 Limit: $limit');
+      print('📊 Status: ${status ?? 'None'}');
+
+      // Build query parameters
+      final queryParams = <String, dynamic>{};
+      queryParams['page'] = page;
+      queryParams['limit'] = limit;
+      queryParams['sort'] = 'createdAt'; // Sort by creation date
+      queryParams['order'] = 'desc'; // Descending order (newest first)
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+
+      print('🔗 Query Parameters: $queryParams');
+
+      // Check authentication status before making request
+      print('🔐 === CHECKING AUTH STATUS BEFORE REQUEST ===');
+      final accessToken = await TokenStorageService.getAccessToken();
+      final refreshToken = await TokenStorageService.getRefreshToken();
+      final userRole = await TokenStorageService.getUserRole();
+      final userEmail = await TokenStorageService.getUserEmail();
+      print('🔑 Access Token: ${accessToken != null ? 'Present' : 'NULL'}');
+      print('🔄 Refresh Token: ${refreshToken != null ? 'Present' : 'NULL'}');
+      print('👤 User Role: $userRole');
+      print('📧 User Email: $userEmail');
+      print('🔐 === END AUTH STATUS CHECK ===');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/campaign/influencer-campaigns',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        queryParameters: queryParams,
+      );
+
+      print('🔍 === INFLUENCER CAMPAIGNS SERVICE DEBUG ===');
+      print('🔍 Response Status: ${response.statusCode}');
+      print('🔍 Response Headers: ${response.headers}');
+      print('🔍 Response Body Length: ${response.body.length}');
+      print('🔍 Response Body: ${response.body}');
+      print('🔍 === END INFLUENCER CAMPAIGNS SERVICE DEBUG ===');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Influencer campaigns fetched successfully');
+        print('📊 Total Campaigns: ${responseData['data']?.length ?? 0}');
+        print('📄 Current Page: ${responseData['currentPage']}');
+        print('📄 Total Pages: ${responseData['totalPages']}');
+
+        // Process the campaigns data to match the expected format
+        final List<dynamic> rawCampaigns = responseData['data'] ?? [];
+        final List<Map<String, dynamic>> processedCampaigns =
+            rawCampaigns.map((campaign) {
+          final salon = campaign['salon'] as Map<String, dynamic>? ?? {};
+          final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
+
+          return {
+            'id': campaign['id'],
+            'createdAt': campaign['createdAt'],
+            'updatedAt': campaign['updatedAt'],
+            'status': campaign['status'],
+            'promotion': campaign['promotion'],
+            'promotionType': campaign['promotionType'],
+            'invitationMessage': campaign['invitationMessage'],
+            'initiator': campaign['initiator'],
+            'clicks': campaign['clicks'],
+            'salonName': salonInfo['name'] ?? 'Unknown Salon',
+            'salonDomain': salonInfo['domain'] ?? 'Unknown Domain',
+            'salonAddress': salonInfo['address'] ?? 'Unknown Address',
+            'salon': salon,
+          };
+        }).toList();
+
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Campaigns fetched successfully',
+          'data': processedCampaigns,
+          'currentPage': responseData['currentPage'] ?? 1,
+          'totalPages': responseData['totalPages'] ?? 1,
+          'total': responseData['total'] ?? 0,
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 403) {
+        print('❌ Account not active - 403 Forbidden');
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Account not active',
+          'statusCode': response.statusCode,
+          'errorDetails': responseData,
+        };
+      } else {
+        print(
+            '❌ Failed to fetch influencer campaigns with status: ${response.statusCode}');
+        print('🔍 Response: ${response.body}');
+
+        // Try to parse error response for more details
+        try {
+          final errorData = jsonDecode(response.body);
+          String errorMessage =
+              'Failed to fetch campaigns: ${response.statusCode}';
+
+          if (errorData['message'] != null) {
+            if (errorData['message'] is List) {
+              errorMessage = (errorData['message'] as List).join(', ');
+            } else if (errorData['message'] is String) {
+              errorMessage = errorData['message'];
+            }
+          } else if (errorData['error'] != null) {
+            errorMessage = errorData['error'].toString();
+          }
+
+          return {
+            'success': false,
+            'message': errorMessage,
+            'statusCode': response.statusCode,
+            'errorDetails': errorData,
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'message': 'Failed to fetch campaigns: ${response.statusCode}',
+            'statusCode': response.statusCode,
+            'rawResponse': response.body,
+          };
+        }
+      }
+    } catch (e) {
+      print('❌ Exception in getInfluencerCampaigns: $e');
+      return {
+        'success': false,
+        'message': 'Error fetching campaigns: $e',
+        'statusCode': 0,
+      };
+    }
+  }
+
+  /// Accept campaign (for salon when influencer initiated)
+  static Future<Map<String, dynamic>> acceptCampaign({
+    required String campaignId,
+  }) async {
+    try {
+      print('✅ === ACCEPTING CAMPAIGN ===');
+      print('🆔 Campaign ID: $campaignId');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/accept-campaign',
+        body: jsonEncode({'campaignId': campaignId}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Campaign accepted successfully',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 400) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Bad request',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'success': false,
+          'message': 'Forbidden - Account not active',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to accept campaign',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in acceptCampaign: $e');
+      return {
+        'success': false,
+        'message': 'Error accepting campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Accept influencer invite (for salon when influencer initiated)
+  static Future<Map<String, dynamic>> acceptInfluencerInvite({
+    required String campaignId,
+  }) async {
+    try {
+      print('✅ === ACCEPTING INFLUENCER INVITE ===');
+      print('🆔 Campaign ID: $campaignId');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/accept-influencer-invite',
+        body: jsonEncode({'campaignId': campaignId}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Campaign accepted successfully',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 400) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Bad request',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'success': false,
+          'message': 'Forbidden - Account not active',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to accept campaign',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in acceptInfluencerInvite: $e');
+      return {
+        'success': false,
+        'message': 'Error accepting campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Refuse campaign (for salon when influencer initiated)
+  static Future<Map<String, dynamic>> refuseCampaign({
+    required String campaignId,
+  }) async {
+    try {
+      print('❌ === REFUSING CAMPAIGN ===');
+      print('🆔 Campaign ID: $campaignId');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/reject-influencer-invite',
+        body: jsonEncode({'campaignId': campaignId}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Campaign refused successfully',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 400) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Bad request',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'success': false,
+          'message': 'Forbidden - Account not active',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to refuse campaign',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in refuseCampaign: $e');
+      return {
+        'success': false,
+        'message': 'Error refusing campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Delete influencer campaign invitation
+  static Future<Map<String, dynamic>> deleteInfluencerCampaignInvite({
+    required String campaignId,
+  }) async {
+    try {
+      print('🗑️ === DELETE CAMPAIGN INVITATION ===');
+      print('🗑️ Campaign ID: $campaignId');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/delete-influencer-campaign-invite',
+        body: jsonEncode({
+          'campaignId': campaignId,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('🗑️ Response Status: ${response.statusCode}');
+      print('🗑️ Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Campaign invitation deleted successfully',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to delete campaign invitation',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in deleteInfluencerCampaignInvite: $e');
+      return {
+        'success': false,
+        'message': 'Error deleting campaign invitation: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Fetch payment information
+  static Future<Map<String, dynamic>> getPaymentInformation() async {
+    try {
+      print('💳 === FETCHING PAYMENT INFORMATION ===');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/influencer/payment-information',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('💳 Response Status: ${response.statusCode}');
+      print('💳 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Payment information fetched successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to fetch payment information',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in getPaymentInformation: $e');
+      return {
+        'success': false,
+        'message': 'Error fetching payment information: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Update payment information
+  static Future<Map<String, dynamic>> updatePaymentInformation({
+    required String businessName,
+    required String registryNumber,
+    required String iban,
+  }) async {
+    try {
+      print('💳 === UPDATING PAYMENT INFORMATION ===');
+      print('💳 Business Name: $businessName');
+      print('💳 Registry Number: $registryNumber');
+      print('💳 IBAN: $iban');
+
+      final body = {
+        'businessName': businessName,
+        'registryNumber': registryNumber,
+        'IBAN': iban,
+      };
+
+      print('💳 Request Body: ${jsonEncode(body)}');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'PATCH',
+        endpoint: '/influencer/payment-information',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      print('💳 Response Status: ${response.statusCode}');
+      print('💳 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Payment information updated successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to update payment information',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in updatePaymentInformation: $e');
+      return {
+        'success': false,
+        'message': 'Error updating payment information: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Get campaign details with link for influencer campaigns
+  static Future<Map<String, dynamic>> getInfluencerCampaignDetails({
+    required String campaignId,
+  }) async {
+    try {
+      print('📋 === FETCHING INFLUENCER CAMPAIGN DETAILS ===');
+      print('📋 Campaign ID: $campaignId');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/campaign/influencer-campaign/$campaignId',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('📋 Response Status: ${response.statusCode}');
+      print('📋 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Campaign details fetched successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to fetch campaign details',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in getInfluencerCampaignDetails: $e');
+      return {
+        'success': false,
+        'message': 'Error fetching campaign details: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Accept salon invite for influencer campaigns
+  static Future<Map<String, dynamic>> acceptSalonInvite({
+    required String campaignId,
+  }) async {
+    try {
+      print('✅ === ACCEPTING SALON INVITE ===');
+      print('✅ Campaign ID: $campaignId');
+
+      final body = {
+        'campaignId': campaignId,
+      };
+
+      print('✅ Request Body: ${jsonEncode(body)}');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/accept-salon-invite',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      print('✅ Response Status: ${response.statusCode}');
+      print('✅ Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Campaign accepted successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to accept campaign',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in acceptSalonInvite: $e');
+      return {
+        'success': false,
+        'message': 'Error accepting campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Reject salon invite for influencer campaigns
+  static Future<Map<String, dynamic>> rejectSalonInvite({
+    required String campaignId,
+  }) async {
+    try {
+      print('❌ === REJECTING SALON INVITE ===');
+      print('❌ Campaign ID: $campaignId');
+
+      final body = {
+        'campaignId': campaignId,
+      };
+
+      print('❌ Request Body: ${jsonEncode(body)}');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/reject-salon-invite',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      print('❌ Response Status: ${response.statusCode}');
+      print('❌ Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Campaign rejected successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to reject campaign',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in rejectSalonInvite: $e');
+      return {
+        'success': false,
+        'message': 'Error rejecting campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Finish campaign
+  static Future<Map<String, dynamic>> finishCampaign({
+    required String campaignId,
+  }) async {
+    try {
+      print('🏁 === FINISHING CAMPAIGN ===');
+      print('🏁 Campaign ID: $campaignId');
+
+      // Check authentication status before making request
+      final token = await TokenStorageService.getAccessToken();
+      if (token == null || token.isEmpty) {
+        print('❌ No authentication token found');
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'statusCode': 401,
+        };
+      }
+
+      print('🔑 Token found: ${token.substring(0, 20)}...');
+
+      final requestBody = {
+        'campaignId': campaignId,
+      };
+
+      print('📤 Request Body: ${json.encode(requestBody)}');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/finish-campaign',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: requestBody,
+      );
+
+      print('🏁 Response Status: ${response.statusCode}');
+      print('🏁 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Campaign finished successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to finish campaign',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in finishCampaign: $e');
+      return {
+        'success': false,
+        'message': 'Error finishing campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Rate influencer
+  static Future<Map<String, dynamic>> rateInfluencer({
+    required String campaignId,
+    required int stars,
+    required String comment,
+  }) async {
+    try {
+      print('⭐ === RATING INFLUENCER ===');
+      print('⭐ Campaign ID: $campaignId');
+      print('⭐ Stars: $stars');
+      print('⭐ Comment: $comment');
+
+      // Check authentication status before making request
+      final token = await TokenStorageService.getAccessToken();
+      if (token == null || token.isEmpty) {
+        print('❌ No authentication token found');
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'statusCode': 401,
+        };
+      }
+
+      print('🔑 Token found: ${token.substring(0, 20)}...');
+
+      final requestBody = {
+        'campaignId': campaignId,
+        'stars': stars,
+        'comment': comment,
+      };
+
+      print('📤 Request Body: ${json.encode(requestBody)}');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/rate-influencer',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: requestBody,
+      );
+
+      print('⭐ Response Status: ${response.statusCode}');
+      print('⭐ Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Rating submitted successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to submit rating',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in rateInfluencer: $e');
+      return {
+        'success': false,
+        'message': 'Error submitting rating: $e',
+        'statusCode': 500,
       };
     }
   }

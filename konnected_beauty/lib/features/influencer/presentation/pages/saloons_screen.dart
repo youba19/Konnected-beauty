@@ -20,12 +20,16 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
+  String _selectedFilter = 'all';
 
   @override
   void initState() {
     super.initState();
-    // Load initial saloons
-    context.read<SaloonsBloc>().add(LoadSaloons());
+    // Load initial saloons with proper pagination (same as campaigns)
+    context.read<SaloonsBloc>().add(LoadSaloons(
+          page: 1,
+          limit: 50, // Use higher limit like campaigns
+        ));
 
     // Setup scroll listener for pagination
     _scrollController.addListener(_onScroll);
@@ -39,6 +43,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   }
 
   void _onScroll() {
+    // Check if we can load more data on any scroll movement (same logic as campaigns)
     if (_scrollController.hasClients) {
       final position = _scrollController.position;
       final currentState = context.read<SaloonsBloc>().state;
@@ -46,10 +51,18 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
       if (currentState is SaloonsLoaded &&
           currentState.hasMore &&
           !_isLoadingMore) {
+        // If we're near bottom or list is not scrollable, load more
         final isNearBottom = position.pixels >= position.maxScrollExtent - 100;
         final isNotScrollable = position.maxScrollExtent <= 0;
 
         if (isNearBottom || isNotScrollable) {
+          print('📄 === LOADING MORE SALOONS ===');
+          print('📄 Current Page: ${currentState.currentPage}');
+          print('📄 Total Pages: ${currentState.totalPages}');
+          print('📄 Current Saloons: ${currentState.saloons.length}');
+          print('📄 Total Available: ${currentState.total}');
+          print('📄 Has More: ${currentState.hasMore}');
+
           _isLoadingMore = true;
           context.read<SaloonsBloc>().add(LoadMoreSaloons(
                 page: currentState.currentPage + 1,
@@ -196,7 +209,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               // Filter button
               GestureDetector(
                 onTap: () {
-                  // TODO: Implement filter functionality
+                  _showFilterModal();
                 },
                 child: Container(
                   width: 48,
@@ -225,6 +238,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
       onRefresh: () async {
         context.read<SaloonsBloc>().add(RefreshSaloons(
               search: state.currentSearch,
+              limit: 50, // Use higher limit like campaigns
             ));
       },
       child: ListView.builder(
@@ -235,22 +249,30 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           if (index == state.saloons.length) {
             return Padding(
               padding: const EdgeInsets.all(16),
-              child: state.hasMore
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppTheme.accentColor,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Center(
-                      child: Text(
-                        AppTranslations.getString(context, 'no_more_saloons'),
-                        style: AppTheme.applyPoppins(const TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 14,
-                        )),
+              child: Column(
+                children: [
+                  if (state.hasMore) ...[
+                    // Loading indicator removed for better UX
+                  ] else ...[
+                    Text(
+                      'No more saloons available',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 14,
                       ),
                     ),
+                  ],
+                  const SizedBox(height: 16),
+                  // Show pagination info like campaigns screen
+                  Text(
+                    'All saloons loaded (${state.saloons.length}/${state.total})',
+                    style: TextStyle(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
           return Padding(
@@ -266,15 +288,15 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: state.saloons.length + 1,
+      itemCount: state.saloons.length + 1, // +1 for loading indicator
       itemBuilder: (context, index) {
         if (index == state.saloons.length) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(
+          // Show loading indicator at the bottom
+          return Container(
+            padding: const EdgeInsets.all(16),
+            child: const Center(
               child: CircularProgressIndicator(
                 color: AppTheme.accentColor,
-                strokeWidth: 2,
               ),
             ),
           );
@@ -337,84 +359,100 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+            vertical: 16), // Only top and bottom padding
         decoration: BoxDecoration(
-          color: AppTheme.secondaryColor,
+          color: const Color(0xFF2A2A2A), // Dark grey background as in image
+
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.navBartextColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Saloon name
-            Text(
-              name,
-              style: AppTheme.applyPoppins(const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              )),
-            ),
-            const SizedBox(height: 4),
-            // Domain and metric row
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    domain,
+            // Content with horizontal padding
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Saloon name
+                  Text(
+                    name,
                     style: AppTheme.applyPoppins(const TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontSize: 14,
+                      color: AppTheme.textPrimaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     )),
                   ),
-                ),
-                // Metric with trending up icon
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      metric.toString(),
-                      style: AppTheme.applyPoppins(const TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      )),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      LucideIcons.ticket,
-                      color: AppTheme.accentColor,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  // Domain and metric row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          domain,
+                          style: AppTheme.applyPoppins(const TextStyle(
+                            color: AppTheme.textSecondaryColor,
+                            fontSize: 14,
+                          )),
+                        ),
+                      ),
+                      // Metric with trending up icon
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            metric.toString(),
+                            style: AppTheme.applyPoppins(const TextStyle(
+                              color: AppTheme.textPrimaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            )),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            LucideIcons.ticket,
+                            color: AppTheme.accentColor,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            // Services row
+            // Services row (no horizontal padding to allow edge-to-edge scrolling)
             services.isEmpty
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.border2,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      AppTranslations.getString(
-                          context, 'no_services_available'),
-                      style: AppTheme.applyPoppins(const TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 12,
-                      )),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.border2,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(
+                            context, 'no_services_available'),
+                        style: AppTheme.applyPoppins(const TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 12,
+                        )),
+                      ),
                     ),
                   )
                 : SizedBox(
                     height: 32, // Fixed height for horizontal scroll
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(
+                          left: 16), // Add space at the beginning
                       itemCount: services.length,
                       separatorBuilder: (context, index) =>
                           const SizedBox(width: 8),
@@ -455,20 +493,27 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   }
 
   Widget _buildErrorState(SaloonsError state) {
+    // Check if it's a 403 status code
+    final isAccountNotActive = state.statusCode == 403;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
+            Icon(
+              isAccountNotActive
+                  ? Icons.account_circle_outlined
+                  : Icons.error_outline,
               size: 64,
-              color: AppTheme.errorColor,
+              color: AppTheme.greenColor,
             ),
             const SizedBox(height: 16),
             Text(
-              AppTranslations.getString(context, 'error_loading_saloons'),
+              isAccountNotActive
+                  ? AppTranslations.getString(context, 'account_not_active')
+                  : AppTranslations.getString(context, 'error_loading_saloons'),
               style: AppTheme.applyPoppins(const TextStyle(
                 color: AppTheme.textPrimaryColor,
                 fontSize: 18,
@@ -477,24 +522,32 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              state.message,
-              style: AppTheme.applyPoppins(const TextStyle(
-                color: AppTheme.textSecondaryColor,
+              isAccountNotActive
+                  ? AppTranslations.getString(context, 'account_not_active')
+                  : state.message,
+              style: AppTheme.applyPoppins(TextStyle(
+                color: AppTheme.greenColor,
                 fontSize: 14,
               )),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                context.read<SaloonsBloc>().add(LoadSaloons());
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentColor,
-                foregroundColor: Colors.white,
+            // Only show retry button if it's not a 403 error
+            if (!isAccountNotActive) ...[
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  context.read<SaloonsBloc>().add(LoadSaloons(
+                        page: 1,
+                        limit: 10,
+                      ));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentColor,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(AppTranslations.getString(context, 'retry')),
               ),
-              child: Text(AppTranslations.getString(context, 'retry')),
-            ),
+            ],
           ],
         ),
       ),
@@ -543,5 +596,187 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         color: AppTheme.accentColor,
       ),
     );
+  }
+
+  void _showFilterModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useSafeArea: true,
+      builder: (context) => _buildFilterModal(),
+    );
+  }
+
+  Widget _buildFilterModal() {
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.secondaryColor,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              Text(
+                AppTranslations.getString(context, 'filter_saloons'),
+                style: const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Filter Options
+              Text(
+                AppTranslations.getString(context, 'filter_by_status'),
+                style: const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Filter chips
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildFilterChip('all',
+                      AppTranslations.getString(context, 'all'), setModalState),
+                  _buildFilterChip(
+                      'active',
+                      AppTranslations.getString(context, 'active'),
+                      setModalState),
+                  _buildFilterChip(
+                      'inactive',
+                      AppTranslations.getString(context, 'inactive'),
+                      setModalState),
+                  _buildFilterChip(
+                      'verified',
+                      AppTranslations.getString(context, 'verified'),
+                      setModalState),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Action Buttons
+              Row(
+                children: [
+                  // Clear Button
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setModalState(() {
+                          _selectedFilter = 'all';
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white, width: 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(context, 'clear'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Apply Button
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _applyFilter();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.greenColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(context, 'apply'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip(
+      String value, String label, StateSetter setModalState) {
+    final isSelected = _selectedFilter == value;
+
+    return GestureDetector(
+      onTap: () {
+        setModalState(() {
+          _selectedFilter = value;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              isSelected ? AppTheme.greenColor : AppTheme.transparentBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppTheme.greenColor : AppTheme.borderColor,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _applyFilter() {
+    // Apply the selected filter
+    setState(() {});
+
+    // Reload saloons with current search and filter
+    final currentSearch = _searchController.text.trim();
+    context.read<SaloonsBloc>().add(LoadSaloons(
+          search: currentSearch.isNotEmpty ? currentSearch : null,
+          page: 1,
+          limit: 50, // Use higher limit like campaigns
+        ));
   }
 }

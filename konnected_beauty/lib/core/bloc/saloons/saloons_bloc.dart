@@ -41,25 +41,33 @@ class SaloonsBloc extends Bloc<SaloonsEvent, SaloonsState> {
         final currentPage =
             int.tryParse(result['currentPage']?.toString() ?? '1') ?? 1;
 
+        // Use both total and totalPages to determine if there are more saloons
+        final hasMorePages = currentPage < totalPages;
+        final hasMoreByTotal = saloons.length < total;
+        final hasMore = hasMorePages && hasMoreByTotal;
+
         print('✅ Saloons loaded successfully');
         print('📊 Results: ${saloons.length}');
         print('📄 Current Page: $currentPage');
         print('📄 Total Pages: $totalPages');
         print('📄 Total: $total');
-        print('🔄 Has More Data: ${currentPage < totalPages}');
+        print('🔄 Has More Pages: $hasMorePages');
+        print('🔄 Has More By Total: $hasMoreByTotal');
+        print('🔄 Has More Data: $hasMore');
 
         emit(SaloonsLoaded(
           saloons: saloons,
           message: result['message'] ?? 'Saloons loaded successfully',
           currentPage: currentPage,
-          hasMore: currentPage < totalPages,
+          hasMore: hasMore,
           currentSearch: event.search,
           total: total,
           totalPages: totalPages,
         ));
       } else {
         print('❌ Failed to load saloons: ${result['message']}');
-        emit(SaloonsError(result['message'] ?? 'Failed to load saloons'));
+        emit(SaloonsError(result['message'] ?? 'Failed to load saloons',
+            statusCode: result['statusCode']));
       }
     } catch (e) {
       print('❌ Error loading saloons: $e');
@@ -103,25 +111,35 @@ class SaloonsBloc extends Bloc<SaloonsEvent, SaloonsState> {
         // Combine existing and new saloons
         final allSaloons = [...currentState.saloons, ...newSaloons];
 
+        // Use both total and totalPages to determine if there are more saloons
+        final hasMorePages = currentPage < totalPages;
+        final hasMoreByTotal = allSaloons.length < total;
+        final hasMore = hasMorePages && hasMoreByTotal;
+
         print('📄 === UPDATING STATE ===');
         print('📄 Previous Saloons Count: ${currentState.saloons.length}');
         print('📄 New Saloons Count: ${newSaloons.length}');
         print('📄 Total Saloons Count: ${allSaloons.length}');
         print('📄 New Current Page: $currentPage');
-        print('📄 New Has More Data: ${currentPage < totalPages}');
+        print('📄 API Total: $total');
+        print('📄 API Total Pages: $totalPages');
+        print('🔄 Has More Pages: $hasMorePages');
+        print('🔄 Has More By Total: $hasMoreByTotal');
+        print('🔄 Has More Data: $hasMore');
 
         emit(SaloonsLoaded(
           saloons: allSaloons,
           message: result['message'] ?? 'Saloons loaded successfully',
           currentPage: currentPage,
-          hasMore: currentPage < totalPages,
+          hasMore: hasMore,
           currentSearch: event.search,
           total: total,
           totalPages: totalPages,
         ));
       } else {
         print('❌ Failed to load more saloons: ${result['message']}');
-        emit(SaloonsError(result['message'] ?? 'Failed to load more saloons'));
+        emit(SaloonsError(result['message'] ?? 'Failed to load more saloons',
+            statusCode: result['statusCode']));
       }
     } catch (e) {
       print('❌ Error loading more saloons: $e');

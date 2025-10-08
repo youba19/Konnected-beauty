@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_details/salon_details_bloc.dart';
 import '../../../../core/bloc/salon_details/salon_details_event.dart';
 import '../../../../core/bloc/salon_details/salon_details_state.dart';
+import '../../../../core/bloc/invite_salon/invite_salon_bloc.dart';
+import '../../../../core/bloc/invite_salon/invite_salon_event.dart';
+import '../../../../core/bloc/invite_salon/invite_salon_state.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 
 class SalonDetailsScreen extends StatefulWidget {
   final String salonId;
@@ -106,11 +111,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: AppTheme.accentColor,
-      ),
-    );
+    return _buildShimmerContent();
   }
 
   Widget _buildErrorState(String message) {
@@ -346,48 +347,73 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
   }
 
   Widget _buildInviteButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          // TODO: Implement invite for campaign functionality
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Invite for campaign functionality coming soon!',
-                style: AppTheme.applyPoppins(const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                )),
+    return BlocListener<InviteSalonBloc, InviteSalonState>(
+      listener: (context, state) {
+        if (state is InviteSalonSuccess) {
+          TopNotificationService.showSuccess(
+            context: context,
+            message: AppTranslations.getString(
+                context, 'invitation_sent_successfully'),
+          );
+        } else if (state is InviteSalonError) {
+          TopNotificationService.showError(
+            context: context,
+            message: state.message,
+          );
+        }
+      },
+      child: BlocBuilder<InviteSalonBloc, InviteSalonState>(
+        builder: (context, state) {
+          final isLoading = state is InviteSalonLoading;
+
+          return SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      _showInviteDialog();
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.textPrimaryColor,
+                foregroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              backgroundColor: AppTheme.accentColor,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isLoading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primaryColor,
+                      ),
+                    )
+                  else
+                    Text(
+                      AppTranslations.getString(context, 'invite_for_campaign'),
+                      style: AppTheme.applyPoppins(const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      )),
+                    ),
+                  if (!isLoading) ...[
+                    const SizedBox(width: 15),
+                    const Icon(
+                      LucideIcons.ticket,
+                      size: 20,
+                    ),
+                  ],
+                ],
+              ),
             ),
           );
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.textPrimaryColor,
-          foregroundColor: AppTheme.primaryColor,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppTranslations.getString(context, 'invite_for_campaign'),
-              style: AppTheme.applyPoppins(const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              )),
-            ),
-            const SizedBox(width: 15),
-            const Icon(
-              LucideIcons.ticket,
-              size: 20,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -469,6 +495,477 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
             )),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showInviteDialog() {
+    final _formKey = GlobalKey<FormState>();
+    final promotionController = TextEditingController(text: '20');
+    final messageController = TextEditingController(
+        text: AppTranslations.getString(context, 'invitation_message_default'));
+    String selectedPromotionType = 'percentage';
+    bool isLoading = false;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'Salon Invite',
+      pageBuilder: (context, _, __) {
+        return Center(
+          child: Material(
+            color: AppTheme.primaryColor,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.95,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppTranslations.getString(
+                            context, 'invite_for_campaign'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Invite this salon to collaborate on a campaign',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        AppTranslations.getString(context, 'promotion_type'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white, width: 1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedPromotionType,
+                          decoration: InputDecoration(
+                            hintText: 'Select promotion type',
+                            hintStyle: const TextStyle(color: Colors.white70),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                          ),
+                          dropdownColor: const Color(0xFF2A2A2A),
+                          style: const TextStyle(color: Colors.white),
+                          icon: const Icon(Icons.keyboard_arrow_down,
+                              color: Colors.white),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please select promotion type';
+                            }
+                            return null;
+                          },
+                          onChanged: (String? newValue) {
+                            selectedPromotionType = newValue!;
+                          },
+                          items: [
+                            DropdownMenuItem(
+                                value: 'percentage',
+                                child: Text(AppTranslations.getString(
+                                    context, 'percentage'))),
+                            DropdownMenuItem(
+                                value: 'fixed',
+                                child: Text(AppTranslations.getString(
+                                    context, 'fixed'))),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        AppTranslations.getString(context, 'promotion'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: promotionController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          hintText: selectedPromotionType == 'percentage'
+                              ? '20'
+                              : '100',
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter promotion value';
+                          }
+
+                          final intValue = int.tryParse(value);
+                          if (intValue == null) {
+                            return 'Please enter a valid number';
+                          }
+
+                          if (selectedPromotionType == 'percentage') {
+                            if (intValue < 0 || intValue > 100) {
+                              return 'Percentage must be between 0 and 100';
+                            }
+                          } else if (selectedPromotionType == 'fixed') {
+                            if (intValue <= 0) {
+                              return 'Fixed amount must be greater than 0';
+                            }
+                          }
+
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        AppTranslations.getString(context, 'message'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: messageController,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: AppTranslations.getString(
+                              context, 'invitation_message_default'),
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Colors.white, width: 1),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a message';
+                          }
+                          if (value.length < 10) {
+                            return 'Message must be at least 10 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      // Send Invitation Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (!_formKey.currentState!.validate()) {
+                                    return;
+                                  }
+
+                                  setState(() {
+                                    isLoading = true;
+                                  });
+
+                                  final promotion =
+                                      int.tryParse(promotionController.text) ??
+                                          20;
+                                  final message = messageController.text.trim();
+
+                                  context
+                                      .read<InviteSalonBloc>()
+                                      .add(InviteSalon(
+                                        receiverId: widget.salonId,
+                                        promotion: promotion,
+                                        promotionType: selectedPromotionType,
+                                        invitationMessage: message,
+                                      ));
+
+                                  Navigator.of(context).pop();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.black),
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        'Send Invitation',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Icon(
+                                      LucideIcons.ticket,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Cancel Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                color: AppTheme.textPrimaryColor,
+                                width: 1,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShimmerContent() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[600]!,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Gallery Shimmer
+            _buildShimmerImageGallery(),
+
+            // Salon Information Shimmer
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Salon Name Shimmer
+                  _buildShimmerText(width: 200, height: 28),
+                  const SizedBox(height: 8),
+
+                  // Description Shimmer
+                  _buildShimmerText(width: double.infinity, height: 16),
+                  const SizedBox(height: 8),
+                  _buildShimmerText(width: 250, height: 16),
+                  const SizedBox(height: 24),
+
+                  // Services Section Shimmer
+                  _buildShimmerServicesSection(),
+                  const SizedBox(height: 24),
+
+                  // Invite Button Shimmer
+                  _buildShimmerButton(),
+                  const SizedBox(height: 32),
+
+                  // Reviews Section Shimmer
+                  _buildShimmerReviewsSection(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerImageGallery() {
+    return Container(
+      height: 156,
+      margin: const EdgeInsets.all(16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          return Container(
+            width: 129,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.circular(12),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildShimmerServicesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Services title shimmer
+        _buildShimmerText(width: 100, height: 20),
+        const SizedBox(height: 12),
+        // Services chips shimmer
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(4, (index) {
+            return Container(
+              width: 80 + (index * 20).toDouble(),
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.grey[700],
+                borderRadius: BorderRadius.circular(20),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerButton() {
+    return Container(
+      width: double.infinity,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
+  Widget _buildShimmerReviewsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Reviews title shimmer
+        _buildShimmerText(width: 100, height: 24),
+        const SizedBox(height: 12),
+        // Review items shimmer
+        _buildShimmerReviewItem(),
+        const SizedBox(height: 12),
+        _buildShimmerReviewItem(),
+      ],
+    );
+  }
+
+  Widget _buildShimmerReviewItem() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildShimmerText(width: 120, height: 16),
+              _buildShimmerText(width: 40, height: 12),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildShimmerText(width: double.infinity, height: 14),
+          const SizedBox(height: 4),
+          _buildShimmerText(width: 200, height: 14),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerText({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }

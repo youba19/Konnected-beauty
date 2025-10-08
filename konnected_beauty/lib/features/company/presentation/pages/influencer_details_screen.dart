@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
@@ -563,17 +564,16 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
             final salonInfo = rating['ratedBy']?['salonInfo'] ?? {};
             final salonName = salonInfo['name'] ??
                 AppTranslations.getString(context, 'unknown_salon');
-            final domain = salonInfo['domain'] ??
-                AppTranslations.getString(context, 'unknown_domain');
-            final address = salonInfo['address'] ??
-                AppTranslations.getString(context, 'unknown_address');
+            final comment = rating['comment'] ?? '';
             final createdAt = rating['createdAt'] ?? '';
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _buildReviewCard(
                 salonName,
-                '${AppTranslations.getString(context, 'domain')}: $domain\n${AppTranslations.getString(context, 'address')}: $address',
+                comment.isEmpty
+                    ? AppTranslations.getString(context, 'no_comment')
+                    : comment,
                 _formatDate(createdAt),
               ),
             );
@@ -627,296 +627,351 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  void _openSocialMedia(String url) {
-    TopNotificationService.showInfo(
-      context: context,
-      message: 'Opening $url...',
-    );
+  void _openSocialMedia(String url) async {
+    try {
+      // Ensure the URL has a proper scheme
+      String launchUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        launchUrl = 'https://$url';
+      }
+
+      final Uri uri = Uri.parse(launchUrl);
+
+      if (await canLaunchUrl(uri)) {
+        await launch(launchUrl);
+
+        TopNotificationService.showSuccess(
+          context: context,
+          message: 'Opening link...',
+        );
+      } else {
+        TopNotificationService.showError(
+          context: context,
+          message: 'Could not open the link',
+        );
+      }
+    } catch (e) {
+      print('❌ Error opening URL: $e');
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error opening link: $e',
+      );
+    }
   }
 
   void _showCampaignInviteDialog() {
-    showGeneralDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      barrierLabel: 'Campaign Invite',
-      pageBuilder: (context, _, __) {
-        return Center(
-          child: Material(
-            color: AppTheme.primaryColor,
-            child: Container(
-              width: MediaQuery.of(context).size.width *
-                  0.95, // slightly wider for better button fit
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
-                borderRadius: BorderRadius.circular(16),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: false,
+      isDismissible: false,
+      builder: (context) {
+        return Scaffold(
+          resizeToAvoidBottomInset: true,
+          backgroundColor: Colors.transparent,
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Color(0xFF1F1E1E),
+                  Color(0xFF3B3B3B),
+                ],
               ),
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppTranslations.getString(
-                            context, 'campaign_invite_title'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppTranslations.getString(
-                            context, 'campaign_invite_instructions'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        AppTranslations.getString(context, 'promotion_type'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white, width: 1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedPromotionType,
-                          decoration: InputDecoration(
-                            hintText: AppTranslations.getString(
-                                context, 'select_type'),
-                            hintStyle: const TextStyle(color: Colors.white70),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                          ),
-                          dropdownColor: const Color(0xFF2A2A2A),
-                          style: const TextStyle(color: Colors.white),
-                          icon: const Icon(Icons.keyboard_arrow_down,
-                              color: Colors.white),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return AppTranslations.getString(
-                                  context, 'please_select_promotion_type');
-                            }
-                            return null;
-                          },
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedPromotionType = newValue;
-                            });
-                          },
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'percentage', child: Text('Percentage')),
-                            DropdownMenuItem(
-                                value: 'fixed', child: Text('Fixed Amount')),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppTranslations.getString(context, 'promotion_value'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _promotionValueController,
-                        decoration: InputDecoration(
-                          hintText: _selectedPromotionType == 'percentage'
-                              ? '20'
-                              : '100',
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                        style: const TextStyle(color: Colors.white),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppTranslations.getString(
-                                context, 'please_enter_promotion_value');
-                          }
-
-                          // Parse the value as integer
-                          final intValue = int.tryParse(value);
-                          if (intValue == null) {
-                            return 'Please enter a valid number';
-                          }
-
-                          // Validate based on promotion type
-                          if (_selectedPromotionType == 'percentage') {
-                            if (intValue < 0 || intValue > 100) {
-                              return AppTranslations.getString(
-                                  context, 'percentage_validation');
-                            }
-                          } else if (_selectedPromotionType == 'fixed') {
-                            if (intValue <= 0) {
-                              return AppTranslations.getString(
-                                  context, 'fixed_amount_validation');
-                            }
-                          }
-
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppTranslations.getString(
-                            context, 'message_to_influencer'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _messageController,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: AppTranslations.getString(
-                              context, 'message_placeholder'),
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                        style: const TextStyle(color: Colors.white),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppTranslations.getString(
-                                context, 'please_enter_message');
-                          }
-                          if (value.length < 10) {
-                            return AppTranslations.getString(
-                                context, 'message_min_length');
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      // Create Campaign & Invite Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed:
-                              _isLoading ? null : _createCampaignAndInvite,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.black),
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        AppTranslations.getString(
-                                            context, 'create_campaign_invite'),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Icon(
-                                      LucideIcons.tag,
-                                      size: 18,
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Cancel Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                color: AppTheme.textPrimaryColor,
-                                width: 1,
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: Text(
-                            AppTranslations.getString(context, 'cancel'),
+            ),
+            child: SafeArea(
+              child: Center(
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.95,
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppTranslations.getString(
+                                context, 'campaign_invite_title'),
                             style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'campaign_invite_instructions'),
+                            style: const TextStyle(
+                              color: Colors.white,
                               fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'promotion_type'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.white, width: 1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedPromotionType,
+                              decoration: InputDecoration(
+                                hintText: AppTranslations.getString(
+                                    context, 'select_type'),
+                                hintStyle:
+                                    const TextStyle(color: Colors.white70),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                              dropdownColor: const Color(0xFF2A2A2A),
+                              style: const TextStyle(color: Colors.white),
+                              icon: const Icon(Icons.keyboard_arrow_down,
+                                  color: Colors.white),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return AppTranslations.getString(
+                                      context, 'please_select_promotion_type');
+                                }
+                                return null;
+                              },
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedPromotionType = newValue;
+                                });
+                              },
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'percentage',
+                                  child: Text(AppTranslations.getString(
+                                      context, 'percentage')),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'fixed',
+                                  child: Text(AppTranslations.getString(
+                                      context, 'fixed_amount')),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'promotion_value'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _promotionValueController,
+                            decoration: InputDecoration(
+                              hintText: _selectedPromotionType == 'percentage'
+                                  ? '20'
+                                  : '100',
+                              hintStyle: const TextStyle(color: Colors.white70),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                    color: Colors.white, width: 1),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                    color: Colors.white, width: 1),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                    color: Colors.white, width: 1),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return AppTranslations.getString(
+                                    context, 'please_enter_promotion_value');
+                              }
+
+                              // Parse the value as integer
+                              final intValue = int.tryParse(value);
+                              if (intValue == null) {
+                                return 'Please enter a valid number';
+                              }
+
+                              // Validate based on promotion type
+                              if (_selectedPromotionType == 'percentage') {
+                                if (intValue < 0 || intValue > 100) {
+                                  return AppTranslations.getString(
+                                      context, 'percentage_validation');
+                                }
+                              } else if (_selectedPromotionType == 'fixed') {
+                                if (intValue <= 0) {
+                                  return AppTranslations.getString(
+                                      context, 'fixed_amount_validation');
+                                }
+                              }
+
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'message_to_influencer'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _messageController,
+                            maxLines: 4,
+                            decoration: InputDecoration(
+                              hintText: AppTranslations.getString(
+                                  context, 'message_placeholder'),
+                              hintStyle: const TextStyle(color: Colors.white70),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                    color: Colors.white, width: 1),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                    color: Colors.white, width: 1),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                    color: Colors.white, width: 1),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return AppTranslations.getString(
+                                    context, 'please_enter_message');
+                              }
+                              if (value.length < 10) {
+                                return AppTranslations.getString(
+                                    context, 'message_min_length');
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          // Create Campaign & Invite Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed:
+                                  _isLoading ? null : _createCampaignAndInvite,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.black),
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            AppTranslations.getString(context,
+                                                'create_campaign_invite'),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Icon(
+                                          LucideIcons.tag,
+                                          size: 18,
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Cancel Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  side: BorderSide(
+                                    color: AppTheme.textPrimaryColor,
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: Text(
+                                AppTranslations.getString(context, 'cancel'),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

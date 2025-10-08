@@ -32,6 +32,7 @@ class SaloonsLoaded extends SaloonsState {
 
 class SaloonsError extends SaloonsState {
   final String message;
+  final int? statusCode;
 
-  SaloonsError(this.message);
+  SaloonsError(this.message, {this.statusCode});
 }

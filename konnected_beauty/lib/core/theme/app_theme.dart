@@ -6,7 +6,7 @@ class AppTheme {
   static const Color primaryColor = Color(0xFF1F1E1E);
   static const Color secondaryColor = Color(0xFF353535);
   static const Color border2 = Color(0xFF4a4949);
-
+  static const Color greenColor = Color(0xFF00D32A);
   static const Color accentColor = Colors.white;
   static const Color textPrimaryColor = Color.fromRGBO(255, 255, 255, 1);
   static const Color textSecondaryColor = Color(0xffD6D1D1);
@@ -15,7 +15,7 @@ class AppTheme {
   static const Color navBartextColor = Color(0xff949494);
 
   static const Color transparentBackground = Colors.transparent;
-  static const Color scaffoldBackground = Color(0xFF2A2A2A);
+  static const Color scaffoldBackground = Color(0xFF1F1E1E);
 
   // Success and Error Colors
   static const Color successColor = Color(0xFF4CAF50);

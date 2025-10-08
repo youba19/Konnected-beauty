@@ -81,6 +81,7 @@ class InfluencerProfileLoaded extends InfluencerProfileState {
   final String bio;
   final String zone;
   final String profilePicture;
+  final String status;
 
   InfluencerProfileLoaded({
     required this.profileData,
@@ -91,6 +92,7 @@ class InfluencerProfileLoaded extends InfluencerProfileState {
     required this.bio,
     required this.zone,
     required this.profilePicture,
+    required this.status,
   });
 
   InfluencerProfileLoaded copyWith({
@@ -102,6 +104,7 @@ class InfluencerProfileLoaded extends InfluencerProfileState {
     String? bio,
     String? zone,
     String? profilePicture,
+    String? status,
   }) {
     return InfluencerProfileLoaded(
       profileData: profileData ?? this.profileData,
@@ -112,6 +115,7 @@ class InfluencerProfileLoaded extends InfluencerProfileState {
       bio: bio ?? this.bio,
       zone: zone ?? this.zone,
       profilePicture: profilePicture ?? this.profilePicture,
+      status: status ?? this.status,
     );
   }
 }
@@ -297,6 +301,7 @@ class InfluencerProfileBloc
           bio: profileData['profile']?['bio'] ?? '',
           zone: profileData['profile']?['zone'] ?? 'Paris',
           profilePicture: profileData['profile']?['profilePicture'] ?? '',
+          status: profileData['status'] ?? 'inactive',
         );
 
         emit(loadedProfile);
@@ -618,6 +623,7 @@ class InfluencerProfileBloc
           zone: profileData['profile']?['zone'] ?? 'Paris',
           profilePicture: profileData['profile']?['profilePicture'] ??
               currentState.profilePicture,
+          status: profileData['status'] ?? 'inactive',
         );
 
         // Emit the updated state for immediate feedback
@@ -709,6 +715,7 @@ class InfluencerProfileBloc
           bio: profileData['profile']?['bio'] ?? '',
           zone: profileData['profile']?['zone'] ?? 'Paris',
           profilePicture: profileData['profile']?['profilePicture'] ?? '',
+          status: profileData['status'] ?? 'inactive',
         );
 
         // Emit the refreshed profile data

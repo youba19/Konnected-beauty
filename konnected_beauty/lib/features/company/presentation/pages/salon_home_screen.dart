@@ -407,48 +407,6 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                 ),
               ),
               // Logout Button
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.red.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.logout,
-                    color: Colors.red,
-                    size: 20,
-                  ),
-                  onPressed: _showLogoutDialog,
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Test Create Service Button (for debugging)
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.blue.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.add,
-                    color: Colors.blue,
-                    size: 20,
-                  ),
-                  onPressed: _createTestService,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -887,35 +845,52 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             child: Padding(
               padding: const EdgeInsets.all(32.0),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.error_outline,
+                    Icons.wifi_off,
                     size: 64,
-                    color: Colors.red,
+                    color: Colors.orange,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    state.error == 'TokenRefreshFailed' ||
-                            state.error == 'NoRefreshToken'
-                        ? 'Refreshing authentication...'
-                        : state.message,
+                  const Text(
+                    'Connection Problem',
                     style: TextStyle(
-                      color: state.error == 'TokenRefreshFailed' ||
-                              state.error == 'NoRefreshToken'
-                          ? AppTheme.textSecondaryColor
-                          : Colors.red,
+                      color: AppTheme.textPrimaryColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Please check your internet connection and try again.',
+                    style: TextStyle(
+                      color: Colors.orange,
                       fontSize: 16,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
                     onPressed: () {
                       context
                           .read<SalonServicesBloc>()
                           .add(LoadSalonServices());
                     },
-                    child: Text(AppTranslations.getString(context, 'retry')),
+                    icon: const Icon(Icons.refresh),
+                    label: Text(AppTranslations.getString(context, 'retry')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentColor,
+                      foregroundColor: AppTheme.primaryColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1423,10 +1398,15 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       baseColor: Colors.grey[800]!,
       highlightColor: Colors.grey[600]!,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         itemCount: 5, // Show 5 shimmer items
         itemBuilder: (context, index) {
-          return _buildShimmerServiceCard();
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index < 4 ? 16.0 : 0.0,
+            ),
+            child: _buildShimmerServiceCard(),
+          );
         },
       ),
     );
@@ -1434,80 +1414,104 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
   Widget _buildShimmerServiceCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
+        color: AppTheme.transparentBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderColor),
+        border: Border.all(
+          color: AppTheme.textPrimaryColor,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Service name and price row
+          // Title row (matching actual service card layout)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Service name shimmer
-              Container(
-                height: 20,
-                width: 150,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              // Price shimmer
-              Container(
-                height: 18,
-                width: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: Container(
+                  height: 20,
+                  width: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Description shimmer
+          const SizedBox(height: 5),
+
+          // Price row (separate from title, matching actual layout)
           Container(
-            height: 14,
-            width: double.infinity,
+            height: 16,
+            width: 80,
             decoration: BoxDecoration(
               color: Colors.grey[700],
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
-            height: 14,
-            width: 200,
-            decoration: BoxDecoration(
-              color: Colors.grey[700],
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Action buttons row shimmer
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(height: 5),
+
+          // Description shimmer (matching actual description layout)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Edit button shimmer
               Container(
-                height: 36,
-                width: 80,
+                height: 14,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
-              // Delete button shimmer
+              const SizedBox(height: 4),
               Container(
-                height: 36,
-                width: 80,
+                height: 14,
+                width: 200,
                 decoration: BoxDecoration(
                   color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Action Buttons row (matching actual button layout)
+          Row(
+            children: [
+              // View Details button shimmer
+              Expanded(
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.grey[600]!,
+                      width: 1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Edit button shimmer
+              Expanded(
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.grey[600]!,
+                      width: 1,
+                    ),
+                  ),
                 ),
               ),
             ],

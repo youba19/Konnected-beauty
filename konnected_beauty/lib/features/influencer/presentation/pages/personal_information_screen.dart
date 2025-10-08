@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
@@ -437,6 +438,138 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     );
   }
 
+  Widget _buildShimmerContent() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[600]!,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // HEADER - Now scrollable
+            _buildHeader(),
+            const SizedBox(height: 24),
+
+            // Profile Picture Shimmer
+            _buildShimmerProfilePicture(),
+            const SizedBox(height: 24),
+
+            // Name Field Shimmer
+            _buildShimmerTextField(),
+            const SizedBox(height: 20),
+
+            // Pseudo Field Shimmer
+            _buildShimmerTextField(),
+            const SizedBox(height: 20),
+
+            // Email Field Shimmer
+            _buildShimmerTextField(),
+            const SizedBox(height: 20),
+
+            // Phone Field Shimmer
+            _buildShimmerTextField(),
+            const SizedBox(height: 20),
+
+            // Bio Field Shimmer
+            _buildShimmerTextField(),
+            const SizedBox(height: 20),
+
+            // Zone Field Shimmer
+            _buildShimmerTextField(),
+            const SizedBox(height: 32),
+
+            // Save Button Shimmer
+            _buildShimmerButton(),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerProfilePicture() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label shimmer
+        Container(
+          height: 16,
+          width: 120,
+          decoration: BoxDecoration(
+            color: Colors.grey[700],
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Profile picture shimmer
+        Center(
+          child: Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerTextField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label shimmer
+        Container(
+          height: 16,
+          width: 120,
+          decoration: BoxDecoration(
+            color: Colors.grey[700],
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Text field shimmer
+        Container(
+          height: 56,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey[700],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerButton() {
+    return Container(
+      height: 56,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfilePictureField(String profilePicture) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -843,40 +976,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               builder: (context, state) {
                 if (state is InfluencerProfileLoading ||
                     state is InfluencerProfileUpdating) {
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER - Now scrollable
-                        _buildHeader(),
-                        const SizedBox(height: 24),
-
-                        // Loading content
-                        const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                color: Color(0xFF22C55E),
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'Loading profile...',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  );
+                  return _buildShimmerContent();
                 } else if (state is InfluencerProfileError) {
                   return SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),

@@ -695,7 +695,6 @@ class _InfluencerRegistrationScreenState
                         // Bottom Button
                         _buildBottomButton(context, state),
                         // Add extra padding for keyboard
-                        const SizedBox(height: 10),
                       ],
                     ),
                   );

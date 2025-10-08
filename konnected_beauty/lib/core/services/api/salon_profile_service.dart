@@ -118,4 +118,112 @@ class SalonProfileService {
       };
     }
   }
+
+  // Get payment information
+  Future<Map<String, dynamic>> getPaymentInformation() async {
+    try {
+      print('💳 === GETTING SALON PAYMENT INFORMATION ===');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/salon/payment-information',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('💳 Response Status: ${response.statusCode}');
+      print('💳 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Payment information retrieved successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ??
+              'Failed to retrieve payment information',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in getPaymentInformation: $e');
+      return {
+        'success': false,
+        'message': 'Error retrieving payment information: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  // Update payment information
+  Future<Map<String, dynamic>> updatePaymentInformation({
+    required String businessName,
+    required String registryNumber,
+    required String iban,
+  }) async {
+    try {
+      print('💳 === UPDATING SALON PAYMENT INFORMATION ===');
+      print('💳 Business Name: $businessName');
+      print('💳 Registry Number: $registryNumber');
+      print('💳 IBAN: $iban');
+
+      final body = {
+        'businessName': businessName,
+        'registryNumber': registryNumber,
+        'IBAN': iban,
+      };
+
+      print('💳 Request Body: ${jsonEncode(body)}');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'PATCH',
+        endpoint: '/salon/payment-information',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      print('💳 Response Status: ${response.statusCode}');
+      print('💳 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Payment information updated successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to update payment information',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in updatePaymentInformation: $e');
+      return {
+        'success': false,
+        'message': 'Error updating payment information: $e',
+        'statusCode': 500,
+      };
+    }
+  }
 }

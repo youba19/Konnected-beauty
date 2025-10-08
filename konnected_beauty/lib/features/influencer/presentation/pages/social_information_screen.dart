@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:konnected_beauty/core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
@@ -99,27 +100,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           // CONTENT
           SafeArea(
             child: _isLoading
-                ? SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER - Now scrollable
-                        _buildHeader(),
-                        const SizedBox(height: 24),
-
-                        // Loading content
-                        const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF22C55E),
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  )
+                ? _buildShimmerContent()
                 : SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
@@ -188,6 +169,95 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerContent() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[600]!,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // HEADER - Now scrollable
+            _buildHeader(),
+            const SizedBox(height: 24),
+
+            // Social media fields shimmer
+            _buildShimmerSocialField(),
+            const SizedBox(height: 20),
+
+            _buildShimmerSocialField(),
+            const SizedBox(height: 20),
+
+            _buildShimmerSocialField(),
+            const SizedBox(height: 20),
+
+            _buildShimmerSocialField(),
+            const SizedBox(height: 20),
+
+            _buildShimmerSocialField(),
+            const SizedBox(height: 20),
+
+            // Add link button shimmer
+            _buildShimmerAddButton(),
+            const SizedBox(height: 20),
+
+            // Extra padding at bottom for better scrolling
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerSocialField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label shimmer
+        Container(
+          height: 16,
+          width: 120,
+          decoration: BoxDecoration(
+            color: Colors.grey[700],
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Text field shimmer
+        Container(
+          height: 56,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey[700],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerAddButton() {
+    return Container(
+      height: 56,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
       ),
     );
   }

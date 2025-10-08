@@ -116,7 +116,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
             ),
           );
         } else if (state is InfluencerCampaignError) {
-          return _buildErrorState(state.message);
+          return _buildErrorState(state);
         } else if (state is InfluencerCampaignLoaded ||
             state is CampaignActionSuccess) {
           final campaigns = state is InfluencerCampaignLoaded
@@ -448,19 +448,28 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
     );
   }
 
-  Widget _buildErrorState(String message) {
+  Widget _buildErrorState(InfluencerCampaignError state) {
+    // Check if it's a 403 status code
+    final isAccountNotActive = state.statusCode == 403;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.error_outline,
+            isAccountNotActive
+                ? Icons.account_circle_outlined
+                : Icons.error_outline,
             size: 80,
-            color: AppTheme.errorColor.withOpacity(0.5),
+            color: isAccountNotActive
+                ? Colors.red
+                : AppTheme.errorColor.withOpacity(0.5),
           ),
           const SizedBox(height: 24),
           Text(
-            AppTranslations.getString(context, 'something_went_wrong'),
+            isAccountNotActive
+                ? AppTranslations.getString(context, 'account_not_active')
+                : AppTranslations.getString(context, 'something_went_wrong'),
             style: const TextStyle(
               color: AppTheme.textPrimaryColor,
               fontSize: 20,
@@ -469,36 +478,43 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            message,
+            isAccountNotActive
+                ? AppTranslations.getString(context, 'account_not_active')
+                : state.message,
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color:
+                  isAccountNotActive ? Colors.red : AppTheme.textSecondaryColor,
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () {
-              context
-                  .read<InfluencerCampaignBloc>()
-                  .add(LoadInfluencerCampaigns());
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          // Only show retry button if it's not a 403 error
+          if (!isAccountNotActive) ...[
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                context
+                    .read<InfluencerCampaignBloc>()
+                    .add(LoadInfluencerCampaigns());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                AppTranslations.getString(context, 'try_again'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            child: Text(
-              AppTranslations.getString(context, 'try_again'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );

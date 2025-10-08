@@ -24,6 +24,8 @@ import 'core/bloc/salon_info/salon_info_bloc.dart';
 import 'core/services/api/salon_info_service.dart';
 import 'core/bloc/saloons/saloons_bloc.dart';
 import 'core/bloc/salon_details/salon_details_bloc.dart';
+import 'core/bloc/invite_salon/invite_salon_bloc.dart';
+import 'core/bloc/influencer_campaigns/influencer_campaigns_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'core/translations/app_translations.dart';
 import 'features/auth/presentation/pages/welcome_screen.dart';
@@ -108,6 +110,12 @@ class KonnectedBeautyApp extends StatelessWidget {
         ),
         BlocProvider<SalonDetailsBloc>(
           create: (context) => SalonDetailsBloc(),
+        ),
+        BlocProvider<InviteSalonBloc>(
+          create: (context) => InviteSalonBloc(),
+        ),
+        BlocProvider<InfluencerCampaignsBloc>(
+          create: (context) => InfluencerCampaignsBloc(),
         ),
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(
