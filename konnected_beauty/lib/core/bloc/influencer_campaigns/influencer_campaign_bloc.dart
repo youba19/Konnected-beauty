@@ -34,7 +34,8 @@ class InfluencerCampaignLoaded extends InfluencerCampaignState {
 
 class InfluencerCampaignError extends InfluencerCampaignState {
   final String message;
-  InfluencerCampaignError(this.message);
+  final int? statusCode;
+  InfluencerCampaignError(this.message, {this.statusCode});
 }
 
 class CampaignActionSuccess extends InfluencerCampaignState {

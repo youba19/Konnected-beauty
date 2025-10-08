@@ -42,8 +42,9 @@ class CampaignsLoaded extends CampaignsState {
 
 class CampaignsError extends CampaignsState {
   final String message;
+  final int? statusCode;
 
-  CampaignsError({required this.message});
+  CampaignsError({required this.message, this.statusCode});
 }
 
 class CampaignDeleted extends CampaignsState {

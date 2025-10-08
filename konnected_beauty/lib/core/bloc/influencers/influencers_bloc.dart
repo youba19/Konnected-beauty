@@ -401,8 +401,11 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
     final enabledFilters = event.filters.where((f) => f.enabled).toList();
     print('🔍 Enabled Filters: ${enabledFilters.length}');
     for (final filter in enabledFilters) {
-      print('🔍   - ${filter.key}: ${filter.value}');
+      print(
+          '🔍   - ${filter.key}: "${filter.value}" (enabled: ${filter.enabled})');
     }
+    print(
+        '🔍 Search filter in BLoC: ${enabledFilters.any((f) => f.key == 'search')}');
 
     // Check if this is a pagination request (page > 1)
     final pageFilter = event.filters.firstWhere(
@@ -437,13 +440,41 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
         final totalPages =
             int.tryParse(result['totalPages']?.toString() ?? '1') ?? 1;
         final total = int.tryParse(result['total']?.toString() ?? '0') ?? 0;
-        final hasMoreData = resultCurrentPage < totalPages;
+
+        print('🔍 === API RESPONSE ===');
+        print('🔍 Success: ${result['success']}');
+        print('🔍 New Influencers Count: ${newInfluencers.length}');
+        print('🔍 Current Page: $resultCurrentPage');
+        print('🔍 Total Pages: $totalPages');
+        print('🔍 Total: $total');
+        print('🔍 === END API RESPONSE ===');
+        // Use both total and totalPages to determine if there are more influencers
+        int currentInfluencersCount = newInfluencers.length;
+        if (isPagination && state is InfluencersLoaded) {
+          final loadedState = state as InfluencersLoaded;
+          currentInfluencersCount =
+              loadedState.influencers.length + newInfluencers.length;
+        }
+
+        // Check both conditions: more pages available AND haven't reached total count
+        final hasMorePages = resultCurrentPage < totalPages;
+        final hasMoreByTotal = currentInfluencersCount < total;
+        final hasMoreData = hasMorePages && hasMoreByTotal;
 
         print('✅ Influencers filtered successfully');
         print('📊 Total: $total');
         print('📄 Current Page: $resultCurrentPage');
         print('📄 Total Pages: $totalPages');
+        print('📊 New Influencers Count: ${newInfluencers.length}');
+        print('📊 Current Total Influencers: $currentInfluencersCount');
+        print('📊 API Total Available: $total');
         print('🔄 Has More Data: $hasMoreData');
+        print(
+            '🔍 Has More Pages: currentPage($resultCurrentPage) < totalPages($totalPages) = $hasMorePages');
+        print(
+            '🔍 Has More By Total: currentInfluencers($currentInfluencersCount) < total($total) = $hasMoreByTotal');
+        print(
+            '🔍 Final Decision: hasMorePages($hasMorePages) && hasMoreByTotal($hasMoreByTotal) = $hasMoreData');
 
         // If this is pagination, append to existing list
         List<Map<String, dynamic>> finalInfluencers;
@@ -461,104 +492,63 @@ class InfluencersBloc extends Bloc<InfluencersEvent, InfluencersState> {
           finalInfluencers = newInfluencers;
         }
 
-        // Apply client-side search filtering if search parameter exists
+        // Check if we need client-side filtering as fallback
         final searchFilter = event.filters.firstWhere(
           (f) => f.key == 'search' && f.enabled,
           orElse: () => FilterModel(
             key: 'search',
             value: '',
-            description: 'Search by name or bio',
+            description: 'Search',
             enabled: false,
             equals: true,
             uuid: '',
           ),
         );
+
+        List<Map<String, dynamic>> filteredInfluencers = finalInfluencers;
 
         if (searchFilter.enabled && searchFilter.value.isNotEmpty) {
-          print(
-              '🔍 Applying client-side search filter: "${searchFilter.value}"');
-          final searchTerm = searchFilter.value.toLowerCase();
-          finalInfluencers = finalInfluencers.where((influencer) {
-            final pseudo =
-                influencer['profile']?['pseudo']?.toString().toLowerCase() ??
-                    '';
-            final bio =
-                influencer['profile']?['bio']?.toString().toLowerCase() ?? '';
-            final zone =
-                influencer['profile']?['zone']?.toString().toLowerCase() ?? '';
+          print('🔍 === APPLYING CLIENT-SIDE SEARCH FILTER ===');
+          print('🔍 Search term: "${searchFilter.value}"');
+          print('🔍 Before filtering: ${finalInfluencers.length} influencers');
 
-            return pseudo.contains(searchTerm) ||
-                bio.contains(searchTerm) ||
-                zone.contains(searchTerm);
+          filteredInfluencers = finalInfluencers.where((influencer) {
+            final profile = influencer['profile'] as Map<String, dynamic>?;
+            if (profile == null) return false;
+
+            final pseudo = (profile['pseudo'] as String? ?? '').toLowerCase();
+            final bio = (profile['bio'] as String? ?? '').toLowerCase();
+            final searchTerm = searchFilter.value.toLowerCase();
+
+            return pseudo.contains(searchTerm) || bio.contains(searchTerm);
           }).toList();
+
           print(
-              '🔍 After search filter: ${finalInfluencers.length} influencers');
-        }
-
-        // Apply zone filter
-        print('🔍 === CHECKING FOR ZONE FILTER ===');
-        print('🔍 Total filters received: ${event.filters.length}');
-        for (final filter in event.filters) {
-          print(
-              '🔍 Filter: ${filter.key} = ${filter.value} (enabled: ${filter.enabled})');
-        }
-
-        // Debug: Show available zones in the data
-        print('🔍 Available zones in current data:');
-        final availableZones = <String>{};
-        for (final influencer in finalInfluencers) {
-          final zone = influencer['profile']?['zone']?.toString() ?? 'No zone';
-          availableZones.add(zone);
-        }
-        print('🔍 Zones: ${availableZones.toList()}');
-
-        final zoneFilter = event.filters.firstWhere(
-          (f) => f.key == 'zone' && f.enabled,
-          orElse: () => FilterModel(
-            key: 'zone',
-            value: '',
-            description: 'Location zone',
-            enabled: false,
-            equals: true,
-            uuid: '',
-          ),
-        );
-
-        print(
-            '🔍 Zone filter found: enabled=${zoneFilter.enabled}, value="${zoneFilter.value}"');
-
-        if (zoneFilter.enabled && zoneFilter.value.isNotEmpty) {
-          print('🔍 Applying client-side zone filter: "${zoneFilter.value}"');
-          final zoneTerm = zoneFilter.value.toLowerCase();
-          print('🔍 Zone term for filtering: "$zoneTerm"');
-          print(
-              '🔍 Influencers before zone filter: ${finalInfluencers.length}');
-
-          finalInfluencers = finalInfluencers.where((influencer) {
-            final zone =
-                influencer['profile']?['zone']?.toString().toLowerCase() ?? '';
-            final matches = zone.contains(zoneTerm);
-            if (matches) {
-              print(
-                  '🔍 ✅ Match found: ${influencer['profile']?['pseudo']} in zone "$zone"');
-            }
-            return matches;
-          }).toList();
-          print('🔍 After zone filter: ${finalInfluencers.length} influencers');
+              '🔍 After filtering: ${filteredInfluencers.length} influencers');
+          print('🔍 === CLIENT-SIDE FILTERING COMPLETE ===');
         } else {
-          print(
-              '🔍 No zone filter applied (enabled: ${zoneFilter.enabled}, value: "${zoneFilter.value}")');
+          print('🔍 === BACKEND FILTERING COMPLETE ===');
+          print('🔍 Using API-filtered results directly from backend');
+          print('🔍 No client-side filtering applied');
         }
-        print('🔍 === END ZONE FILTER CHECK ===');
+
+        print('🔍 === EMITTING NEW STATE ===');
+        print('🔍 Final Influencers Count: ${filteredInfluencers.length}');
+        print('🔍 Has More Data: $hasMoreData');
+        print('🔍 Current Filters Count: ${event.filters.length}');
+        print(
+            '🔍 Search in final filters: ${event.filters.any((f) => f.key == 'search' && f.enabled)}');
 
         emit(InfluencersLoaded(
-          influencers: finalInfluencers,
+          influencers: filteredInfluencers,
           currentPage: resultCurrentPage,
           totalPages: totalPages,
           total: total,
           hasMoreData: hasMoreData,
           currentFilters: event.filters,
         ));
+
+        print('🔍 === STATE EMITTED ===');
       } else {
         print('❌ Failed to filter influencers: ${result['message']}');
         emit(InfluencersError(

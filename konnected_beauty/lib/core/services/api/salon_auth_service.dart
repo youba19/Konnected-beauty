@@ -37,6 +37,9 @@ class SalonAuthService {
   static const String resetPasswordEndpoint = '/salon-auth/reset-password';
   static const String salonServicesEndpoint = '/salon-service';
 
+  // Account deletion endpoint
+  static const String deleteAccountEndpoint = '/salon-auth/delete-account';
+
   // Headers for API requests
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',
@@ -1574,6 +1577,67 @@ class SalonAuthService {
         'success': false,
         'message': 'Network error: ${e.toString()}',
         'error': e.toString(),
+      };
+    }
+  }
+
+  /// Delete salon account permanently
+  static Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      print('🗑️ === DELETE SALON ACCOUNT ===');
+
+      // Get access token for authentication
+      final accessToken = await TokenStorageService.getAccessToken();
+
+      if (accessToken == null) {
+        print('❌ No access token available');
+        return {
+          'success': false,
+          'message': 'Authentication failed. Please login again.',
+          'error': 'NoAccessToken',
+          'statusCode': 401,
+        };
+      }
+
+      // Build headers with authentication
+      final Map<String, String> requestHeaders = Map.from(headers);
+      requestHeaders['Authorization'] = 'Bearer $accessToken';
+
+      print('🔗 Making DELETE request to: $baseUrl$deleteAccountEndpoint');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl$deleteAccountEndpoint'),
+        headers: requestHeaders,
+      );
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        print('✅ Account deleted successfully');
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Account deleted successfully',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        print('❌ Account deletion failed: ${responseData['message']}');
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to delete account',
+          'error': responseData['error'],
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in deleteAccount: $e');
+      return {
+        'success': false,
+        'message': 'Error deleting account: $e',
+        'error': 'Exception',
+        'statusCode': 500,
       };
     }
   }

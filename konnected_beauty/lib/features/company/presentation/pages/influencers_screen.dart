@@ -21,6 +21,7 @@ class InfluencersScreen extends StatefulWidget {
 class _InfluencersScreenState extends State<InfluencersScreen> {
   final TextEditingController searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isLoadingMore = false;
 
   Timer? _searchDebounceTimer;
 
@@ -44,7 +45,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       ),
       FilterModel(
         key: 'limit',
-        value: '10',
+        value: '50',
         description: 'Items per page',
         enabled: true,
         equals: true,
@@ -87,6 +88,8 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       if (mounted) {
         print('🔍 === SEARCH CHANGED ===');
         print('🔍 Search Value: "$value"');
+        print('🔍 Search Length: ${value.length}');
+        print('🔍 Using backend API filtering for search');
 
         // Get current filters from state
         final currentState = context.read<InfluencersBloc>().state;
@@ -167,7 +170,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
         if (!filters.any((f) => f.key == 'limit' && f.enabled)) {
           filters.add(FilterModel(
             key: 'limit',
-            value: '10',
+            value: '50',
             description: 'Items per page',
             enabled: true,
             equals: true,
@@ -187,11 +190,16 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
         }
 
         print('🔍 Final filters count: ${filters.length}');
+        print('🔍 Enabled filters:');
         for (final filter in filters.where((f) => f.enabled)) {
-          print('🔍   - ${filter.key}: ${filter.value}');
+          print(
+              '🔍   - ${filter.key}: "${filter.value}" (enabled: ${filter.enabled})');
         }
+        print(
+            '🔍 Search filter present: ${filters.any((f) => f.key == 'search' && f.enabled)}');
 
-        // Apply filters using the new filter system
+        // Apply filters using backend API filtering
+        print('🔍 Dispatching FilterInfluencers event...');
         context
             .read<InfluencersBloc>()
             .add(FilterInfluencers(filters: filters));
@@ -204,11 +212,23 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
         _scrollController.position.maxScrollExtent - 200) {
       // Load more influencers when near the bottom
       final currentState = context.read<InfluencersBloc>().state;
-      if (currentState is InfluencersLoaded && currentState.hasMoreData) {
+      if (currentState is InfluencersLoaded &&
+          currentState.influencers.length < currentState.total &&
+          !_isLoadingMore) {
         print('📄 === LOADING MORE INFLUENCERS ===');
         print('📄 Current Page: ${currentState.currentPage}');
         print('📄 Total Pages: ${currentState.totalPages}');
-        print('📄 Has More Data: ${currentState.hasMoreData}');
+        print('📄 Current Influencers: ${currentState.influencers.length}');
+        print('📄 Total Available: ${currentState.total}');
+        print(
+            '📄 Has More Pages: ${currentState.currentPage < currentState.totalPages}');
+        print(
+            '📄 Has More By Total: ${currentState.influencers.length < currentState.total}');
+
+        // Set loading flag to prevent duplicate requests
+        setState(() {
+          _isLoadingMore = true;
+        });
 
         // Create filters for pagination
         List<FilterModel> filters = List.from(currentState.currentFilters);
@@ -284,6 +304,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
 
   void _clearFilters() {
     print('🔍 === CLEARING ALL FILTERS ===');
+    print('🔍 Using backend API filtering to clear all filters');
 
     // Create default filters (no zone filter)
     List<FilterModel> filters = [
@@ -297,7 +318,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       ),
       FilterModel(
         key: 'limit',
-        value: '10',
+        value: '50',
         description: 'Items per page',
         enabled: true,
         equals: true,
@@ -316,10 +337,10 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     // Clear search
     searchController.clear();
 
-    // Apply filters to reload without any zone filter
+    // Apply filters using backend API filtering
     context.read<InfluencersBloc>().add(FilterInfluencers(filters: filters));
 
-    print('🔍 All filters cleared');
+    print('🔍 All filters cleared using backend API');
   }
 
   bool _hasActiveZoneFilter(InfluencersState state) {
@@ -368,48 +389,71 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
               child: Column(
                 children: [
                   // Header Section with BLoC state management
-                  BlocBuilder<InfluencersBloc, InfluencersState>(
-                    builder: (context, state) {
-                      return _buildHeader(state);
+                  BlocListener<InfluencersBloc, InfluencersState>(
+                    listener: (context, state) {
+                      // Reset loading flag when state changes
+                      if (state is InfluencersLoaded ||
+                          state is InfluencersError) {
+                        setState(() {
+                          _isLoadingMore = false;
+                        });
+                      }
                     },
+                    child: BlocBuilder<InfluencersBloc, InfluencersState>(
+                      builder: (context, state) {
+                        return _buildHeader(state);
+                      },
+                    ),
                   ),
 
                   // Main Content
                   Expanded(
                     child: BlocBuilder<InfluencersBloc, InfluencersState>(
                       builder: (context, state) {
+                        print('🎨 === BLOC BUILDER REBUILD ===');
+                        print('🎨 State Type: ${state.runtimeType}');
+                        if (state is InfluencersLoaded) {
+                          print(
+                              '🎨 Influencers Count: ${state.influencers.length}');
+                          print(
+                              '🎨 Current Search: ${state.currentFilters.where((f) => f.key == 'search' && f.enabled).map((f) => f.value).join(', ')}');
+                        }
+
                         if (state is InfluencersLoading) {
                           return _buildShimmerList();
                         } else if (state is InfluencersError) {
                           return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  color: Colors.red,
-                                  size: 48,
-                                ),
-                                const SizedBox(height: 16),
-                                if (state.error
-                                        .contains('Account not active') ||
-                                    state.error.contains('Forbidden') ||
-                                    state.error.contains('403'))
-                                  Column(
-                                    children: [
-                                      Text(
-                                        'Your salon account is not yet active. Please contact support to activate your account.',
-                                        style: const TextStyle(
-                                          color: AppTheme.textSecondaryColor,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                    ],
-                                  )
-                                else
-                                  ElevatedButton(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.wifi_off,
+                                    size: 64,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'Connection Problem',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimaryColor,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Please check your internet connection and try again.',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 16,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ElevatedButton.icon(
                                     onPressed: () {
                                       final currentState =
                                           context.read<InfluencersBloc>().state;
@@ -427,12 +471,23 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                                             .add(LoadInfluencers());
                                       }
                                     },
-                                    child: Text(
-                                      AppTranslations.getString(
-                                          context, 'retry'),
+                                    icon: const Icon(Icons.refresh),
+                                    label: Text(AppTranslations.getString(
+                                        context, 'retry')),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.accentColor,
+                                      foregroundColor: AppTheme.primaryColor,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
                                   ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         } else if (state is InfluencersLoaded) {
@@ -823,10 +878,15 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       baseColor: Colors.grey[800]!,
       highlightColor: Colors.grey[600]!,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         itemCount: 5, // Show 5 shimmer items
         itemBuilder: (context, index) {
-          return _buildShimmerInfluencerCard();
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index < 4 ? 16.0 : 0.0,
+            ),
+            child: _buildShimmerInfluencerCard(),
+          );
         },
       ),
     );
@@ -834,74 +894,136 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
 
   Widget _buildShimmerInfluencerCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderColor),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.6),
+          width: 1,
+        ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Shimmer avatar
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey[700],
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Shimmer content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Name
-                Container(
-                  height: 18,
-                  width: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+          // Top Row: Image + Username + Zone (matching actual card layout)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Shimmer Profile Picture
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 8),
-                // Bio
-                Container(
-                  height: 14,
-                  width: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Zone and rating row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+              const SizedBox(width: 10),
+
+              // Username + Rating + Zone
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      height: 12,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[700],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                    // Username row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          height: 16,
+                          width: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[700],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ],
                     ),
-                    Container(
-                      height: 12,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[700],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                    const SizedBox(height: 4),
+
+                    // Rating + Zone Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Rating (left side)
+                        Row(
+                          children: [
+                            Container(
+                              height: 13,
+                              width: 30,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[700],
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[700],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Zone (right side)
+                        Row(
+                          children: [
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[700],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              height: 13,
+                              width: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[700],
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Description shimmer (matching actual bio layout)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 13,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                height: 13,
+                width: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ],
           ),
         ],
       ),

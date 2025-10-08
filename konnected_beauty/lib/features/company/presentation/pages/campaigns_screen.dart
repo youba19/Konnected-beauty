@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
@@ -23,6 +24,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
   String? _currentStatus;
+  String _currentSearch = '';
 
   @override
   void initState() {
@@ -38,11 +40,11 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     // Add scroll listener for pagination (same as influencers)
     _scrollController.addListener(_onScroll);
 
-    // Load initial campaigns with pending status filter
-    _currentStatus = 'pending';
+    // Load initial campaigns with all statuses
+    _currentStatus = 'all';
     print('🚀 === INITIAL CAMPAIGNS LOAD ===');
     context.read<CampaignsBloc>().add(LoadCampaigns(
-          status: _currentStatus,
+          status: null, // Load all campaigns
           limit: 10, // Use normal page size like influencers
         ));
   }
@@ -59,29 +61,17 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     // Cancel previous timer
     _searchDebounceTimer?.cancel();
 
-    // Set new timer for debounced search (same as influencers)
+    // Set new timer for debounced search
     _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
+        setState(() {
+          _currentSearch = value;
+        });
         print('🔍 === SEARCH CHANGED ===');
         print('🔍 Search Value: "$value"');
-
-        if (value.isEmpty) {
-          // Reset to initial load when search is cleared (same as influencers)
-          context.read<CampaignsBloc>().add(LoadCampaigns(
-                page: 1,
-                limit: 10,
-                search: null,
-                status: _currentStatus,
-              ));
-        } else {
-          // Use LoadCampaigns with search parameter (same as influencers)
-          context.read<CampaignsBloc>().add(LoadCampaigns(
-                page: 1,
-                limit: 10,
-                search: value,
-                status: _currentStatus,
-              ));
-        }
+        print('🔍 Search Length: ${value.length}');
+        print('🔍 Current Status: $_currentStatus');
+        print('🔍 Current Search: "$_currentSearch"');
       }
     });
   }
@@ -104,7 +94,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           context.read<CampaignsBloc>().add(LoadMoreCampaigns(
                 page: currentState.currentPage + 1,
                 search: currentState.currentSearch,
-                status: currentState.currentStatus ?? _currentStatus,
+                status: currentState.currentStatus ??
+                    (_currentStatus == 'all' ? null : _currentStatus),
               ));
         }
       }
@@ -112,6 +103,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   }
 
   void _showFilterScreen() {
+    print('🔍 === SHOWING FILTER SCREEN ===');
+    print('🔍 Current Status: "$_currentStatus"');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -124,152 +117,190 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   }
 
   Widget _buildFilterModal() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return StatefulBuilder(
+      builder: (context, setModalState) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.secondaryColor,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filter Campaigns',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimaryColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Status Filter
                 Text(
-                  'Filter Campaigns',
+                  'Campaign Status',
                   style: const TextStyle(
                     color: AppTheme.textPrimaryColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.close,
-                    color: AppTheme.textPrimaryColor,
+                const SizedBox(height: 12),
+
+                // Status Dropdown
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.transparentBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.textPrimaryColor,
+                      width: 1,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Status Filter
-            Text(
-              'Campaign Status',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Status Options
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildStatusChip('pending', 'Pending'),
-                _buildStatusChip('in progress', 'In Progress'),
-                _buildStatusChip('rejected', 'Rejected'),
-                _buildStatusChip('canceled', 'Canceled'),
-                _buildStatusChip('finished', 'Finished'),
-                _buildStatusChip('all', 'All'),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _clearFilters,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: AppTheme.textSecondaryColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(
-                          color: AppTheme.textSecondaryColor,
-                          width: 1,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _currentStatus ?? 'all',
+                      isExpanded: true,
+                      hint: Text(
+                        AppTranslations.getString(context, 'all'),
+                        style: const TextStyle(
+                          color: AppTheme.textPrimaryColor,
+                          fontSize: 16,
                         ),
                       ),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                      style: const TextStyle(
+                        color: AppTheme.textPrimaryColor,
+                        fontSize: 16,
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: 'all',
+                          child:
+                              Text(AppTranslations.getString(context, 'all')),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'pending',
+                          child: Text(
+                              AppTranslations.getString(context, 'pending')),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'in progress',
+                          child: Text(
+                              AppTranslations.getString(context, 'on_going')),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'finished',
+                          child: Text(
+                              AppTranslations.getString(context, 'finished')),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'rejected',
+                          child: Text(
+                              AppTranslations.getString(context, 'rejected')),
+                        ),
+                      ],
+                      onChanged: (String? newValue) {
+                        print('🔍 === DROPDOWN CHANGED ===');
+                        print('🔍 New Value: "$newValue"');
+                        print('🔍 Current Status Before: "$_currentStatus"');
+                        if (newValue != null) {
+                          setModalState(() {
+                            _currentStatus = newValue;
+                          });
+                          print('🔍 Current Status After: "$_currentStatus"');
+                        }
+                      },
                     ),
-                    child: const Text('Clear'),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _applyFilters();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.textPrimaryColor,
-                      foregroundColor: AppTheme.secondaryColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+
+                const SizedBox(height: 20),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setModalState(() {
+                            _currentStatus = 'all';
+                          });
+                          Navigator.pop(context);
+                          _applyFilters();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: AppTheme.textSecondaryColor,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(
+                              color: AppTheme.textSecondaryColor,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: const Text('Clear'),
                       ),
                     ),
-                    child: const Text('Apply'),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _applyFilters();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.textPrimaryColor,
+                          foregroundColor: AppTheme.secondaryColor,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Apply'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String status, String label) {
-    final isSelected = _currentStatus == status;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentStatus = status;
-        });
+          ),
+        );
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.textPrimaryColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppTheme.textPrimaryColor,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? AppTheme.secondaryColor
-                : AppTheme.textPrimaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
     );
   }
 
   void _clearFilters() {
     setState(() {
-      _currentStatus = 'pending';
+      _currentStatus = 'all';
     });
     Navigator.pop(context);
     _applyFilters();
@@ -278,6 +309,10 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   void _applyFilters() {
     print('🔍 === APPLYING FILTERS ===');
     print('🔍 Status: $_currentStatus');
+
+    setState(() {
+      // This will trigger a rebuild to update the filter icon color
+    });
 
     context.read<CampaignsBloc>().add(LoadCampaigns(
           status: _currentStatus == 'all' ? null : _currentStatus,
@@ -289,8 +324,39 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     print('Navigate to influencers screen');
   }
 
+  List<Map<String, dynamic>> _filterCampaigns(
+      List<Map<String, dynamic>> campaigns) {
+    if (_currentSearch.isEmpty) {
+      return campaigns;
+    }
+
+    final searchLower = _currentSearch.toLowerCase();
+    return campaigns.where((campaign) {
+      // Search in influencer pseudo
+      final influencer = campaign['influencer']?['profile'] ?? {};
+      final pseudo = influencer['pseudo'] ?? '';
+      final pseudoMatch = pseudo.toLowerCase().contains(searchLower);
+
+      // Search in salon name (if available)
+      final salon = campaign['salon']?['salonInfo'] ?? {};
+      final salonName = salon['name'] ?? '';
+      final salonMatch = salonName.toLowerCase().contains(searchLower);
+
+      // Search in status
+      final status = campaign['status'] ?? '';
+      final statusMatch = status.toLowerCase().contains(searchLower);
+
+      return pseudoMatch || salonMatch || statusMatch;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    print('🔍 === BUILD METHOD ===');
+    print('🔍 Current Status: "$_currentStatus"');
+    print(
+        '🔍 Icon Color: ${(_currentStatus != null && _currentStatus != 'all') ? "WHITE" : "DEFAULT"}');
+
     return BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
         return Scaffold(
@@ -324,21 +390,27 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                       child: BlocBuilder<CampaignsBloc, CampaignsState>(
                         builder: (context, state) {
                           if (state is CampaignsLoading) {
-                            // Don't show loading state for better UX during search
-                            return _buildInitialState();
+                            // Show shimmer loading for initial load
+                            return _buildShimmerList();
                           } else if (state is CampaignsError) {
                             return _buildErrorState(state);
                           } else if (state is CampaignsLoaded) {
-                            if (state.campaigns.isEmpty) {
+                            final filteredCampaigns = _filterCampaigns(
+                                state.campaigns.cast<Map<String, dynamic>>());
+                            if (filteredCampaigns.isEmpty) {
                               return _buildNoCampaignsState();
                             } else {
-                              return _buildCampaignsList(state);
+                              return _buildCampaignsList(
+                                  state, filteredCampaigns);
                             }
                           } else if (state is CampaignsLoadingMore) {
-                            if (state.campaigns.isEmpty) {
+                            final filteredCampaigns = _filterCampaigns(
+                                state.campaigns.cast<Map<String, dynamic>>());
+                            if (filteredCampaigns.isEmpty) {
                               return _buildNoCampaignsState();
                             } else {
-                              return _buildCampaignsListWithLoading(state);
+                              return _buildCampaignsListWithLoading(
+                                  state, filteredCampaigns);
                             }
                           } else {
                             return _buildInitialState();
@@ -416,7 +488,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: (_currentStatus != null && _currentStatus != 'pending')
+                  color: (_currentStatus != null && _currentStatus != 'all')
                       ? AppTheme.textPrimaryColor
                       : AppTheme.transparentBackground,
                   borderRadius: BorderRadius.circular(16),
@@ -428,10 +500,9 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 child: IconButton(
                   icon: Icon(
                     Icons.filter_list,
-                    color:
-                        (_currentStatus != null && _currentStatus != 'pending')
-                            ? AppTheme.secondaryColor
-                            : AppTheme.textPrimaryColor,
+                    color: (_currentStatus != null && _currentStatus != 'all')
+                        ? AppTheme.secondaryColor
+                        : AppTheme.textPrimaryColor,
                     size: 20,
                   ),
                   onPressed: _showFilterScreen,
@@ -452,52 +523,70 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   }
 
   Widget _buildErrorState(CampaignsError state) {
+    // Check if it's a 403 status code
+    final isAccountNotActive = state.statusCode == 403;
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
+            Icon(
+              isAccountNotActive
+                  ? Icons.account_circle_outlined
+                  : Icons.wifi_off,
               size: 64,
-              color: AppTheme.errorColor,
+              color: isAccountNotActive ? Colors.red : Colors.orange,
             ),
             const SizedBox(height: 16),
             Text(
-              'Error loading campaigns',
+              isAccountNotActive
+                  ? AppTranslations.getString(context, 'account_not_active')
+                  : 'Connection Problem',
               style: const TextStyle(
                 color: AppTheme.textPrimaryColor,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              state.message,
-              style: const TextStyle(
-                color: AppTheme.textSecondaryColor,
+              isAccountNotActive
+                  ? AppTranslations.getString(context, 'account_not_active')
+                  : 'Please check your internet connection and try again.',
+              style: TextStyle(
+                color: isAccountNotActive ? Colors.red : Colors.orange,
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                context.read<CampaignsBloc>().add(RefreshCampaigns(
-                      status: _currentStatus,
-                      limit: 10, // Normal page size like influencers
-                    ));
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentColor,
-                foregroundColor: AppTheme.primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            // Only show retry button if it's not a 403 error
+            if (!isAccountNotActive) ...[
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.read<CampaignsBloc>().add(RefreshCampaigns(
+                        status: _currentStatus == 'all' ? null : _currentStatus,
+                        limit: 10,
+                      ));
+                },
+                icon: const Icon(Icons.refresh),
+                label: Text(AppTranslations.getString(context, 'retry')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentColor,
+                  foregroundColor: AppTheme.primaryColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -516,7 +605,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildCampaignsList(CampaignsLoaded state) {
+  Widget _buildCampaignsList(
+      CampaignsLoaded state, List<Map<String, dynamic>> filteredCampaigns) {
     int totalClicks = state.campaigns.fold<int>(
         0, (sum, campaign) => sum + (campaign['clicks'] as int? ?? 0));
 
@@ -528,7 +618,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             children: [
               Expanded(
                 child: _summaryCard(
-                  icon: Icons.confirmation_num,
+                  icon: LucideIcons.ticket,
                   value: '${state.total}',
                   title: AppTranslations.getString(context, 'total_campaigns'),
                 ),
@@ -536,7 +626,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _summaryCard(
-                  icon: Icons.trending_up,
+                  icon: LucideIcons.mousePointerClick,
                   value: totalClicks.toString(),
                   title: AppTranslations.getString(context, 'total_clicks'),
                 ),
@@ -549,16 +639,16 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           child: RefreshIndicator(
             onRefresh: () async {
               context.read<CampaignsBloc>().add(RefreshCampaigns(
-                    status: _currentStatus,
+                    status: _currentStatus == 'all' ? null : _currentStatus,
                     limit: 10, // Normal page size like influencers
                   ));
             },
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: state.campaigns.length + (state.hasMore ? 1 : 0),
+              itemCount: filteredCampaigns.length + (state.hasMore ? 1 : 0),
               itemBuilder: (context, index) {
-                if (index == state.campaigns.length) {
+                if (index == filteredCampaigns.length) {
                   return Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -577,7 +667,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                         const SizedBox(height: 16),
                         // Pagination disabled - all campaigns loaded at once
                         Text(
-                          'All campaigns loaded (${state.campaigns.length}/${state.total})',
+                          'All campaigns loaded (${filteredCampaigns.length}/${state.total})',
                           style: TextStyle(
                             color: AppTheme.textSecondaryColor,
                             fontSize: 12,
@@ -589,7 +679,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildCampaignCard(state.campaigns[index]),
+                  child: _buildCampaignCard(filteredCampaigns[index]),
                 );
               },
             ),
@@ -599,7 +689,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildCampaignsListWithLoading(CampaignsLoadingMore state) {
+  Widget _buildCampaignsListWithLoading(CampaignsLoadingMore state,
+      List<Map<String, dynamic>> filteredCampaigns) {
     int totalClicks = state.campaigns.fold<int>(
         0, (sum, campaign) => sum + (campaign['clicks'] as int? ?? 0));
 
@@ -632,16 +723,17 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           child: RefreshIndicator(
             onRefresh: () async {
               context.read<CampaignsBloc>().add(RefreshCampaigns(
-                    status: _currentStatus,
+                    status: _currentStatus == 'all' ? null : _currentStatus,
                     limit: 10, // Normal page size like influencers
                   ));
             },
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: state.campaigns.length + 1, // +1 for loading indicator
+              itemCount:
+                  filteredCampaigns.length + 1, // +1 for loading indicator
               itemBuilder: (context, index) {
-                if (index == state.campaigns.length) {
+                if (index == filteredCampaigns.length) {
                   // Show loading indicator at the bottom
                   return Container(
                     padding: const EdgeInsets.all(16),
@@ -652,7 +744,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                     ),
                   );
                 }
-                final campaign = state.campaigns[index];
+                final campaign = filteredCampaigns[index];
                 return _buildCampaignCard(campaign);
               },
             ),
@@ -711,6 +803,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     final influencer = campaign['influencer']?['profile'] ?? {};
     final pseudo = influencer['pseudo'] ?? 'Unknown';
     final status = campaign['status'] ?? 'Unknown';
+    final initiator = campaign['initiator'] ?? 'salon'; // Get initiator
     final clicks = campaign['clicks'] ?? 0;
     final promotion = campaign['promotion'] ?? 0;
     final promotionType = campaign['promotionType'] ?? 'percentage';
@@ -731,7 +824,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     if (promotionType == 'percentage') {
       promotionText = '$promotion%';
     } else {
-      promotionText = '$promotion EUR';
+      promotionText = '$promotion€ ';
     }
 
     return GestureDetector(
@@ -750,7 +843,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 RefreshCampaigns(
                   page: 1,
                   limit: 10, // Normal page size like influencers
-                  status: _currentStatus,
+                  status: _currentStatus == 'all' ? null : _currentStatus,
                 ),
               );
         }
@@ -771,17 +864,26 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  formattedDate,
-                  style: const TextStyle(
-                      color: AppTheme.textPrimaryColor, fontSize: 16),
+                Flexible(
+                  child: Text(
+                    formattedDate,
+                    style: const TextStyle(
+                        color: AppTheme.textPrimaryColor, fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                Text(
-                  status.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _getStatusTranslation(status, initiator: initiator)
+                        .toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -839,6 +941,30 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         ),
       ),
     );
+  }
+
+  String _getStatusTranslation(String status, {String? initiator}) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        // Check initiator to show appropriate waiting message
+        if (initiator != null) {
+          if (initiator.toLowerCase() == 'salon') {
+            return AppTranslations.getString(context, 'waiting_for_influencer');
+          } else if (initiator.toLowerCase() == 'influencer') {
+            return AppTranslations.getString(context, 'waiting_for_you');
+          }
+        }
+        return AppTranslations.getString(context, 'pending');
+      case 'in progress':
+      case 'on_going':
+        return AppTranslations.getString(context, 'on_going');
+      case 'finished':
+        return AppTranslations.getString(context, 'finished');
+      case 'rejected':
+        return AppTranslations.getString(context, 'rejected');
+      default:
+        return status;
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -905,112 +1031,157 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     return Shimmer.fromColors(
       baseColor: Colors.grey[800]!,
       highlightColor: Colors.grey[600]!,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 5, // Show 5 shimmer items
-        itemBuilder: (context, index) {
-          return _buildShimmerCard();
-        },
+      child: Column(
+        children: [
+          // Shimmer summary cards
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildShimmerSummaryCard(),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildShimmerSummaryCard(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Shimmer campaign cards
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: 5, // Show 5 shimmer items
+              itemBuilder: (context, index) {
+                return _buildShimmerCard();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildShimmerCard() {
+  Widget _buildShimmerSummaryCard() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderColor),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row with avatar and text
-          Row(
-            children: [
-              // Shimmer avatar
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Shimmer text
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 16,
-                      width: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[700],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 14,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[700],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Shimmer status badge
-              Container(
-                height: 24,
-                width: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Shimmer content rows
-          Container(
-            height: 14,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[700],
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 14,
-            width: 200,
-            decoration: BoxDecoration(
-              color: Colors.grey[700],
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Shimmer stats row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                height: 12,
-                width: 60,
+                height: 20,
+                width: 40,
                 decoration: BoxDecoration(
                   color: Colors.grey[700],
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
               Container(
-                height: 12,
-                width: 40,
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            height: 14,
+            width: 80,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.transparentBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date + Status row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                height: 16,
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              Container(
+                height: 16,
+                width: 100,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Influencer row
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 16,
+                width: 120,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Promotion and Clicks row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                height: 20,
+                width: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              Container(
+                height: 14,
+                width: 100,
                 decoration: BoxDecoration(
                   color: Colors.grey[700],
                   borderRadius: BorderRadius.circular(8),

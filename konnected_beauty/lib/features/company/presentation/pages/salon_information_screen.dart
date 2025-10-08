@@ -629,6 +629,81 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     );
   }
 
+  Widget _buildSalonPicturesShimmer() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFF2A2A2A),
+      highlightColor: const Color(0xFF3A3A3A),
+      child: SizedBox(
+        height: 200,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: 3, // Show 3 shimmer items
+          itemBuilder: (context, index) {
+            return Container(
+              width: 150,
+              margin: const EdgeInsets.only(right: 16),
+              child: Column(
+                children: [
+                  // Image shimmer
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3A3A3A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Picture name shimmer
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3A3A3A),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3A3A3A),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3A3A3A),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildShimmerContent() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -828,7 +903,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
         Row(
           children: [
             const Icon(
-              LucideIcons.building2,
+              LucideIcons.store,
               color: AppTheme.textPrimaryColor,
               size: 20,
             ),
@@ -871,242 +946,13 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
               AppTranslations.getString(context, 'activity_domain_placeholder'),
           controller: _activityDomainController,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 20),
 
         // Salon Profile Section (4th step)
 
         // Saloon Pictures Section
-        Text(
-          AppTranslations.getString(context, 'salon_photos'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
 
-        // Image upload button
-        GestureDetector(
-          onTap: _isLoadingImages ? null : _pickImages,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.borderColor, width: 1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: _isLoadingImages
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.textSecondaryColor),
-                      ),
-                    )
-                  : Text(
-                      AppTranslations.getString(context, 'upload_photos'),
-                      style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                    ),
-            ),
-          ),
-        ),
-
-        // Display pictures section with loading state
-        const SizedBox(height: 16),
-
-        // Show shimmer if loading pictures, otherwise show actual images
-        if (_isLoadingPictures) ...[
-          _buildPictureLoadingShimmer(),
-        ] else if (_existingPictureFiles.isNotEmpty ||
-            _uploadedImages.isNotEmpty) ...[
-          // Image count display
-          Text(
-            '${_existingPictureFiles.length + _uploadedImages.length} images',
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _existingPictureFiles.length + _uploadedImages.length,
-              itemBuilder: (context, index) {
-                // Determine if this is an existing picture or new image
-                if (index < _existingPictureFiles.length) {
-                  // Existing picture file (already converted)
-                  final pictureData = _existingPictureData[index];
-
-                  // Extract meaningful name from original URL or use generic name
-                  String imageName = 'Image ${index + 1}';
-                  final originalUrl = pictureData['url'] as String?;
-                  if (originalUrl != null && originalUrl.isNotEmpty) {
-                    final urlParts = originalUrl.split('/');
-                    if (urlParts.isNotEmpty) {
-                      final fileName = urlParts.last;
-                      // Remove any query parameters or extra info
-                      final cleanName = fileName.split('?').first;
-                      if (cleanName.isNotEmpty &&
-                          !cleanName.startsWith('existing_')) {
-                        imageName = cleanName;
-                      }
-                    }
-                  }
-
-                  return GestureDetector(
-                    onTap: () => _previewImages(index),
-                    child: Container(
-                      width: 120, // Fixed width for consistent size
-                      height: 32, // Fixed height for consistent size
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: AppTheme.borderColor, width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              imageName,
-                              style: const TextStyle(
-                                color: AppTheme.secondaryColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow
-                                  .ellipsis, // Add ... when text is too long
-                              maxLines: 1, // Limit to single line
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => _removeExistingPicture(index),
-                            child: const Icon(
-                              LucideIcons.trash2,
-                              color: Colors.red,
-                              size: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                } else {
-                  // New uploaded image
-                  final newImageIndex = index - _existingPictureFiles.length;
-                  final imageFile = _uploadedImages[newImageIndex];
-
-                  // Extract clean name from file path
-                  String imageName = 'New Image ${newImageIndex + 1}';
-                  final fileName = imageFile.path.split('/').last;
-
-                  // Remove image_picker prefix and timestamps for cleaner display
-                  if (fileName.contains('image_picker_')) {
-                    // Extract extension
-                    final extension = fileName.split('.').last;
-                    imageName = 'New Image ${newImageIndex + 1}.$extension';
-                  } else {
-                    imageName = fileName;
-                  }
-
-                  return GestureDetector(
-                    onTap: () => _previewImages(index),
-                    child: Container(
-                      width: 120, // Fixed width for consistent size
-                      height: 32, // Fixed height for consistent size
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: AppTheme.borderColor, width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              imageName,
-                              style: const TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow
-                                  .ellipsis, // Add ... when text is too long
-                              maxLines: 1, // Limit to single line
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => _removeImage(newImageIndex),
-                            child: const Icon(
-                              LucideIcons.trash2,
-                              color: Colors.red,
-                              size: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
-        ] else ...[
-          // No pictures state
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF3A3A3A)),
-            ),
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.photo_library_outlined,
-                  color: Color(0xFF6A6A6A),
-                  size: 32,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'No pictures yet',
-                  style: TextStyle(
-                    color: Color(0xFF6A6A6A),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Tap "Pick Images" to add salon photos',
-                  style: TextStyle(
-                    color: Color(0xFF5A5A5A),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        _buildSalonPicturesSection(),
 
         const SizedBox(height: 24),
 
@@ -1315,5 +1161,276 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
           description: _salonDescriptionController.text.trim(),
           pictureFiles: allFiles.isNotEmpty ? allFiles : null,
         ));
+  }
+
+  Widget _buildSalonPicturesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title
+        Text(
+          AppTranslations.getString(context, 'salon_pictures'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Upload Area
+        GestureDetector(
+          onTap: _isLoadingImages ? null : _pickImages,
+          child: Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: _isLoadingImages
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      AppTranslations.getString(
+                          context, 'upload_salon_pictures'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Show shimmer when loading pictures, otherwise show pictures grid
+        if (_isLoadingPictures) ...[
+          _buildSalonPicturesShimmer(),
+        ] else if (_existingPictureFiles.isNotEmpty ||
+            _uploadedImages.isNotEmpty) ...[
+          SizedBox(
+            height: 200,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _existingPictureFiles.length + _uploadedImages.length,
+              itemBuilder: (context, index) {
+                // Determine if this is an existing picture or new image
+                if (index < _existingPictureFiles.length) {
+                  // Existing picture
+                  final pictureData = _existingPictureData[index];
+                  String imageName = 'PictureName';
+
+                  // Extract meaningful name from original URL
+                  final originalUrl = pictureData['url'] as String?;
+                  if (originalUrl != null && originalUrl.isNotEmpty) {
+                    final urlParts = originalUrl.split('/');
+                    if (urlParts.isNotEmpty) {
+                      final fileName = urlParts.last;
+                      final cleanName = fileName.split('?').first;
+                      if (cleanName.isNotEmpty &&
+                          !cleanName.startsWith('existing_')) {
+                        imageName = cleanName;
+                      }
+                    }
+                  }
+
+                  return Container(
+                    width: 150,
+                    margin: const EdgeInsets.only(right: 16),
+                    child: Column(
+                      children: [
+                        // Image
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _previewImages(index),
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  _existingPictureFiles[index],
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(0xFF2A2A2A),
+                                      child: const Icon(
+                                        Icons.image,
+                                        color: Colors.white54,
+                                        size: 40,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Picture Name and Delete Button
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  imageName,
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => _removeExistingPicture(index),
+                                child: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                  size: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  // New uploaded image
+                  final newImageIndex = index - _existingPictureFiles.length;
+                  final imageFile = _uploadedImages[newImageIndex];
+
+                  String imageName = 'PictureName';
+                  final fileName = imageFile.path.split('/').last;
+                  if (fileName.contains('image_picker_')) {
+                    final extension = fileName.split('.').last;
+                    imageName = 'Image ${newImageIndex + 1}.$extension';
+                  } else if (fileName.isNotEmpty) {
+                    imageName = fileName;
+                  }
+
+                  return Container(
+                    width: 150,
+                    margin: const EdgeInsets.only(right: 16),
+                    child: Column(
+                      children: [
+                        // Image
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _previewImages(index),
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  imageFile,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(0xFF2A2A2A),
+                                      child: const Icon(
+                                        Icons.image,
+                                        color: Colors.white54,
+                                        size: 40,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Picture Name and Delete Button
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  imageName,
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => _removeImage(newImageIndex),
+                                child: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                  size: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

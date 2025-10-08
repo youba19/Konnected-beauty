@@ -203,6 +203,7 @@ class HttpInterceptor {
       print('🔗 Query Parameters Type: ${queryParameters.runtimeType}');
       print('🔗 URL Query String: ${uri.query}');
       print('🔗 URL Query Parameters: ${uri.queryParameters}');
+      print('🔗 Search Parameter in URL: ${uri.queryParameters['search']}');
       print('🔗 Expected Format: status=pending&page=1&limit=100 (in body)');
       print('🔗 Actual URL: $uri');
 
@@ -236,7 +237,8 @@ class HttpInterceptor {
           return await http.put(uri,
               headers: requestHeaders, body: requestBody);
         case 'DELETE':
-          return await http.delete(uri, headers: requestHeaders, body: requestBody);
+          return await http.delete(uri,
+              headers: requestHeaders, body: requestBody);
         case 'PATCH':
           return await http.patch(uri,
               headers: requestHeaders, body: requestBody);

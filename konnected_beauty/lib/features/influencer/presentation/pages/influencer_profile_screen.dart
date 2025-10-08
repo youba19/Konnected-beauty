@@ -8,6 +8,10 @@ import '../../../../core/services/api/influencer_auth_service.dart';
 import '../../../../features/auth/presentation/pages/welcome_screen.dart';
 import 'social_information_screen.dart';
 import 'security_screen.dart';
+import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
+import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
+import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 
 class InfluencerProfileScreen extends StatefulWidget {
   const InfluencerProfileScreen({super.key});
@@ -22,6 +26,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
 
   // Profile data state
   String _profileName = 'Loading...';
+  String _displayName = 'Loading...';
   String _profilePicture = '';
   bool _isProfileLoading = true;
   String? _profileError;
@@ -52,17 +57,26 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
         print('🔍 Name field: ${profileData['name']}');
 
         setState(() {
+          // Set display name (prefer 'name' field, fallback to username)
+          _displayName = profileData['name'] ??
+              profileData['firstName'] ??
+              profileData['fullName'] ??
+              'Unknown User';
+
+          // Set username (prefer 'username' field, fallback to userName)
           _profileName = profileData['username'] ??
               profileData['userName'] ??
-              profileData['name'] ??
-              'Unknown User';
+              profileData['pseudo'] ??
+              'unknown_user';
+
           _profilePicture = profileData['profilePicture'] ?? '';
           _isProfileLoading = false;
           _profileError = null;
         });
 
         print('👤 Profile updated:');
-        print('   Name: $_profileName');
+        print('   Display Name: $_displayName');
+        print('   Username: $_profileName');
         print('   Picture: $_profilePicture');
       } else {
         print('❌ Profile fetch failed: ${result['message']}');
@@ -206,7 +220,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
 
           const SizedBox(height: 16),
 
-          // User Name
+          // Display Name
           Center(
             child: _isProfileLoading
                 ? const CircularProgressIndicator(
@@ -236,7 +250,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                         ],
                       )
                     : Text(
-                        _profileName,
+                        _displayName,
                         style: AppTheme.headingStyle.copyWith(
                           color: Colors.white,
                           fontSize: 24,
@@ -245,7 +259,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                       ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Username Handle
           Center(
@@ -369,6 +383,14 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
           ),
           const SizedBox(height: 16),
           _buildProfileOption(
+            icon: Icons.report_problem_outlined,
+            title: AppTranslations.getString(context, 'report'),
+            onTap: () {
+              _showReportBottomSheet(context);
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildProfileOption(
             icon: Icons.logout,
             title: AppTranslations.getString(context, 'logout'),
             onTap: () async {
@@ -434,6 +456,207 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showReportBottomSheet(BuildContext context) {
+    final TextEditingController _reportController = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF121212),
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF121212),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: BlocProvider(
+                  create: (_) => InfluencerReportBloc(),
+                  child:
+                      BlocConsumer<InfluencerReportBloc, InfluencerReportState>(
+                    listener: (context, state) {
+                      if (state is InfluencerReportSuccess) {
+                        Navigator.of(context).pop();
+                        _reportController.clear();
+                        TopNotificationService.showSuccess(
+                          context: this.context,
+                          message: AppTranslations.getString(
+                              this.context, 'report_submitted_successfully'),
+                        );
+                      } else if (state is InfluencerReportError) {
+                        TopNotificationService.showError(
+                          context: this.context,
+                          message: state.message,
+                        );
+                      }
+                    },
+                    builder: (context, state) {
+                      final bool isLoading = state is InfluencerReportLoading;
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppTranslations.getString(context, 'report'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'report_subtitle'),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            AppTranslations.getString(context, 'report'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1F1F1F),
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: const Color(0xFF2A2A2A)),
+                            ),
+                            child: TextField(
+                              controller: _reportController,
+                              maxLines: 6,
+                              maxLength: 255,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: AppTranslations.getString(
+                                    context, 'describe_your_problem'),
+                                hintStyle: const TextStyle(color: Colors.white),
+                                counterText: '',
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: isLoading
+                                      ? null
+                                      : () => Navigator.of(context).pop(),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF121212),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: const Color(0xFF2A2A2A)),
+                                    ),
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'cancel'),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: TextButton(
+                                    onPressed: isLoading
+                                        ? null
+                                        : () {
+                                            final text =
+                                                _reportController.text.trim();
+                                            if (text.isEmpty) {
+                                              TopNotificationService.showInfo(
+                                                context: this.context,
+                                                message:
+                                                    AppTranslations.getString(
+                                                        this.context,
+                                                        'no_comment'),
+                                              );
+                                              return;
+                                            }
+                                            context
+                                                .read<InfluencerReportBloc>()
+                                                .add(SubmitInfluencerReport(
+                                                    text));
+                                          },
+                                    style: TextButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.black,
+                                            ),
+                                          )
+                                        : Text(
+                                            AppTranslations.getString(
+                                                this.context, 'submit'),
+                                            style: const TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

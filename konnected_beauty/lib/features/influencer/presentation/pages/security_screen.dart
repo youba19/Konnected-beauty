@@ -4,7 +4,6 @@ import 'package:konnected_beauty/core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
 import '../../../../core/bloc/influencers/influencer_profile_bloc.dart';
 
 class SecurityScreen extends StatefulWidget {
@@ -24,6 +23,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   bool _showCurrentPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
+  bool _hasTextInAnyField = false;
 
   @override
   void dispose() {
@@ -31,6 +31,18 @@ class _SecurityScreenState extends State<SecurityScreen> {
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _checkIfAnyFieldHasText() {
+    final hasText = _currentPasswordController.text.trim().isNotEmpty ||
+        _newPasswordController.text.trim().isNotEmpty ||
+        _confirmPasswordController.text.trim().isNotEmpty;
+
+    if (hasText != _hasTextInAnyField) {
+      setState(() {
+        _hasTextInAnyField = hasText;
+      });
+    }
   }
 
   @override
@@ -50,6 +62,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _showCurrentPassword = false;
             _showNewPassword = false;
             _showConfirmPassword = false;
+            _hasTextInAnyField = false;
           });
 
           // Navigate back to profile screen after successful password change
@@ -139,7 +152,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                AppTranslations.getString(context, 'security') ?? 'Security',
+                AppTranslations.getString(context, 'security'),
                 style: const TextStyle(
                   color: AppTheme.textPrimaryColor,
                   fontSize: 24,
@@ -159,12 +172,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
       children: [
         // Current Password
         _buildPasswordField(
-          label: AppTranslations.getString(context, 'current_password') ??
-              'Current password',
+          label: AppTranslations.getString(context, 'current_password'),
           controller: _currentPasswordController,
           hintText:
-              AppTranslations.getString(context, 'enter_current_password') ??
-                  'Enter Current password',
+              AppTranslations.getString(context, 'enter_current_password'),
           showPassword: _showCurrentPassword,
           onTogglePassword: () {
             setState(() {
@@ -176,11 +187,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
         // New Password
         _buildPasswordField(
-          label: AppTranslations.getString(context, 'new_password') ??
-              'New password',
+          label: AppTranslations.getString(context, 'new_password'),
           controller: _newPasswordController,
-          hintText: AppTranslations.getString(context, 'set_new_password') ??
-              'Set New password',
+          hintText: AppTranslations.getString(context, 'set_new_password'),
           showPassword: _showNewPassword,
           onTogglePassword: () {
             setState(() {
@@ -192,12 +201,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
         // Confirm New Password
         _buildPasswordField(
-          label: AppTranslations.getString(context, 'confirm_new_password') ??
-              'Confirm new password',
+          label: AppTranslations.getString(context, 'confirm_new_password'),
           controller: _confirmPasswordController,
-          hintText:
-              AppTranslations.getString(context, 'confirm_new_password') ??
-                  'Confirm new password',
+          hintText: AppTranslations.getString(context, 'confirm_new_password'),
           showPassword: _showConfirmPassword,
           onTogglePassword: () {
             setState(() {
@@ -208,12 +214,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         const SizedBox(height: 32),
 
         // Save Changes Button
-        CustomButton(
-          text: AppTranslations.getString(context, 'save_changes') ??
-              'Save changes',
-          onPressed: _savePasswordChanges,
-          isLoading: state is PasswordChanging,
-        ),
+        _buildSaveButton(state),
       ],
     );
   }
@@ -231,6 +232,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       controller: controller,
       isPassword: true,
       isPasswordVisible: showPassword,
+      onChanged: (value) => _checkIfAnyFieldHasText(),
       suffixIcon: IconButton(
         onPressed: onTogglePassword,
         icon: Icon(
@@ -242,14 +244,62 @@ class _SecurityScreenState extends State<SecurityScreen> {
     );
   }
 
+  Widget _buildSaveButton(InfluencerProfileState state) {
+    final isLoading = state is PasswordChanging;
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _savePasswordChanges,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: _hasTextInAnyField
+                  ? Colors.white
+                  : Colors.white.withOpacity(0.3),
+              width: _hasTextInAnyField ? 2 : 1,
+            ),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    AppTranslations.getString(context, 'save_changes'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _hasTextInAnyField
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
   Future<void> _savePasswordChanges() async {
     // Validate inputs
     if (_currentPasswordController.text.isEmpty) {
       TopNotificationService.showError(
         context: context,
         message:
-            AppTranslations.getString(context, 'current_password_required') ??
-                'Current password is required',
+            AppTranslations.getString(context, 'current_password_required'),
       );
       return;
     }
@@ -257,8 +307,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (_newPasswordController.text.isEmpty) {
       TopNotificationService.showError(
         context: context,
-        message: AppTranslations.getString(context, 'new_password_required') ??
-            'New password is required',
+        message: AppTranslations.getString(context, 'new_password_required'),
       );
       return;
     }
@@ -267,8 +316,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       TopNotificationService.showError(
         context: context,
         message:
-            AppTranslations.getString(context, 'confirm_password_required') ??
-                'Please confirm your new password',
+            AppTranslations.getString(context, 'confirm_password_required'),
       );
       return;
     }
@@ -276,8 +324,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (_newPasswordController.text != _confirmPasswordController.text) {
       TopNotificationService.showError(
         context: context,
-        message: AppTranslations.getString(context, 'passwords_not_match') ??
-            'New passwords do not match',
+        message: AppTranslations.getString(context, 'passwords_not_match'),
       );
       return;
     }
@@ -285,8 +332,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (_newPasswordController.text.length < 6) {
       TopNotificationService.showError(
         context: context,
-        message: AppTranslations.getString(context, 'new_password_too_short') ??
-            'New password must be at least 6 characters',
+        message: AppTranslations.getString(context, 'new_password_too_short'),
       );
       return;
     }

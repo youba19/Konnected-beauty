@@ -23,7 +23,8 @@ class SaloonsService {
       queryParams['limit'] = limit;
 
       if (search != null && search.isNotEmpty) {
-        queryParams['search'] = search;
+        queryParams['domain'] =
+            search; // Use 'domain' parameter as per API spec
       }
 
       print('🔗 Query Parameters: $queryParams');

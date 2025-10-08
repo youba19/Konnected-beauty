@@ -219,6 +219,7 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
   void _applyFilter() {
     print('🔍 === APPLYING ZONE FILTER ===');
     print('🔍 Selected Zone: $selectedZone');
+    print('🔍 Using backend API filtering for zone filter');
 
     // Create filters using the new filter system
     List<FilterModel> filters = [
@@ -232,7 +233,7 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
       ),
       FilterModel(
         key: 'limit',
-        value: '10',
+        value: '50',
         description: 'Items per page',
         enabled: true,
         equals: true,
@@ -266,7 +267,7 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
     print('🔍 Total filters: ${filters.length}');
     print('🔍 === END ZONE FILTER CREATION ===');
 
-    // Apply filters using the new filter system
+    // Apply filters using backend API filtering
     context.read<InfluencersBloc>().add(FilterInfluencers(filters: filters));
 
     // Update parent widget with filter values

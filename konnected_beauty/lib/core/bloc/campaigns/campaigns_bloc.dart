@@ -178,7 +178,8 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to load campaigns: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to load campaigns'));
+            message: result['message'] ?? 'Failed to load campaigns',
+            statusCode: result['statusCode']));
       }
     } catch (e) {
       print('❌ Exception in _onLoadCampaigns: $e');
@@ -261,7 +262,8 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to load more campaigns: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to load more campaigns'));
+            message: result['message'] ?? 'Failed to load more campaigns',
+            statusCode: result['statusCode']));
       }
     } catch (e) {
       print('❌ Exception in _onLoadMoreCampaigns: $e');
@@ -344,7 +346,8 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to refresh campaigns: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to refresh campaigns'));
+            message: result['message'] ?? 'Failed to refresh campaigns',
+            statusCode: result['statusCode']));
       }
     } catch (e) {
       print('❌ Exception in _onRefreshCampaigns: $e');
@@ -377,7 +380,8 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to delete campaign: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to delete campaign'));
+            message: result['message'] ?? 'Failed to delete campaign',
+            statusCode: result['statusCode']));
       }
     } catch (e) {
       print('❌ Exception in _onDeleteCampaign: $e');
