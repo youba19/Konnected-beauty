@@ -76,7 +76,28 @@ class AppTranslations {
     'wallet': 'Portefeuille',
     'profile': 'Profil',
     'social_information': 'Informations sociales',
+    'payment_information': 'Informations de paiement',
+    'your_business_name': 'Nom de votre entreprise',
+    'business_name_placeholder': 'Ex. votre nom / nom d\'agence',
+    'registry_number_rcs': 'Numéro d\'enregistrement (RCS)',
+    'registry_number_placeholder': 'XXXX XX XXX XXX XXX',
+    'iban_number': 'Numéro IBAN',
+    'iban_number_placeholder': 'XXXX XXXX XXXX XXXX XXXX XXXX',
+    'save_informations': 'Enregistrer les informations',
+    'payment_information_updated': 'Informations de paiement mises à jour',
+    'no_changes_made': 'Aucun changement effectué',
+    'account_not_active': 'Compte non actif',
+    'account_status': 'Statut du compte',
+    'active': 'Actif',
+    'inactive': 'Inactif',
+    'salon_pictures': 'Photos du salon',
+    'upload_salon_pictures': 'Téléchargez vos photos de salon',
     'security': 'Sécurité',
+    'report': 'Signaler',
+    'report_subtitle':
+        'Envoyez vos rapports et nous vous répondrons dès que possible.',
+    'describe_your_problem': 'Décrivez votre problème',
+    'report_submitted_successfully': 'Rapport envoyé avec succès',
     'current_password': 'Mot de passe actuel',
     'new_password': 'Nouveau mot de passe',
     'confirm_new_password': 'Confirmer le nouveau mot de passe',
@@ -208,6 +229,7 @@ class AppTranslations {
     'back_to_services': 'Retour aux services',
     'service_management': 'Gestion des services',
     'no_services_found': 'Aucun service trouvé',
+    'no_services_available': 'Aucun service disponible',
     'loading_services': 'Chargement des services...',
     'refresh_services': 'Actualiser les services',
     'filter_services': 'Filtrer les services',
@@ -263,6 +285,25 @@ class AppTranslations {
     'value': 'Valeur',
     'completed_orders': 'Commandes terminées',
     'finish_campaign': 'Terminer la campagne',
+    'confirm_finish_campaign':
+        'Êtes-vous sûr de vouloir terminer cette campagne ?',
+    'congratulations_campaign_finished':
+        'Félicitations ! La campagne est terminée avec succès !',
+    'how_was_it': 'Comment c\'était ?',
+    'rate_review': 'Évaluer et commenter',
+    'rate': 'Évaluer',
+    'review': 'Commentaire',
+    'describe_your_review': 'Décrivez votre commentaire',
+    'submit': 'Soumettre',
+    'rating_submitted_successfully': 'Évaluation soumise avec succès !',
+    'thank_you_for_reviewing': 'Merci pour votre évaluation',
+    'thank_you_helping_message':
+        'Merci de nous aider à nous assurer que nous récompensons ceux qui le méritent.',
+    'filter_saloons': 'Filtrer les salons',
+    'filter_by_status': 'Filtrer par statut',
+    'verified': 'Vérifié',
+    'clear': 'Effacer',
+    'apply': 'Appliquer',
     'copy_link': 'Copier le lien',
     'delete_campaign': 'Supprimer la campagne',
     'delete_campaign_confirm':
@@ -270,6 +311,13 @@ class AppTranslations {
     'campaign_finished_success': 'Campagne terminée avec succès !',
     'campaign_link_copied': 'Lien de campagne copié dans le presse-papiers !',
     'campaign_deleted_success': 'Campagne supprimée avec succès !',
+    'delete_campaign_request': 'Supprimer la demande de campagne',
+    'campaign_request_deleted': 'Demande de campagne supprimée avec succès',
+    'delete_campaign_confirmation_title': 'Confirmer la suppression',
+    'delete_campaign_confirmation_message':
+        'Êtes-vous sûr de vouloir supprimer cette demande de campagne ? Cette action ne peut pas être annulée.',
+    'delete_campaign_confirm_button': 'Supprimer',
+    'delete_campaign_cancel_button': 'Annuler',
     'influencers': 'Influenceurs',
     'settings': 'Paramètres',
 
@@ -364,6 +412,7 @@ class AppTranslations {
     'no_social_media_available': 'Aucun lien de réseau social disponible',
     'reviews': 'Avis',
     'no_reviews_available': 'Aucun avis disponible pour le moment',
+    'no_comment': 'Aucun commentaire',
     'unknown_salon': 'Salon inconnu',
 
     // Saloons Screen
@@ -445,14 +494,68 @@ class AppTranslations {
     'refuse': 'Refuser',
     'waiting_for_you': 'En attente de vous',
     'on_going': 'En cours',
+    'on_going_status': 'En cours',
+    'confirm_accept_campaign':
+        'Êtes-vous sûr de vouloir accepter cette campagne ?',
+    'confirm_refuse_campaign':
+        'Êtes-vous sûr de vouloir refuser cette campagne ?',
+    'confirm': 'Confirmer',
+    'wait': 'Attendre',
+    'Waiting_for_Saloon': 'En attente du salon',
+    'waiting_for_salon': 'En attente du salon',
+    'waiting_for_influencer': 'En attente de l\'influenceur',
+    'refused': 'Refusé',
     'finished': 'Terminé',
     'orders': 'Commandes',
     'campaigns_will_appear_here':
         'Les invitations de campagne et les collaborations apparaîtront ici',
     'refresh': 'Actualiser',
+
+    // Campaigns Screen Additional
+    'no_message': 'Aucun message',
+    'today': 'Aujourd\'hui',
+    'yesterday': 'Hier',
+    'no_more_campaigns': 'Plus de campagnes à charger',
+    'error_loading_campaigns': 'Erreur lors du chargement des campagnes',
+    'no_campaigns_found': 'Aucune campagne trouvée',
     'try_again': 'Réessayer',
     'total': 'Total',
     'message': 'Message',
+
+    // Campaign Details Screen
+
+    'percentage': 'Pourcentage',
+    'fixed': 'Fixe',
+    'fixed_amount': 'Montant fixe',
+
+    // Account Deletion
+    'delete_account': 'Supprimer le compte',
+    'account_deletion': 'Suppression du compte',
+    'account_deletion_request': 'Demande de suppression de compte',
+    'account_deletion_reason': 'Raison de la suppression',
+    'account_deletion_warning':
+        'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
+    'account_deletion_confirm': 'Confirmer',
+    'account_deletion_success': 'Demande de suppression soumise avec succès',
+    'account_deletion_error': 'Erreur lors de la soumission de la demande',
+    'account_deletion_placeholder':
+        'Veuillez expliquer pourquoi vous souhaitez supprimer votre compte...',
+    'account_deletion_required': 'La raison est requise',
+    'account_deletion_cancel': 'Annuler',
+
+    // Invite Salon
+    'invitation_sent_successfully': 'Invitation envoyée avec succès',
+    'invitation_failed': 'Échec de l\'invitation',
+    'invitation_message_default': 'Voulez-vous collaborer ?',
+    'promotion': 'Promotion',
+
+    'sending_invitation': 'Envoi de l\'invitation...',
+    'invitation_link': 'Lien d\'invitation',
+    'invitation_status': 'Statut de l\'invitation',
+    'pending': 'En attente',
+    'accepted': 'Accepté',
+    'rejected': 'Rejeté',
+    'all': 'Tous',
   };
 
   // English translations
@@ -510,7 +613,28 @@ class AppTranslations {
     'wallet': 'Wallet',
     'profile': 'Profile',
     'social_information': 'Social Information',
+    'payment_information': 'Payment Information',
+    'your_business_name': 'Your business name',
+    'business_name_placeholder': 'E.g your name / agency name',
+    'registry_number_rcs': 'Registry number (RCS)',
+    'registry_number_placeholder': 'XXXX XX XXX XXX XXX',
+    'iban_number': 'IBAN number',
+    'iban_number_placeholder': 'XXXX XXXX XXXX XXXX XXXX XXXX',
+    'save_informations': 'Save informations',
+    'payment_information_updated': 'Payment information updated',
+    'no_changes_made': 'No changes made',
+    'account_not_active': 'Account not active',
+    'account_status': 'Account Status',
+    'active': 'Active',
+    'inactive': 'Inactive',
+    'salon_pictures': 'Salon Pictures',
+    'upload_salon_pictures': 'Upload your salon pictures',
     'security': 'Security',
+    'report': 'Report',
+    'report_subtitle':
+        'Send your reports and we will reply as soon as possible.',
+    'describe_your_problem': 'Describe your problem',
+    'report_submitted_successfully': 'Report submitted successfully',
     'current_password': 'Current password',
     'new_password': 'New password',
     'confirm_new_password': 'Confirm new password',
@@ -619,6 +743,7 @@ class AppTranslations {
     'back_to_services': 'Back to Services',
     'service_management': 'Service Management',
     'no_services_found': 'No services found',
+    'no_services_available': 'No services available',
     'loading_services': 'Loading services...',
     'refresh_services': 'Refresh Services',
     'filter_services': 'Filter Services',
@@ -671,12 +796,37 @@ class AppTranslations {
     'value': 'Value',
     'completed_orders': 'Completed orders',
     'finish_campaign': 'Finish campaign',
+    'confirm_finish_campaign': 'Are you sure you want to finish this campaign?',
+    'congratulations_campaign_finished':
+        'Congratulations! The campaign has been finished successfully!',
+    'how_was_it': 'How was it ?',
+    'rate_review': 'Rate & review',
+    'rate': 'Rate',
+    'review': 'Review',
+    'describe_your_review': 'Describe your review',
+    'submit': 'Submit',
+    'rating_submitted_successfully': 'Rating submitted successfully!',
+    'thank_you_for_reviewing': 'Thank you for reviewing',
+    'thank_you_helping_message':
+        'Thank you for helping us, to make sure we rewards those who deserve it.',
+    'filter_saloons': 'Filter Salons',
+    'filter_by_status': 'Filter by Status',
+    'verified': 'Verified',
+    'clear': 'Clear',
+    'apply': 'Apply',
     'copy_link': 'Copy link',
     'delete_campaign': 'Delete campaign',
     'delete_campaign_confirm': 'Are you sure you want to delete this campaign?',
     'campaign_finished_success': 'Campaign finished successfully!',
     'campaign_link_copied': 'Campaign link copied to clipboard!',
     'campaign_deleted_success': 'Campaign deleted successfully!',
+    'delete_campaign_request': 'Delete campaign request',
+    'campaign_request_deleted': 'Campaign request deleted successfully',
+    'delete_campaign_confirmation_title': 'Confirm Deletion',
+    'delete_campaign_confirmation_message':
+        'Are you sure you want to delete this campaign request? This action cannot be undone.',
+    'delete_campaign_confirm_button': 'Delete',
+    'delete_campaign_cancel_button': 'Cancel',
     'influencers': 'Influencers',
     'settings': 'Settings',
 
@@ -783,6 +933,7 @@ class AppTranslations {
     'no_social_media_available': 'No social media links available',
     'reviews': 'Reviews',
     'no_reviews_available': 'No reviews available yet',
+    'no_comment': 'No comment',
     'unknown_salon': 'Unknown Salon',
 
     // Saloons Screen
@@ -862,13 +1013,66 @@ class AppTranslations {
     'refuse': 'Refuse',
     'waiting_for_you': 'Waiting for you',
     'on_going': 'On going',
+    'on_going_status': 'On going',
+    'confirm_accept_campaign': 'Are you sure you want to accept this campaign?',
+    'confirm_refuse_campaign': 'Are you sure you want to refuse this campaign?',
+    'confirm': 'Confirm',
+    'wait': 'Wait',
+    'Waiting_for_Saloon': 'Waiting for Salon',
+    'waiting_for_salon': 'Waiting for Salon',
+    'waiting_for_influencer': 'Waiting for Influencer',
+    'refused': 'Refused',
     'finished': 'Finished',
     'orders': 'Orders',
     'campaigns_will_appear_here':
         'Campaign invitations and collaborations will appear here',
+
+    // Campaigns Screen Additional
+    'no_message': 'No message',
+    'today': 'Today',
+    'yesterday': 'Yesterday',
+    'no_more_campaigns': 'No more campaigns to load',
+    'error_loading_campaigns': 'Error loading campaigns',
+    'no_campaigns_found': 'No campaigns found',
     'refresh': 'Refresh',
     'try_again': 'Try again',
     'total': 'Total',
     'message': 'Message',
+
+    // Campaign Details Screen
+
+    'percentage': 'Percentage',
+    'fixed': 'Fixed',
+    'fixed_amount': 'Fixed Amount',
+
+    // Account Deletion
+    'delete_account': 'Delete Account',
+    'account_deletion': 'Account Deletion',
+    'account_deletion_request': 'Account Deletion Request',
+    'account_deletion_reason': 'Reason for Deletion',
+    'account_deletion_warning':
+        'This action is irreversible. All your data will be permanently deleted.',
+    'account_deletion_confirm': 'Confirm',
+    'account_deletion_success':
+        'Account deletion request submitted successfully',
+    'account_deletion_error': 'Error submitting deletion request',
+    'account_deletion_placeholder':
+        'Please explain why you want to delete your account...',
+    'account_deletion_required': 'Reason is required',
+    'account_deletion_cancel': 'Cancel',
+
+    // Invite Salon
+    'invitation_sent_successfully': 'Invitation sent successfully',
+    'invitation_failed': 'Invitation failed',
+    'invitation_message_default': 'Want to collaborate?',
+    'promotion': 'Promotion',
+
+    'sending_invitation': 'Sending invitation...',
+    'invitation_link': 'Invitation Link',
+    'invitation_status': 'Invitation Status',
+    'pending': 'Pending',
+    'accepted': 'Accepted',
+    'rejected': 'Rejected',
+    'all': 'All',
   };
 }

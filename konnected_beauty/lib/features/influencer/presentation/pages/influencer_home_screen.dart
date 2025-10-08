@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:konnected_beauty/core/theme/app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/bloc/influencers/influencer_profile_bloc.dart';
 
@@ -10,10 +11,17 @@ import '../../../../core/services/storage/token_storage_service.dart';
 import '../../../../features/auth/presentation/pages/welcome_screen.dart';
 import 'personal_information_screen.dart';
 import 'social_information_screen.dart';
+import 'payment_information_screen.dart';
 import 'security_screen.dart';
-import 'influencer_campaigns_screen.dart';
+import 'campaigns_screen.dart';
 import 'influencer_campaign_detail_screen.dart';
 import 'saloons_screen.dart';
+import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
+import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
+import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
+import '../../../../core/bloc/influencer_account_deletion/influencer_account_deletion_bloc.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
+import '../../../../widgets/common/account_deletion_dialog.dart';
 
 class InfluencerHomeScreen extends StatefulWidget {
   const InfluencerHomeScreen({super.key});
@@ -24,12 +32,19 @@ class InfluencerHomeScreen extends StatefulWidget {
 
 class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   int _selectedIndex = 0;
+  final TextEditingController _reportController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     // Load profile data using BLoC
     context.read<InfluencerProfileBloc>().add(LoadInfluencerProfile());
+  }
+
+  @override
+  void dispose() {
+    _reportController.dispose();
+    super.dispose();
   }
 
   @override
@@ -81,6 +96,205 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     );
   }
 
+  void _showReportBottomSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.scaffoldBackground,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppTheme.scaffoldBackground,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: BlocProvider(
+                  create: (_) => InfluencerReportBloc(),
+                  child:
+                      BlocConsumer<InfluencerReportBloc, InfluencerReportState>(
+                    listener: (context, state) {
+                      if (state is InfluencerReportSuccess) {
+                        Navigator.of(context).pop();
+                        _reportController.clear();
+                        TopNotificationService.showSuccess(
+                          context: this.context,
+                          message: AppTranslations.getString(
+                              this.context, 'report_submitted_successfully'),
+                        );
+                      } else if (state is InfluencerReportError) {
+                        TopNotificationService.showError(
+                          context: this.context,
+                          message: state.message,
+                        );
+                      }
+                    },
+                    builder: (context, state) {
+                      final bool isLoading = state is InfluencerReportLoading;
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppTranslations.getString(context, 'report'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'report_subtitle'),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            AppTranslations.getString(context, 'report'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.scaffoldBackground,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.accentColor),
+                            ),
+                            child: TextField(
+                              controller: _reportController,
+                              maxLines: 6,
+                              maxLength: 255,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: AppTranslations.getString(
+                                    context, 'describe_your_problem'),
+                                hintStyle: const TextStyle(color: Colors.white),
+                                counterText: '',
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: isLoading
+                                      ? null
+                                      : () => Navigator.of(context).pop(),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.scaffoldBackground,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: AppTheme.accentColor),
+                                    ),
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'cancel'),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: TextButton(
+                                    onPressed: isLoading
+                                        ? null
+                                        : () {
+                                            final text =
+                                                _reportController.text.trim();
+                                            if (text.isEmpty) {
+                                              TopNotificationService.showInfo(
+                                                context: this.context,
+                                                message:
+                                                    AppTranslations.getString(
+                                                        this.context,
+                                                        'no_comment'),
+                                              );
+                                              return;
+                                            }
+                                            context
+                                                .read<InfluencerReportBloc>()
+                                                .add(SubmitInfluencerReport(
+                                                    text));
+                                          },
+                                    style: TextButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.black,
+                                            ),
+                                          )
+                                        : Text(
+                                            AppTranslations.getString(
+                                                this.context, 'submit'),
+                                            style: const TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildContentBasedOnTab() {
     switch (_selectedIndex) {
       case 0:
@@ -121,7 +335,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   Widget _buildCampaignContent() {
-    return const InfluencerCampaignsScreen();
+    return const CampaignsScreen();
   }
 
   Widget _buildWalletContent() {
@@ -141,7 +355,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildProfileHeader(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           _buildProfileOptions(),
         ],
       ),
@@ -358,6 +572,36 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
           const SizedBox(height: 16),
 
+          // Display Name
+          Center(
+            child: BlocBuilder<InfluencerProfileBloc, InfluencerProfileState>(
+              builder: (context, state) {
+                String displayName = 'Loading...';
+
+                if (state is InfluencerProfileLoaded ||
+                    state is InfluencerProfileUpdated) {
+                  final profileData = state is InfluencerProfileUpdated
+                      ? state.updatedProfile
+                      : state as InfluencerProfileLoaded;
+                  displayName = profileData.name.isNotEmpty
+                      ? profileData.name
+                      : 'Unknown User';
+                }
+
+                return Text(
+                  displayName,
+                  style: AppTheme.headingStyle.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
           // Username Handle
           Center(
             child: BlocBuilder<InfluencerProfileBloc, InfluencerProfileState>(
@@ -369,8 +613,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   final profileData = state is InfluencerProfileUpdated
                       ? state.updatedProfile
                       : state as InfluencerProfileLoaded;
-                  username = profileData.name.isNotEmpty
-                      ? profileData.name
+                  username = profileData.pseudo.isNotEmpty
+                      ? profileData.pseudo
                       : profileData.name;
                 }
 
@@ -403,11 +647,11 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   /// PROFILE OPTIONS
   Widget _buildProfileOptions() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
           _buildProfileOption(
-            icon: Icons.person_outline,
+            icon: LucideIcons.personStanding,
             title: 'Personal Information',
             onTap: () {
               Navigator.push(
@@ -418,7 +662,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 7),
           _buildProfileOption(
             icon: Icons.alternate_email,
             title: 'Social Information',
@@ -431,7 +675,20 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 7),
+          _buildProfileOption(
+            icon: LucideIcons.wallet,
+            title: 'Payment Information',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PaymentInformationScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 7),
           _buildProfileOption(
             icon: Icons.shield_outlined,
             title: 'Security',
@@ -444,7 +701,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 7),
+          _buildProfileOption(
+            icon: LucideIcons.messageSquare,
+            title: 'Report',
+            onTap: () {
+              _showReportBottomSheet(context);
+            },
+          ),
+          const SizedBox(height: 7),
           _buildProfileOption(
             icon: Icons.notifications_outlined,
             title: 'Notifications',
@@ -452,7 +717,16 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               // Handle notifications
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 7),
+          _buildProfileOption(
+            icon: Icons.delete_forever,
+            title: AppTranslations.getString(context, 'delete_account'),
+            onTap: () {
+              _showAccountDeletionDialog(context);
+            },
+            isDestructive: true,
+          ),
+          const SizedBox(height: 7),
           _buildProfileOption(
             icon: Icons.logout,
             title: 'Logout',
@@ -478,11 +752,12 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     required String title,
     required VoidCallback onTap,
     bool isLogout = false,
+    bool isDestructive = false,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: AppTheme.secondaryColor,
           borderRadius: BorderRadius.circular(16),
@@ -492,7 +767,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           children: [
             Icon(
               icon,
-              color: isLogout ? AppTheme.errorColor : AppTheme.textPrimaryColor,
+              color: (isLogout || isDestructive)
+                  ? AppTheme.errorColor
+                  : AppTheme.textPrimaryColor,
               size: 24,
             ),
             const SizedBox(width: 16),
@@ -500,7 +777,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               child: Text(
                 title,
                 style: AppTheme.subtitleStyle.copyWith(
-                  color: isLogout
+                  color: (isLogout || isDestructive)
                       ? AppTheme.errorColor
                       : AppTheme.textPrimaryColor,
                   fontSize: 16,
@@ -510,7 +787,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             ),
             Icon(
               Icons.arrow_forward_ios,
-              color: isLogout ? AppTheme.errorColor : AppTheme.textPrimaryColor,
+              color: (isLogout || isDestructive)
+                  ? AppTheme.errorColor
+                  : AppTheme.textPrimaryColor,
               size: 16,
             ),
           ],
@@ -1030,5 +1309,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         );
       }
     }
+  }
+
+  void _showAccountDeletionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => BlocProvider(
+        create: (context) => InfluencerAccountDeletionBloc(),
+        child: const AccountDeletionDialog(userType: 'influencer'),
+      ),
+    );
   }
 }
