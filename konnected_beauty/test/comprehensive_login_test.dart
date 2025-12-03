@@ -8,13 +8,13 @@ void main() {
         email: 'assem.zereg0@gmail.com',
         password: 'Assem1_Z',
       );
-      
+
       print('=== LOGIN TEST RESULT ===');
       print('Success: ${result['success']}');
       print('Message: ${result['message']}');
       print('Status Code: ${result['statusCode']}');
       print('Error: ${result['error']}');
-      
+
       if (result['success']) {
         print('=== TOKENS ===');
         final data = result['data'];
@@ -22,7 +22,7 @@ void main() {
         print('Refresh Token: ${data['refresh_token']}');
         print('Status: ${data['status']}');
       }
-      
+
       // The API should return a response
       expect(result, isA<Map<String, dynamic>>());
       expect(result.containsKey('success'), isTrue);
@@ -34,10 +34,10 @@ void main() {
         email: 'invalid-email',
         password: 'Assem1_Z',
       );
-      
+
       print('=== INVALID EMAIL TEST ===');
       print('Result: $result');
-      
+
       expect(result, isA<Map<String, dynamic>>());
       expect(result.containsKey('success'), isTrue);
     });
@@ -47,10 +47,10 @@ void main() {
         email: '',
         password: '',
       );
-      
+
       print('=== EMPTY CREDENTIALS TEST ===');
       print('Result: $result');
-      
+
       expect(result, isA<Map<String, dynamic>>());
       expect(result.containsKey('success'), isTrue);
     });
@@ -60,10 +60,10 @@ void main() {
         email: 'assem.zereg0@gmail.com',
         password: 'WrongPassword123!',
       );
-      
+
       print('=== WRONG PASSWORD TEST ===');
       print('Result: $result');
-      
+
       expect(result, isA<Map<String, dynamic>>());
       expect(result.containsKey('success'), isTrue);
     });

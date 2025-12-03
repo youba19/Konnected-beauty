@@ -106,6 +106,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final refreshToken = await TokenStorageService.getRefreshToken();
         if (refreshToken != null) {
           print('🔐 Refresh token found, attempting refresh...');
+
+          // Check if refresh token is also expired
+          final isRefreshTokenExpired =
+              await TokenStorageService.isRefreshTokenExpired();
+          if (isRefreshTokenExpired) {
+            print(
+                '🔐 Refresh token is also expired, user needs to login again');
+            await TokenStorageService.clearAuthData();
+            emit(AuthUnauthenticated());
+            return;
+          }
+
           // Get user role to determine which service to use
           final userRole = await TokenStorageService.getUserRole();
           print('🔐 Using role for refresh: $userRole');
@@ -122,47 +134,339 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             await TokenStorageService.saveAccessToken(newAccessToken);
             print('🔐 New access token saved');
 
+            // Also save new refresh token if provided
+            final newRefreshToken = refreshResult['data']?['refresh_token'];
+            if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+              await TokenStorageService.saveRefreshToken(newRefreshToken);
+              print('🔐 New refresh token saved');
+            }
+
             // Get user info
             final email = await TokenStorageService.getUserEmail();
             final role = await TokenStorageService.getUserRole();
 
-            print('🔐 Emitting AuthAuthenticated after refresh:');
+            print('🔐 Token refreshed, checking user status/profile...');
             print('   📧 Email: $email');
             print('   👤 Role: $role');
 
-            emit(AuthAuthenticated(
-              email: email ?? '',
-              role: role ?? '',
-              accessToken: newAccessToken,
-            ));
+            // Check profile status after token refresh
+            if (role == 'influencer') {
+              print('👤 Checking influencer profile status after refresh...');
+              final profileResult = await InfluencerAuthService.getProfile();
+
+              if (profileResult['success'] && profileResult['data'] != null) {
+                final profileData = profileResult['data'];
+                final userStatus =
+                    profileData['status']?.toString().toLowerCase().trim() ??
+                        '';
+
+                print('👤 Influencer status: "$userStatus"');
+
+                if (userStatus == 'pending' ||
+                    userStatus == 'active' ||
+                    userStatus == 'verified' ||
+                    userStatus == 'approved') {
+                  print(
+                      '✅ Influencer profile is complete, emitting AuthAuthenticated');
+                  emit(AuthAuthenticated(
+                    email: email ?? '',
+                    role: role ?? '',
+                    accessToken: newAccessToken,
+                  ));
+                } else {
+                  print(
+                      '⚠️ Influencer profile is incomplete, emitting AuthProfileIncomplete');
+                  emit(AuthProfileIncomplete(
+                    email: email ?? '',
+                    role: role ?? '',
+                    accessToken: newAccessToken,
+                  ));
+                }
+              } else {
+                print(
+                    '⚠️ Failed to get influencer profile, emitting AuthProfileIncomplete');
+                emit(AuthProfileIncomplete(
+                  email: email ?? '',
+                  role: role ?? '',
+                  accessToken: newAccessToken,
+                ));
+              }
+            } else if (role == 'saloon') {
+              print('🏢 Checking salon profile status after refresh...');
+              final profileResult = await SalonAuthService.getSalonProfile();
+
+              if (profileResult['success'] && profileResult['data'] != null) {
+                final profileData = profileResult['data'];
+                final salonStatus =
+                    profileData['status']?.toString().toLowerCase().trim() ??
+                        '';
+
+                print('🏢 Salon status: "$salonStatus"');
+
+                if (salonStatus == 'pending' ||
+                    salonStatus == 'active' ||
+                    salonStatus == 'verified' ||
+                    salonStatus == 'approved') {
+                  print(
+                      '✅ Salon profile is complete, emitting AuthAuthenticated');
+                  emit(AuthAuthenticated(
+                    email: email ?? '',
+                    role: role ?? '',
+                    accessToken: newAccessToken,
+                  ));
+                } else {
+                  print(
+                      '⚠️ Salon profile is incomplete, emitting AuthProfileIncomplete');
+                  emit(AuthProfileIncomplete(
+                    email: email ?? '',
+                    role: role ?? '',
+                    accessToken: newAccessToken,
+                  ));
+                }
+              } else {
+                print(
+                    '⚠️ Failed to get salon profile, emitting AuthProfileIncomplete');
+                emit(AuthProfileIncomplete(
+                  email: email ?? '',
+                  role: role ?? '',
+                  accessToken: newAccessToken,
+                ));
+              }
+            } else {
+              print('⚠️ Unknown role, emitting AuthAuthenticated');
+              emit(AuthAuthenticated(
+                email: email ?? '',
+                role: role ?? '',
+                accessToken: newAccessToken,
+              ));
+            }
             return;
           } else {
-            print('🔐 Token refresh failed');
+            print('🔐 Token refresh failed: ${refreshResult['message']}');
+            // Don't logout immediately - might be a temporary network issue
+            // Only logout if refresh token is expired
+            final isRefreshTokenExpiredAfterFailure =
+                await TokenStorageService.isRefreshTokenExpired();
+            if (isRefreshTokenExpiredAfterFailure) {
+              print(
+                  '🔐 Refresh token expired after failed refresh, clearing auth data');
+              await TokenStorageService.clearAuthData();
+              emit(AuthUnauthenticated());
+              return;
+            } else {
+              print(
+                  '⚠️ Refresh failed but refresh token still valid. Checking user status...');
+              // Keep user logged in with existing token, but check status
+              final email = await TokenStorageService.getUserEmail();
+              final role = await TokenStorageService.getUserRole();
+
+              // Check profile status even if refresh failed
+              if (role == 'influencer') {
+                try {
+                  final profileResult =
+                      await InfluencerAuthService.getProfile();
+                  if (profileResult['success'] &&
+                      profileResult['data'] != null) {
+                    final profileData = profileResult['data'];
+                    final userStatus = profileData['status']
+                            ?.toString()
+                            .toLowerCase()
+                            .trim() ??
+                        '';
+                    if (userStatus == 'pending' ||
+                        userStatus == 'active' ||
+                        userStatus == 'verified' ||
+                        userStatus == 'approved') {
+                      emit(AuthAuthenticated(
+                        email: email ?? '',
+                        role: role ?? '',
+                        accessToken: accessToken ?? '',
+                      ));
+                    } else {
+                      emit(AuthProfileIncomplete(
+                        email: email ?? '',
+                        role: role ?? '',
+                        accessToken: accessToken ?? '',
+                      ));
+                    }
+                  } else {
+                    emit(AuthProfileIncomplete(
+                      email: email ?? '',
+                      role: role ?? '',
+                      accessToken: accessToken ?? '',
+                    ));
+                  }
+                } catch (e) {
+                  // If profile check fails, keep authenticated to avoid logout
+                  emit(AuthAuthenticated(
+                    email: email ?? '',
+                    role: role ?? '',
+                    accessToken: accessToken ?? '',
+                  ));
+                }
+              } else if (role == 'saloon') {
+                try {
+                  final profileResult =
+                      await SalonAuthService.getSalonProfile();
+                  if (profileResult['success'] &&
+                      profileResult['data'] != null) {
+                    final profileData = profileResult['data'];
+                    final salonStatus = profileData['status']
+                            ?.toString()
+                            .toLowerCase()
+                            .trim() ??
+                        '';
+                    if (salonStatus == 'pending' ||
+                        salonStatus == 'active' ||
+                        salonStatus == 'verified' ||
+                        salonStatus == 'approved') {
+                      emit(AuthAuthenticated(
+                        email: email ?? '',
+                        role: role ?? '',
+                        accessToken: accessToken ?? '',
+                      ));
+                    } else {
+                      emit(AuthProfileIncomplete(
+                        email: email ?? '',
+                        role: role ?? '',
+                        accessToken: accessToken ?? '',
+                      ));
+                    }
+                  } else {
+                    emit(AuthProfileIncomplete(
+                      email: email ?? '',
+                      role: role ?? '',
+                      accessToken: accessToken ?? '',
+                    ));
+                  }
+                } catch (e) {
+                  // If profile check fails, keep authenticated to avoid logout
+                  emit(AuthAuthenticated(
+                    email: email ?? '',
+                    role: role ?? '',
+                    accessToken: accessToken ?? '',
+                  ));
+                }
+              } else {
+                emit(AuthAuthenticated(
+                  email: email ?? '',
+                  role: role ?? '',
+                  accessToken: accessToken ?? '',
+                ));
+              }
+              return;
+            }
           }
         } else {
-          print('🔐 No refresh token found');
+          print('🔐 No refresh token found, user needs to login again');
+          await TokenStorageService.clearAuthData();
+          emit(AuthUnauthenticated());
+          return;
         }
-
-        // If refresh failed, logout
-        print('🔐 Clearing auth data due to refresh failure');
-        await TokenStorageService.clearAuthData();
-        emit(AuthUnauthenticated());
-        return;
       }
 
-      // Token is valid, get user info
-      print('🔐 Token is valid, emitting AuthAuthenticated');
+      // Token is valid, now check user status/profile completeness
+      print('🔐 Token is valid, checking user status/profile...');
       print('🔐 Final user info:');
       print('   📧 Email: $email');
       print('   👤 Role: $role');
       print('   🔑 Access Token: ${accessToken?.substring(0, 50)}...');
 
-      emit(AuthAuthenticated(
-        email: email ?? '',
-        role: role ?? '',
-        accessToken: accessToken ?? '',
-      ));
-      print('🔐 Emitted AuthAuthenticated state');
+      // Check profile status based on role
+      if (role == 'influencer') {
+        print('👤 Checking influencer profile status...');
+        final profileResult = await InfluencerAuthService.getProfile();
+
+        if (profileResult['success'] && profileResult['data'] != null) {
+          final profileData = profileResult['data'];
+          final userStatus =
+              profileData['status']?.toString().toLowerCase().trim() ?? '';
+
+          print('👤 Influencer status: "$userStatus"');
+          print('👤 Profile data: $profileData');
+
+          // Check if status is pending or active
+          if (userStatus == 'pending' ||
+              userStatus == 'active' ||
+              userStatus == 'verified' ||
+              userStatus == 'approved') {
+            print('✅ Influencer profile is complete (status: $userStatus)');
+            emit(AuthAuthenticated(
+              email: email ?? '',
+              role: role ?? '',
+              accessToken: accessToken ?? '',
+            ));
+            print('🔐 Emitted AuthAuthenticated state');
+          } else {
+            print('⚠️ Influencer profile is incomplete (status: $userStatus)');
+            emit(AuthProfileIncomplete(
+              email: email ?? '',
+              role: role ?? '',
+              accessToken: accessToken ?? '',
+            ));
+            print('🔐 Emitted AuthProfileIncomplete state');
+          }
+        } else {
+          print('⚠️ Failed to get influencer profile, treating as incomplete');
+          emit(AuthProfileIncomplete(
+            email: email ?? '',
+            role: role ?? '',
+            accessToken: accessToken ?? '',
+          ));
+          print('🔐 Emitted AuthProfileIncomplete state');
+        }
+      } else if (role == 'saloon') {
+        print('🏢 Checking salon profile status...');
+        final profileResult = await SalonAuthService.getSalonProfile();
+
+        if (profileResult['success'] && profileResult['data'] != null) {
+          final profileData = profileResult['data'];
+          final salonStatus =
+              profileData['status']?.toString().toLowerCase().trim() ?? '';
+
+          print('🏢 Salon status: "$salonStatus"');
+          print('🏢 Profile data: $profileData');
+
+          // Check if status is pending or active
+          if (salonStatus == 'pending' ||
+              salonStatus == 'active' ||
+              salonStatus == 'verified' ||
+              salonStatus == 'approved') {
+            print('✅ Salon profile is complete (status: $salonStatus)');
+            emit(AuthAuthenticated(
+              email: email ?? '',
+              role: role ?? '',
+              accessToken: accessToken ?? '',
+            ));
+            print('🔐 Emitted AuthAuthenticated state');
+          } else {
+            print('⚠️ Salon profile is incomplete (status: $salonStatus)');
+            emit(AuthProfileIncomplete(
+              email: email ?? '',
+              role: role ?? '',
+              accessToken: accessToken ?? '',
+            ));
+            print('🔐 Emitted AuthProfileIncomplete state');
+          }
+        } else {
+          print('⚠️ Failed to get salon profile, treating as incomplete');
+          emit(AuthProfileIncomplete(
+            email: email ?? '',
+            role: role ?? '',
+            accessToken: accessToken ?? '',
+          ));
+          print('🔐 Emitted AuthProfileIncomplete state');
+        }
+      } else {
+        // Unknown role, just authenticate
+        print('⚠️ Unknown role: $role, emitting AuthAuthenticated');
+        emit(AuthAuthenticated(
+          email: email ?? '',
+          role: role ?? '',
+          accessToken: accessToken ?? '',
+        ));
+        print('🔐 Emitted AuthAuthenticated state');
+      }
     } catch (e) {
       print('🔐 Error during auth check: $e');
       print('🔐 Stack trace: ${StackTrace.current}');

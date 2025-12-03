@@ -3,8 +3,8 @@ import 'influencer_account_deletion_event.dart';
 import 'influencer_account_deletion_state.dart';
 import '../../services/api/reports_service.dart';
 
-class InfluencerAccountDeletionBloc
-    extends Bloc<InfluencerAccountDeletionEvent, InfluencerAccountDeletionState> {
+class InfluencerAccountDeletionBloc extends Bloc<InfluencerAccountDeletionEvent,
+    InfluencerAccountDeletionState> {
   final ReportsService reportsService;
 
   InfluencerAccountDeletionBloc({ReportsService? service})
@@ -22,20 +22,22 @@ class InfluencerAccountDeletionBloc
       emit(InfluencerAccountDeletionError(message: 'Reason is required'));
       return;
     }
-    
+
     emit(InfluencerAccountDeletionLoading());
-    
+
     final result = await reportsService.requestInfluencerAccountDeletion(
       reason: trimmed,
     );
-    
+
     if (result['success'] == true) {
       emit(InfluencerAccountDeletionSuccess(
-        message: result['message'] ?? 'Account deletion request submitted successfully',
+        message: result['message'] ??
+            'Account deletion request submitted successfully',
       ));
     } else {
       emit(InfluencerAccountDeletionError(
-        message: result['message'] ?? 'Failed to submit account deletion request',
+        message:
+            result['message'] ?? 'Failed to submit account deletion request',
       ));
     }
   }

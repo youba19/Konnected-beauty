@@ -25,7 +25,8 @@ void main() {
     expect(find.text('Login to your account'), findsOneWidget);
 
     // Fill in the form
-    await tester.enterText(find.byType(TextFormField).first, 'test@example.com');
+    await tester.enterText(
+        find.byType(TextFormField).first, 'test@example.com');
     await tester.enterText(find.byType(TextFormField).last, 'Password123!');
 
     // Verify form is still enabled before clicking login

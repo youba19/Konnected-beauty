@@ -103,22 +103,28 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 ),
               ),
               SafeArea(
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildPasswordSection(state),
-                          ],
+                child: GestureDetector(
+                  onTap: () {
+                    // Close keyboard when tapping outside text fields
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildPasswordSection(state),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

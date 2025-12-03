@@ -40,7 +40,10 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
     // Populate controllers with data from API
     _nameController.text = profileData['name'] ?? '';
     _emailController.text = profileData['email'] ?? '';
-    _phoneController.text = profileData['phoneNumber'] ?? '';
+    // Set phone to +33 if empty, otherwise use the profile phone number
+    _phoneController.text = (profileData['phoneNumber'] ?? '').isEmpty
+        ? '+33'
+        : (profileData['phoneNumber'] ?? '');
   }
 
   void _saveChanges() async {
@@ -52,11 +55,25 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
     final name = _nameController.text.trim();
     final phoneNumber = _phoneController.text.trim();
 
+    // Auto-convert 06 or 07 to +33 before sending
+    String finalPhoneNumber = phoneNumber;
+    if (phoneNumber.isNotEmpty) {
+      if (phoneNumber.startsWith('06') || phoneNumber.startsWith('07')) {
+        // Take only the first 10 digits (remove the 0 and take 9 more digits)
+        // This handles cases where user might have typed 11 digits by mistake
+        String digits = phoneNumber.substring(1); // Remove the leading 0
+        if (digits.length > 9) {
+          digits = digits.substring(0, 9); // Take only 9 digits after the 0
+        }
+        finalPhoneNumber = '+33$digits';
+      }
+    }
+
     // Use BLoC to update profile
     context.read<SalonProfileBloc>().add(UpdateSalonProfile(
           name: name.isNotEmpty ? name : null,
           email: null, // Email is read-only, don't send it
-          phoneNumber: phoneNumber.isNotEmpty ? phoneNumber : null,
+          phoneNumber: finalPhoneNumber.isNotEmpty ? finalPhoneNumber : null,
         ));
   }
 
@@ -85,119 +102,163 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
           ),
         ),
         body: SafeArea(
-          child: BlocConsumer<SalonProfileBloc, SalonProfileState>(
-            listener: (context, state) {
-              if (state is SalonProfileLoaded) {
-                _populateControllers(state.profileData);
-              } else if (state is SalonProfileUpdated) {
-                TopNotificationService.showSuccess(
-                  context: context,
-                  message: state.message,
-                );
-                Navigator.of(context).pop();
-              } else if (state is SalonProfileError) {
-                TopNotificationService.showError(
-                  context: context,
-                  message: state.error,
-                );
-              }
+          child: GestureDetector(
+            onTap: () {
+              // Close keyboard when tapping outside text fields
+              FocusScope.of(context).unfocus();
             },
-            builder: (context, state) {
-              if (state is SalonProfileLoading) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppTheme.textPrimaryColor,
-                  ),
-                );
-              }
-
-              return BlocBuilder<LanguageBloc, LanguageState>(
-                builder: (context, languageState) {
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.all(24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Icon(
-                                LucideIcons.user,
-                                color: AppTheme.textPrimaryColor,
-                                size: 22,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'profile_details'),
-                                style: AppTheme.headingStyle,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Name Field
-                          _buildFormField(
-                            label:
-                                AppTranslations.getString(context, 'full_name'),
-                            controller: _nameController,
-                            placeholder: AppTranslations.getString(
-                                context, 'full_name_placeholder'),
-                            icon: LucideIcons.user,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'full_name_required');
-                              }
-                              return null;
-                            },
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Email Field (Read-only)
-                          _buildReadOnlyField(
-                            label: AppTranslations.getString(context, 'email'),
-                            controller: _emailController,
-                            placeholder: AppTranslations.getString(
-                                context, 'enter_your_email'),
-                            icon: LucideIcons.mail,
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Phone Field
-                          _buildFormField(
-                            label: AppTranslations.getString(context, 'phone'),
-                            controller: _phoneController,
-                            placeholder: '+33-XX-XX-XX-XX',
-                            icon: LucideIcons.phone,
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'phone_required');
-                              }
-                              return null;
-                            },
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          // Save Changes Button
-                          _buildSaveButton(),
-
-                          const SizedBox(height: 50),
-                        ],
-                      ),
+            child: BlocConsumer<SalonProfileBloc, SalonProfileState>(
+              listener: (context, state) {
+                if (state is SalonProfileLoaded) {
+                  _populateControllers(state.profileData);
+                } else if (state is SalonProfileUpdated) {
+                  TopNotificationService.showSuccess(
+                    context: context,
+                    message: state.message,
+                  );
+                  Navigator.of(context).pop();
+                } else if (state is SalonProfileError) {
+                  TopNotificationService.showError(
+                    context: context,
+                    message: state.error,
+                  );
+                }
+              },
+              builder: (context, state) {
+                if (state is SalonProfileLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppTheme.textPrimaryColor,
                     ),
                   );
-                },
-              );
-            },
+                }
+
+                return BlocBuilder<LanguageBloc, LanguageState>(
+                  builder: (context, languageState) {
+                    return SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.only(
+                        left: 24.0,
+                        top: 24.0,
+                        right: 24.0,
+                        bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  LucideIcons.user,
+                                  color: AppTheme.textPrimaryColor,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'profile_details'),
+                                  style: AppTheme.headingStyle,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Name Field
+                            _buildFormField(
+                              label: AppTranslations.getString(
+                                  context, 'full_name'),
+                              controller: _nameController,
+                              placeholder: AppTranslations.getString(
+                                  context, 'full_name_placeholder'),
+                              icon: LucideIcons.user,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return AppTranslations.getString(
+                                      context, 'full_name_required');
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Email Field (Read-only)
+                            _buildReadOnlyField(
+                              label:
+                                  AppTranslations.getString(context, 'email'),
+                              controller: _emailController,
+                              placeholder: AppTranslations.getString(
+                                  context, 'enter_your_email'),
+                              icon: LucideIcons.mail,
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Phone Field
+                            _buildFormField(
+                              label:
+                                  AppTranslations.getString(context, 'phone'),
+                              controller: _phoneController,
+                              placeholder: '+33-XX-XX-XX-XX',
+                              icon: LucideIcons.phone,
+                              keyboardType: TextInputType.phone,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return AppTranslations.getString(
+                                      context, 'phone_required');
+                                }
+                                final phone = value.trim();
+                                // Accept numbers starting with 06 or 07 (will be converted to +33 on submit)
+                                if (phone.startsWith('06') ||
+                                    phone.startsWith('07')) {
+                                  // Allow incomplete numbers during typing, but validate format when complete
+                                  if (phone.length < 10) {
+                                    return null; // Still typing, allow it
+                                  }
+                                  // Validate that it's a valid French phone number format (10 or 11 digits)
+                                  if ((phone.length == 10 ||
+                                          phone.length == 11) &&
+                                      RegExp(r'^0[67]\d{8,9}$')
+                                          .hasMatch(phone)) {
+                                    return null; // Valid, will be converted to +33 on submit
+                                  }
+                                  return AppTranslations.getString(
+                                      context, 'please_enter_valid_phone');
+                                }
+                                // Allow numbers starting with 0 (user might be typing 06 or 07)
+                                if (phone.startsWith('0')) {
+                                  return null; // Still typing, allow it
+                                }
+                                // Must start with +33 (France country code)
+                                if (!phone.startsWith('+33')) {
+                                  // Allow incomplete numbers during typing
+                                  if (phone.isEmpty || phone.startsWith('+')) {
+                                    return null; // Still typing, allow it
+                                  }
+                                  return AppTranslations.getString(
+                                      context, 'please_enter_valid_phone');
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 40),
+
+                            // Save Changes Button
+                            _buildSaveButton(),
+
+                            const SizedBox(height: 50),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -211,6 +272,7 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
     required IconData icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    void Function(String)? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,6 +298,7 @@ class _SalonProfileDetailsScreenState extends State<SalonProfileDetailsScreen> {
           child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
+            onChanged: onChanged,
             style: TextStyle(
               color: AppTheme.textPrimaryColor,
               fontSize: 16,

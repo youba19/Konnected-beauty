@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CampaignsApiTester {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
   static const String endpoint = '/campaign/salon-campaigns';
 
   static Future<String?> _getAccessToken() async {

@@ -960,12 +960,10 @@ class InfluencerRegistrationBloc
       print(
           '🔍 All empty: ${state.instagram.isEmpty && state.tiktok.isEmpty && state.youtube.isEmpty}');
 
-      if (state.instagram.isEmpty &&
-          state.tiktok.isEmpty &&
-          state.youtube.isEmpty) {
-        print('❌ No social media links provided');
-        emit(InfluencerRegistrationError(
-            state, 'Please provide at least one social media link'));
+      // Instagram is required, TikTok and YouTube are optional
+      if (state.instagram.isEmpty) {
+        print('❌ Instagram link is required');
+        emit(InfluencerRegistrationError(state, 'Instagram link is required'));
         return;
       }
 

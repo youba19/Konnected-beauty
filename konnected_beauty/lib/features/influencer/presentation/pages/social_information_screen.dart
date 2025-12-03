@@ -99,27 +99,33 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
 
           // CONTENT
           SafeArea(
-            child: _isLoading
-                ? _buildShimmerContent()
-                : SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER - Now scrollable
-                        _buildHeader(),
-                        const SizedBox(height: 24),
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
+              },
+              child: _isLoading
+                  ? _buildShimmerContent()
+                  : SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // HEADER - Now scrollable
+                          _buildHeader(),
+                          const SizedBox(height: 24),
 
-                        // Social media content
-                        _buildContent(),
+                          // Social media content
+                          _buildContent(),
 
-                        // Extra padding at bottom for better scrolling
-                        const SizedBox(height: 40),
-                      ],
+                          // Extra padding at bottom for better scrolling
+                          const SizedBox(height: 40),
+                        ],
+                      ),
                     ),
-                  ),
+            ),
           ),
         ],
       ),
@@ -1058,7 +1064,12 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
       enableDrag: true,
       isDismissible: true,
       useSafeArea: true,
-      builder: (context) => _buildAddLinkBottomSheet(),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: _buildAddLinkBottomSheet(),
+      ),
     );
   }
 
@@ -1072,8 +1083,13 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
         ),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 20,
+            top: 20,
+            right: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

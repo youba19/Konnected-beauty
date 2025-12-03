@@ -6,8 +6,9 @@ class ReportsService {
       {required String message}) async {
     try {
       final trimmed = message.trim();
+      // Limit to 100 characters
       final limited =
-          trimmed.length > 255 ? trimmed.substring(0, 255) : trimmed;
+          trimmed.length > 100 ? trimmed.substring(0, 100) : trimmed;
 
       final response = await HttpInterceptor.authenticatedRequest(
         method: 'POST',
@@ -31,9 +32,27 @@ class ReportsService {
         };
       } else {
         final data = jsonDecode(response.body);
+        // Handle case where message might be a list (validation errors)
+        String errorMessage = 'Failed to submit report';
+        if (data['message'] != null) {
+          if (data['message'] is List) {
+            // Join list of errors into a single string
+            errorMessage =
+                (data['message'] as List).map((e) => e.toString()).join(', ');
+          } else if (data['message'] is String) {
+            errorMessage = data['message'];
+          }
+        } else if (data['error'] != null) {
+          if (data['error'] is List) {
+            errorMessage =
+                (data['error'] as List).map((e) => e.toString()).join(', ');
+          } else if (data['error'] is String) {
+            errorMessage = data['error'];
+          }
+        }
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to submit report',
+          'message': errorMessage,
           'statusCode': response.statusCode,
         };
       }
@@ -50,8 +69,9 @@ class ReportsService {
       {required String message}) async {
     try {
       final trimmed = message.trim();
+      // Limit to 100 characters
       final limited =
-          trimmed.length > 255 ? trimmed.substring(0, 255) : trimmed;
+          trimmed.length > 100 ? trimmed.substring(0, 100) : trimmed;
 
       final response = await HttpInterceptor.authenticatedRequest(
         method: 'POST',
@@ -73,9 +93,27 @@ class ReportsService {
         };
       } else {
         final data = jsonDecode(response.body);
+        // Handle case where message might be a list (validation errors)
+        String errorMessage = 'Failed to submit report';
+        if (data['message'] != null) {
+          if (data['message'] is List) {
+            // Join list of errors into a single string
+            errorMessage =
+                (data['message'] as List).map((e) => e.toString()).join(', ');
+          } else if (data['message'] is String) {
+            errorMessage = data['message'];
+          }
+        } else if (data['error'] != null) {
+          if (data['error'] is List) {
+            errorMessage =
+                (data['error'] as List).map((e) => e.toString()).join(', ');
+          } else if (data['error'] is String) {
+            errorMessage = data['error'];
+          }
+        }
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to submit report',
+          'message': errorMessage,
           'statusCode': response.statusCode,
         };
       }

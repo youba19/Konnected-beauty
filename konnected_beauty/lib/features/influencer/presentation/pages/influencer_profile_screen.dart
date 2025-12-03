@@ -8,6 +8,7 @@ import '../../../../core/services/api/influencer_auth_service.dart';
 import '../../../../features/auth/presentation/pages/welcome_screen.dart';
 import 'social_information_screen.dart';
 import 'security_screen.dart';
+import 'influencer_language_screen.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
@@ -102,6 +103,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // TOP GREEN GLOW
@@ -375,10 +377,15 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
           ),
           const SizedBox(height: 16),
           _buildProfileOption(
-            icon: Icons.notifications_outlined,
-            title: AppTranslations.getString(context, 'notifications'),
+            icon: Icons.language,
+            title: AppTranslations.getString(context, 'language'),
             onTap: () {
-              // Navigate to notification settings
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InfluencerLanguageScreen(),
+                ),
+              );
             },
           ),
           const SizedBox(height: 16),
@@ -470,186 +477,213 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF121212),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.65,
             ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: BlocProvider(
-                  create: (_) => InfluencerReportBloc(),
-                  child:
-                      BlocConsumer<InfluencerReportBloc, InfluencerReportState>(
-                    listener: (context, state) {
-                      if (state is InfluencerReportSuccess) {
-                        Navigator.of(context).pop();
-                        _reportController.clear();
-                        TopNotificationService.showSuccess(
-                          context: this.context,
-                          message: AppTranslations.getString(
-                              this.context, 'report_submitted_successfully'),
-                        );
-                      } else if (state is InfluencerReportError) {
-                        TopNotificationService.showError(
-                          context: this.context,
-                          message: state.message,
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      final bool isLoading = state is InfluencerReportLoading;
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppTranslations.getString(context, 'report'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppTranslations.getString(
-                                context, 'report_subtitle'),
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            AppTranslations.getString(context, 'report'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1F1F1F),
-                              borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: const Color(0xFF2A2A2A)),
-                            ),
-                            child: TextField(
-                              controller: _reportController,
-                              maxLines: 6,
-                              maxLength: 255,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: AppTranslations.getString(
-                                    context, 'describe_your_problem'),
-                                hintStyle: const TextStyle(color: Colors.white),
-                                counterText: '',
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF121212),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: GestureDetector(
+                  onTap: () {
+                    // Close keyboard when tapping outside text fields
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      left: 24.0,
+                      top: 24.0,
+                      right: 24.0,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+                    ),
+                    child: BlocProvider(
+                      create: (_) => InfluencerReportBloc(),
+                      child: BlocConsumer<InfluencerReportBloc,
+                          InfluencerReportState>(
+                        listener: (context, state) {
+                          if (state is InfluencerReportSuccess) {
+                            Navigator.of(context).pop();
+                            _reportController.clear();
+                            TopNotificationService.showSuccess(
+                              context: this.context,
+                              message: AppTranslations.getString(this.context,
+                                  'report_submitted_successfully'),
+                            );
+                          } else if (state is InfluencerReportError) {
+                            TopNotificationService.showError(
+                              context: this.context,
+                              message: state.message,
+                            );
+                          }
+                        },
+                        builder: (context, state) {
+                          final bool isLoading =
+                              state is InfluencerReportLoading;
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: isLoading
-                                      ? null
-                                      : () => Navigator.of(context).pop(),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF121212),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: const Color(0xFF2A2A2A)),
+                              Text(
+                                AppTranslations.getString(context, 'report'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                AppTranslations.getString(
+                                    context, 'report_subtitle'),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                AppTranslations.getString(context, 'report'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1F1F1F),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0xFF2A2A2A)),
+                                ),
+                                child: TextField(
+                                  controller: _reportController,
+                                  maxLines: 6,
+                                  maxLength: 100,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    hintText: AppTranslations.getString(
+                                        context, 'describe_your_problem'),
+                                    hintStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
                                     ),
-                                    child: Text(
-                                      AppTranslations.getString(
-                                          context, 'cancel'),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
+                                    counterStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 12,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: isLoading
+                                          ? null
+                                          : () => Navigator.of(context).pop(),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF121212),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: const Color(0xFF2A2A2A)),
+                                        ),
+                                        child: Text(
+                                          AppTranslations.getString(
+                                              context, 'cancel'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  child: TextButton(
-                                    onPressed: isLoading
-                                        ? null
-                                        : () {
-                                            final text =
-                                                _reportController.text.trim();
-                                            if (text.isEmpty) {
-                                              TopNotificationService.showInfo(
-                                                context: this.context,
-                                                message:
-                                                    AppTranslations.getString(
-                                                        this.context,
-                                                        'no_comment'),
-                                              );
-                                              return;
-                                            }
-                                            context
-                                                .read<InfluencerReportBloc>()
-                                                .add(SubmitInfluencerReport(
-                                                    text));
-                                          },
-                                    style: TextButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Container(
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
-                                    ),
-                                    child: isLoading
-                                        ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.black,
-                                            ),
-                                          )
-                                        : Text(
-                                            AppTranslations.getString(
-                                                this.context, 'submit'),
-                                            style: const TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                      child: TextButton(
+                                        onPressed: isLoading
+                                            ? null
+                                            : () {
+                                                final text = _reportController
+                                                    .text
+                                                    .trim();
+                                                if (text.isEmpty) {
+                                                  TopNotificationService
+                                                      .showInfo(
+                                                    context: this.context,
+                                                    message: AppTranslations
+                                                        .getString(this.context,
+                                                            'no_comment'),
+                                                  );
+                                                  return;
+                                                }
+                                                context
+                                                    .read<
+                                                        InfluencerReportBloc>()
+                                                    .add(SubmitInfluencerReport(
+                                                        text));
+                                              },
+                                        style: TextButton.styleFrom(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
+                                        ),
+                                        child: isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.black,
+                                                ),
+                                              )
+                                            : Text(
+                                                AppTranslations.getString(
+                                                    this.context, 'submit'),
+                                                style: const TextStyle(
+                                                  color: Colors.black,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ],
-                          ),
-                        ],
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -711,18 +745,27 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
 
             // NAV ITEMS ROW
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _navItem(0, Icons.home_outlined,
-                    AppTranslations.getString(context, 'home')),
-                _navItem(1, Icons.storefront_outlined,
-                    AppTranslations.getString(context, 'saloons')),
-                _navItem(2, Icons.campaign_outlined,
-                    AppTranslations.getString(context, 'campaign')),
-                _navItem(3, Icons.account_balance_wallet_outlined,
-                    AppTranslations.getString(context, 'wallet')),
-                _navItem(4, Icons.person_outline,
-                    AppTranslations.getString(context, 'profile')),
+                Expanded(
+                  child: _navItem(0, Icons.home_outlined,
+                      AppTranslations.getString(context, 'home')),
+                ),
+                Expanded(
+                  child: _navItem(1, Icons.storefront_outlined,
+                      AppTranslations.getString(context, 'saloons')),
+                ),
+                Expanded(
+                  child: _navItem(2, Icons.campaign_outlined,
+                      AppTranslations.getString(context, 'campaign')),
+                ),
+                Expanded(
+                  child: _navItem(3, Icons.account_balance_wallet_outlined,
+                      AppTranslations.getString(context, 'wallet')),
+                ),
+                Expanded(
+                  child: _navItem(4, Icons.person_outline,
+                      AppTranslations.getString(context, 'profile')),
+                ),
               ],
             ),
           ],
@@ -739,6 +782,8 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             icon,
@@ -748,14 +793,19 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
             size: 24,
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? AppTheme.textPrimaryColor
-                  : AppTheme.navBartextColor,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          Flexible(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected
+                    ? AppTheme.textPrimaryColor
+                    : AppTheme.navBartextColor,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],

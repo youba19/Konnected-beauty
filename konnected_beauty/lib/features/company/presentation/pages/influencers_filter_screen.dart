@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/bloc/influencers/influencers_bloc.dart';
 import '../../../../core/models/filter_model.dart';
+import '../../../../core/translations/app_translations.dart';
 
 class InfluencersFilterScreen extends StatefulWidget {
   final String? currentZone;
@@ -333,7 +334,7 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24.0, vertical: 16.0),
                       child: Text(
-                        'Filter',
+                        AppTranslations.getString(context, 'filter'),
                         style: const TextStyle(
                           color: AppTheme.textPrimaryColor,
                           fontSize: 20,
@@ -350,7 +351,8 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                         children: [
                           // Zone Section
                           Text(
-                            'Filter by Zone',
+                            AppTranslations.getString(
+                                context, 'filter_by_zone'),
                             style: const TextStyle(
                               color: AppTheme.textPrimaryColor,
                               fontSize: 16,
@@ -372,9 +374,10 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                             ),
                             child: DropdownButtonFormField<String>(
                               value: selectedZone,
-                              decoration: const InputDecoration(
-                                hintText: 'Select zone',
-                                hintStyle: TextStyle(
+                              decoration: InputDecoration(
+                                hintText: AppTranslations.getString(
+                                    context, 'select_zone'),
+                                hintStyle: const TextStyle(
                                   color: AppTheme.textSecondaryColor,
                                   fontSize: 16,
                                 ),
@@ -390,9 +393,10 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                               ),
                               dropdownColor: AppTheme.secondaryColor,
                               items: [
-                                const DropdownMenuItem<String>(
+                                DropdownMenuItem<String>(
                                   value: null,
-                                  child: Text('All zones'),
+                                  child: Text(AppTranslations.getString(
+                                      context, 'all_zones')),
                                 ),
                                 ...zones.map((zone) => DropdownMenuItem<String>(
                                       value: zone,
@@ -434,9 +438,10 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8),
                                     ),
-                                    child: const Text(
-                                      'Cancel',
-                                      style: TextStyle(
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'cancel'),
+                                      style: const TextStyle(
                                         color: AppTheme.textPrimaryColor,
                                         fontSize: 14,
                                       ),
@@ -467,9 +472,10 @@ class _InfluencersFilterScreenState extends State<InfluencersFilterScreen>
                                         ),
                                       ),
                                     ),
-                                    child: const Text(
-                                      'Confirm',
-                                      style: TextStyle(
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'confirm'),
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,7 +12,7 @@ import '../../../../core/bloc/delete_campaign/delete_campaign_state.dart';
 import '../../../../core/bloc/campaign_actions/campaign_actions_bloc.dart';
 import '../../../../core/bloc/campaign_actions/campaign_actions_event.dart';
 import '../../../../core/bloc/campaign_actions/campaign_actions_state.dart';
-import '../../../../core/services/api/influencers_service.dart';
+import '../../../../core/services/api/http_interceptor.dart';
 
 class CampaignDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> campaign;
@@ -30,6 +31,8 @@ class CampaignDetailsScreen extends StatefulWidget {
 class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   bool _isLoadingDetails = false;
   String? _campaignLink;
+  String _totalAmount = '0';
+  String _totalCompletedOrders = '0';
 
   @override
   void initState() {
@@ -46,20 +49,47 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     });
 
     try {
-      final result = await InfluencersService.getInfluencerCampaignDetails(
-        campaignId: campaignId,
+      print('📋 === FETCHING CAMPAIGN DETAILS ===');
+      print('📋 Campaign ID: $campaignId');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/campaign/influencer-campaign/$campaignId',
       );
 
-      if (result['success'] == true) {
-        setState(() {
-          _campaignLink = result['data']?['link'];
-          _isLoadingDetails = false;
-        });
+      print('📋 Campaign Details API Response Status: ${response.statusCode}');
+      print('📋 Campaign Details API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+
+        if (responseData['statusCode'] == 200 &&
+            responseData['message'] == 'success') {
+          final campaignData = responseData['data'] as Map<String, dynamic>;
+
+          setState(() {
+            _campaignLink = campaignData['link'];
+            _totalAmount = campaignData['totalAmount']?.toString() ?? '0';
+            _totalCompletedOrders =
+                campaignData['totalCompletedOrders']?.toString() ?? '0';
+            _isLoadingDetails = false;
+          });
+
+          print('✅ Campaign details fetched successfully');
+          print('📋 Link: $_campaignLink');
+          print('📋 Total Amount: $_totalAmount');
+          print('📋 Total Completed Orders: $_totalCompletedOrders');
+        } else {
+          setState(() {
+            _isLoadingDetails = false;
+          });
+          print('❌ API Error: ${responseData['message']}');
+        }
       } else {
         setState(() {
           _isLoadingDetails = false;
         });
-        print('❌ Failed to fetch campaign details: ${result['message']}');
+        print('❌ HTTP Error: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -195,9 +225,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                                 _buildClicks(campaign['clicks'] ?? 0),
                                 const SizedBox(height: 24),
                                 _buildCompletedOrders(
-                                    campaign['completedOrders'] ?? 0),
+                                    int.tryParse(_totalCompletedOrders) ?? 0),
                                 const SizedBox(height: 24),
-                                _buildTotal(campaign['total'] ?? 0),
+                                _buildTotal(int.tryParse(_totalAmount) ?? 0),
                                 const SizedBox(height: 24),
                               ],
                               _buildMessage(message),
@@ -354,34 +384,6 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       children: [
         Expanded(
           child: _buildCreatedAt(date),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildStartedAt(date),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStartedAt(String date) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          AppTranslations.getString(context, 'started_at'),
-          style: const TextStyle(
-            color: Color(0xFF9CA3AF),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          date,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
         ),
       ],
     );

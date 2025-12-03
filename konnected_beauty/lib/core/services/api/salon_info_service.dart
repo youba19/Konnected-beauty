@@ -7,7 +7,7 @@ import '../storage/token_storage_service.dart';
 import 'salon_auth_service.dart';
 
 class SalonInfoService {
-  static const String _baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String _baseUrl = 'https://server.konectedbeauty.com';
 
   // Get salon info
   Future<Map<String, dynamic>> getSalonInfo() async {

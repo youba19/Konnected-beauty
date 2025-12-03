@@ -5,7 +5,7 @@ import 'influencer_auth_service.dart';
 import 'salon_auth_service.dart';
 
 class HttpInterceptor {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
 
   /// Intercept HTTP requests and automatically handle token refresh
   static Future<http.Response> interceptRequest(
@@ -31,8 +31,23 @@ class HttpInterceptor {
 
       if (!refreshResult['success']) {
         print('❌ Token refresh failed: ${refreshResult['message']}');
-        // If refresh fails, we should clear the tokens and redirect to login
-        await _clearExpiredTokens();
+
+        // Check if the refresh token itself is expired
+        final isRefreshTokenExpired =
+            await TokenStorageService.isRefreshTokenExpired();
+
+        if (isRefreshTokenExpired) {
+          print('❌ Refresh token is also expired, clearing auth data');
+          // Only clear tokens if refresh token is expired (user needs to login again)
+          await _clearExpiredTokens();
+        } else {
+          // If refresh token is still valid but refresh failed (network error, etc.),
+          // don't clear tokens immediately - let the user retry
+          print(
+              '⚠️ Refresh token still valid, but refresh failed. This might be a temporary network issue.');
+          print('⚠️ Not clearing tokens to avoid unnecessary logout.');
+        }
+
         return response; // Return the original 401 response
       }
 
@@ -192,11 +207,33 @@ class HttpInterceptor {
         print('❌ No access token available - request will fail with 401');
       }
 
-      // Use Uri.replace for proper query parameter handling
-      final uri = Uri.parse('$baseUrl$endpoint').replace(
-        queryParameters: queryParameters
-            ?.map((key, value) => MapEntry(key, value.toString())),
-      );
+      // Handle query parameters, including array parameters like serviceIds[]
+      String queryString = '';
+      if (queryParameters != null && queryParameters.isNotEmpty) {
+        final List<String> queryParts = [];
+
+        queryParameters.forEach((key, value) {
+          if (key.endsWith('[]')) {
+            // Handle array parameters - add multiple entries for the same key
+            if (value is List) {
+              for (final item in value) {
+                queryParts.add(
+                    '${Uri.encodeComponent(key)}=${Uri.encodeComponent(item.toString())}');
+              }
+            } else {
+              queryParts.add(
+                  '${Uri.encodeComponent(key)}=${Uri.encodeComponent(value.toString())}');
+            }
+          } else {
+            queryParts.add(
+                '${Uri.encodeComponent(key)}=${Uri.encodeComponent(value.toString())}');
+          }
+        });
+
+        queryString = '?' + queryParts.join('&');
+      }
+
+      final uri = Uri.parse('$baseUrl$endpoint$queryString');
 
       print('🔗 Full URL: $uri');
       print('🔗 Query Parameters in Interceptor: $queryParameters');

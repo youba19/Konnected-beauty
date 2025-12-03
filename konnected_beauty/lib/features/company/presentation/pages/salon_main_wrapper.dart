@@ -1,26 +1,21 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
-import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
-import '../../../../core/bloc/auth/auth_bloc.dart';
+import '../../../../core/bloc/campaigns/campaigns_bloc.dart';
+import '../../../../core/bloc/campaigns/campaigns_event.dart';
 import '../../../../core/bloc/influencers/influencers_bloc.dart';
 import '../../../../core/services/storage/token_storage_service.dart';
-import '../../../../core/services/api/salon_services_service.dart';
-import '../../../../widgets/common/top_notification_banner.dart';
-
-import '../../../auth/presentation/pages/welcome_screen.dart';
 import 'salon_home_screen.dart';
-import 'create_service_screen.dart';
-import 'service_details_screen.dart';
-import 'edit_service_screen.dart';
-import 'service_filter_screen.dart';
 import 'influencers_screen.dart';
 import 'campaigns_screen.dart';
 import 'salon_settings_screen.dart';
+import 'salon_wallet_screen.dart';
+import 'qr_scanner_screen.dart';
 
 class SalonMainWrapper extends StatefulWidget {
   final bool showDeleteSuccess;
@@ -34,8 +29,6 @@ class SalonMainWrapper extends StatefulWidget {
 class _SalonMainWrapperState extends State<SalonMainWrapper> {
   int selectedIndex = 0; // Services tab is selected by default
   bool _showDeleteSuccess = false;
-  int? _currentMinPrice;
-  int? _currentMaxPrice;
   bool _isLoadingMore = false;
   Timer? _refreshTimer;
 
@@ -96,6 +89,42 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
     }
   }
 
+  void _refreshCurrentTab(int tabIndex) {
+    print('🔄 === REFRESHING TAB $tabIndex ===');
+
+    switch (tabIndex) {
+      case 0: // Services Tab
+        print('🔄 Refreshing Services...');
+        context.read<SalonServicesBloc>().add(RefreshSalonServices());
+        break;
+      case 1: // Campaigns Tab
+        print('🔄 Refreshing Campaigns...');
+        context.read<CampaignsBloc>().add(RefreshCampaigns(
+              status: null, // Load all campaigns
+              limit: 10,
+            ));
+        break;
+      case 2: // Wallet Tab
+        print('🔄 Refreshing Wallet...');
+        // Wallet screen has its own RefreshIndicator, so we don't need to do anything here
+        // The wallet screen will refresh when it becomes visible
+        break;
+      case 3: // Influencers Tab
+        print('🔄 Refreshing Influencers...');
+        context.read<InfluencersBloc>().add(RefreshInfluencers());
+        break;
+      case 4: // Settings Tab
+        print('🔄 Refreshing Settings...');
+        // Settings screen will refresh when it becomes visible
+        // The settings screen loads data in initState
+        break;
+      default:
+        print('🔄 Unknown tab index: $tabIndex');
+    }
+
+    print('🔄 === END REFRESH TAB $tabIndex ===');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -131,14 +160,15 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
                   showDeleteSuccess: _showDeleteSuccess,
                 ),
                 // Campaigns Tab
-                const CampaignsScreen(),
-                // Wallet Tab
-                const Center(
-                  child: Text(
-                    'Wallet Screen - Coming Soon',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
+                CampaignsScreen(
+                  onNavigateToInfluencers: () {
+                    setState(() {
+                      selectedIndex = 3; // Navigate to Influencers tab
+                    });
+                  },
                 ),
+                // Wallet Tab
+                const SalonWalletScreen(),
                 // Influencers Tab
                 const InfluencersScreen(),
                 // Settings Tab
@@ -202,6 +232,10 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
           selectedIndex = index;
         });
         print('🎯 New selected index: $selectedIndex');
+
+        // Refresh data when navigating to different tabs
+        _refreshCurrentTab(index);
+
         print('🎯 === END NAVIGATION TAP ===');
       },
       child: Column(
@@ -215,16 +249,20 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
             size: 22,
           ),
           const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? AppTheme.textPrimaryColor
-                  : AppTheme.navBartextColor,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? AppTheme.textPrimaryColor
+                    : AppTheme.navBartextColor,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -232,51 +270,125 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
   }
 
   Widget _buildFloatingActionButton() {
-    // Show different FAB based on selected tab
-    if (selectedIndex == 0) {
-      // Services tab - QR Scanner
-      return Container(
-        margin: const EdgeInsets.only(bottom: 0),
-        child: FloatingActionButton(
-          onPressed: () {
-            _scanQRCode();
-          },
-          backgroundColor: Colors.transparent,
-          foregroundColor: AppTheme.textPrimaryColor,
-          elevation: 0,
-          shape: const CircleBorder(),
+    // Show QR button for all screens
+    return Container(
+      margin: const EdgeInsets.only(bottom: 0),
+      child: _buildLiquidGlassButton(),
+    );
+  }
+
+  Widget _buildLiquidGlassButton() {
+    return GestureDetector(
+      onTap: () {
+        _scanQRCode();
+      },
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
-            width: 56,
-            height: 56,
+            width: 70,
+            height: 70,
             decoration: BoxDecoration(
-              color: AppTheme.textPrimaryColor.withOpacity(0.15),
               shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.15),
               border: Border.all(
-                color: AppTheme.textPrimaryColor.withOpacity(0.4),
-                width: 1.5,
+                color: Colors.white.withOpacity(0.2),
+                width: 1.2,
               ),
+              boxShadow: [
+                // Outer glow for depth
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 0),
+                ),
+                // Drop shadow for depth
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 15,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            child: const Icon(
-              LucideIcons.qrCode,
-              size: 32,
+            child: Stack(
+              children: [
+                // Liquid glass highlight - main
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.3, -0.3),
+                        radius: 1.0,
+                        colors: [
+                          Colors.white.withOpacity(0.6),
+                          Colors.white.withOpacity(0.2),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // Secondary liquid highlight
+                Positioned(
+                  top: 15,
+                  left: 15,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.4),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Main content
+                const Center(
+                  child: Icon(
+                    LucideIcons.qrCode,
+                    size: 32,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      );
-    } else if (selectedIndex == 1) {
-      // Campaigns tab - No FAB
-      return const SizedBox.shrink();
-    } else {
-      // Other tabs - no FAB
-      return const SizedBox.shrink();
-    }
+      ),
+    );
   }
 
-  void _scanQRCode() {
-    // TODO: Implement QR code scanning functionality
-    TopNotificationService.showInfo(
-      context: context,
-      message: AppTranslations.getString(context, 'qr_scanning_coming_soon'),
-    );
+  Future<void> _scanQRCode() async {
+    print('🔍 === QR SCAN BUTTON TAPPED - ULTRA FORCE ===');
+
+    // Ultra force: Open QR scanner directly without permission checks
+    print('📷 ULTRA FORCE: Opening QR scanner directly...');
+
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const QRScannerScreen(),
+        ),
+      );
+    }
   }
 }

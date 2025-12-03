@@ -1,7 +1,30 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.google.gms:google-services:4.4.2'
+    }
+}
+
 allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+}
+
+// Force only use API 34 to avoid corrupted API 35
+allprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                if (project.android.hasProperty("compileSdkVersion")) {
+                    compileSdkVersion 34
+                }
+            }
+        }
     }
 }
 

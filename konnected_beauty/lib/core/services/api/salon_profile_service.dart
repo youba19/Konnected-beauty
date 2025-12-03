@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'http_interceptor.dart';
 
 class SalonProfileService {
-  static const String _baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String _baseUrl = 'https://server.konectedbeauty.com';
 
   // Get salon profile
   Future<Map<String, dynamic>> getSalonProfile() async {

@@ -656,35 +656,37 @@ class SaloonRegistrationBloc
           if (result['success']) {
             // Signup successful, save tokens and proceed to OTP verification
             print('🔐 === INITIAL SIGNUP SUCCESS ===');
-            
+
             try {
               final data = result['data'] as Map<String, dynamic>?;
               final accessToken = data?['access_token'] as String?;
               final refreshToken = data?['refresh_token'] as String?;
-              
-              print('🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
-              print('🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
-              
+
+              print(
+                  '🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
+              print(
+                  '🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
+
               if (accessToken != null && accessToken.isNotEmpty) {
                 await TokenStorageService.saveAccessToken(accessToken);
                 print('🔐 Access token saved from signup');
               }
-              
+
               if (refreshToken != null && refreshToken.isNotEmpty) {
                 await TokenStorageService.saveRefreshToken(refreshToken);
                 print('🔐 Refresh token saved from signup');
               }
-              
+
               // Also save user email and role for authentication
               await TokenStorageService.saveUserEmail(state.email);
               await TokenStorageService.saveUserRole('saloon');
               print('🔐 User email and role saved');
-              
+
               print('🔐 === END SIGNUP SUCCESS ===');
             } catch (e) {
               print('❌ Error saving tokens from signup: $e');
             }
-            
+
             final nextStep = state.currentStep + 1;
             emit(SaloonRegistrationState(
               currentStep: nextStep,
@@ -967,35 +969,37 @@ class SaloonRegistrationBloc
       if (result['success']) {
         // Signup successful, save tokens and proceed to OTP step
         print('🔐 === SUBMIT SIGNUP SUCCESS ===');
-        
+
         try {
           final data = result['data'] as Map<String, dynamic>?;
           final accessToken = data?['access_token'] as String?;
           final refreshToken = data?['refresh_token'] as String?;
-          
-          print('🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
-          print('🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
-          
+
+          print(
+              '🔐 API returned access token: ${accessToken != null ? 'Yes' : 'No'}');
+          print(
+              '🔐 API returned refresh token: ${refreshToken != null ? 'Yes' : 'No'}');
+
           if (accessToken != null && accessToken.isNotEmpty) {
             await TokenStorageService.saveAccessToken(accessToken);
             print('🔐 Access token saved from submit signup');
           }
-          
+
           if (refreshToken != null && refreshToken.isNotEmpty) {
             await TokenStorageService.saveRefreshToken(refreshToken);
             print('🔐 Refresh token saved from submit signup');
           }
-          
+
           // Also save user email and role for authentication
           await TokenStorageService.saveUserEmail(state.email);
           await TokenStorageService.saveUserRole('saloon');
           print('🔐 User email and role saved');
-          
+
           print('🔐 === END SUBMIT SIGNUP SUCCESS ===');
         } catch (e) {
           print('❌ Error saving tokens from submit signup: $e');
         }
-        
+
         emit(SaloonRegistrationState(
           currentStep: 1,
           isLoading: false,

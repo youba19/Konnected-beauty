@@ -51,6 +51,15 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
           // Navigate back to home screen
           Navigator.of(context).pop();
+        } else if (state is SalonServiceUpdated) {
+          // Show success message for service update
+          TopNotificationService.showSuccess(
+            context: context,
+            message: AppTranslations.getString(context, 'service_updated'),
+          );
+
+          // Trigger a rebuild to show updated data
+          setState(() {});
         } else if (state is SalonServicesError) {
           // Show error message
           TopNotificationService.showError(
@@ -83,7 +92,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Text(
-                    AppTranslations.getString(context, 'edit_service'),
+                    AppTranslations.getString(context, 'service_details'),
                     style: AppTheme.headingStyle,
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -175,38 +184,65 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   Widget _buildServiceInformation() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Service Name
-        Text(
-          widget.serviceName,
-          style: AppTheme.headingStyle.copyWith(fontSize: 24),
-        ),
+    return BlocBuilder<SalonServicesBloc, SalonServicesState>(
+      builder: (context, state) {
+        // Get current service data from bloc state
+        String currentName = widget.serviceName;
+        String currentPrice = widget.servicePrice;
+        String currentDescription = widget.serviceDescription;
 
-        const SizedBox(height: 8),
+        if (state is SalonServicesLoaded) {
+          // Find the updated service in the loaded services
+          final updatedService = state.services.firstWhere(
+            (service) => service['id'] == widget.serviceId,
+            orElse: () => {
+              'name': widget.serviceName,
+              'price': widget.servicePrice,
+              'description': widget.serviceDescription,
+            },
+          );
 
-        // Service Price
-        Text(
-          '${widget.servicePrice}',
-          style: const TextStyle(
-            color: AppTheme.accentColor,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+          currentName = updatedService['name'] ?? widget.serviceName;
+          currentPrice =
+              updatedService['price']?.toString() ?? widget.servicePrice;
+          currentDescription =
+              updatedService['description'] ?? widget.serviceDescription;
+        }
 
-        const SizedBox(height: 24),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Service Name
+            Text(
+              currentName,
+              style: AppTheme.headingStyle.copyWith(fontSize: 24),
+            ),
 
-        // Service Description
-        Text(
-          widget.serviceDescription,
-          style: AppTheme.subtitleStyle.copyWith(
-            fontSize: 16,
-            height: 1.6,
-          ),
-        ),
-      ],
+            const SizedBox(height: 8),
+
+            // Service Price
+            Text(
+              currentPrice,
+              style: const TextStyle(
+                color: AppTheme.accentColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Service Description
+            Text(
+              currentDescription,
+              style: AppTheme.subtitleStyle.copyWith(
+                fontSize: 16,
+                height: 1.6,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

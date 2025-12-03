@@ -12,7 +12,7 @@ class TopNotificationBanner extends StatelessWidget {
     super.key,
     required this.message,
     required this.backgroundColor,
-    this.duration = const Duration(seconds: 3),
+    this.duration = const Duration(seconds: 2),
     this.onDismiss,
     this.icon,
   });
@@ -74,7 +74,7 @@ class TopNotificationService {
     required BuildContext context,
     required String message,
     required Color backgroundColor,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 2),
     VoidCallback? onDismiss,
     IconData? icon,
   }) {
@@ -102,7 +102,7 @@ class TopNotificationService {
   static void showSuccess({
     required BuildContext context,
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 2),
     VoidCallback? onDismiss,
   }) {
     show(
@@ -118,7 +118,7 @@ class TopNotificationService {
   static void showError({
     required BuildContext context,
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 2),
     VoidCallback? onDismiss,
   }) {
     show(
@@ -134,7 +134,7 @@ class TopNotificationService {
   static void showWarning({
     required BuildContext context,
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 2),
     VoidCallback? onDismiss,
   }) {
     show(
@@ -150,7 +150,7 @@ class TopNotificationService {
   static void showInfo({
     required BuildContext context,
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 2),
     VoidCallback? onDismiss,
   }) {
     show(

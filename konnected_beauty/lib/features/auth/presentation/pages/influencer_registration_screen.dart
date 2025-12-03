@@ -278,7 +278,7 @@ class _InfluencerRegistrationScreenState
     // Initialize controllers
     nameController = TextEditingController();
     emailController = TextEditingController();
-    phoneController = TextEditingController();
+    phoneController = TextEditingController(text: '+33');
     passwordController = TextEditingController();
     otpController = TextEditingController();
     pseudoController = TextEditingController();
@@ -1355,9 +1355,10 @@ class _InfluencerRegistrationScreenState
         ),
         const SizedBox(height: 20),
 
-        // TikTok Field
+        // TikTok Field (Optional)
         CustomTextField(
-          label: AppTranslations.getString(context, 'tiktok'),
+          label:
+              '${AppTranslations.getString(context, 'tiktok')} (${AppTranslations.getString(context, 'optional')})',
           placeholder: AppTranslations.getString(context, 'enter_tiktok_link'),
           controller: tiktokController,
           keyboardType: TextInputType.url,
@@ -1373,9 +1374,10 @@ class _InfluencerRegistrationScreenState
         ),
         const SizedBox(height: 20),
 
-        // YouTube Field
+        // YouTube Field (Optional)
         CustomTextField(
-          label: AppTranslations.getString(context, 'youtube'),
+          label:
+              '${AppTranslations.getString(context, 'youtube')} (${AppTranslations.getString(context, 'optional')})',
           placeholder: AppTranslations.getString(context, 'enter_youtube_link'),
           controller: youtubeController,
           keyboardType: TextInputType.url,
@@ -1408,6 +1410,29 @@ class _InfluencerRegistrationScreenState
 
                   // Check if we can proceed after validation
                   if (_canProceedToNextStep(state)) {
+                    // Auto-convert 06 or 07 to +33 before sending
+                    String phoneValue = phoneController.text.trim();
+                    if (phoneValue.startsWith('06') ||
+                        phoneValue.startsWith('07')) {
+                      // Take only the first 10 digits (remove the 0 and take 9 more digits)
+                      // This handles cases where user might have typed 11 digits by mistake
+                      String digits =
+                          phoneValue.substring(1); // Remove the leading 0
+                      if (digits.length > 9) {
+                        digits = digits.substring(
+                            0, 9); // Take only 9 digits after the 0
+                      }
+                      phoneValue = '+33$digits';
+                    }
+                    // Always update the state with the phone number (whether it's +33 or converted from 06/07)
+                    context
+                        .read<InfluencerRegistrationBloc>()
+                        .add(UpdatePersonalInfo(
+                          name: nameController.text,
+                          email: emailController.text,
+                          phone: phoneValue,
+                          password: passwordController.text,
+                        ));
                     context
                         .read<InfluencerRegistrationBloc>()
                         .add(SubmitSignup());
@@ -1498,18 +1523,19 @@ class _InfluencerRegistrationScreenState
             bioController.text.isNotEmpty &&
             zoneController.text.isNotEmpty;
       case 3:
+        // Instagram is required, TikTok and YouTube are optional
         final hasInstagram = instagramController.text.isNotEmpty;
         final hasTiktok = tiktokController.text.isNotEmpty;
         final hasYoutube = youtubeController.text.isNotEmpty;
-        final canProceed = hasInstagram || hasTiktok || hasYoutube;
+        final canProceed = hasInstagram; // Only Instagram is required
 
         print('🔍 === SOCIAL MEDIA VALIDATION ===');
         print(
             '📱 Instagram: "${instagramController.text}" (${hasInstagram ? "Valid" : "Empty"})');
         print(
-            '📱 TikTok: "${tiktokController.text}" (${hasTiktok ? "Valid" : "Empty"})');
+            '📱 TikTok: "${tiktokController.text}" (${hasTiktok ? "Valid" : "Empty"} - Optional)');
         print(
-            '📱 YouTube: "${youtubeController.text}" (${hasYoutube ? "Valid" : "Empty"})');
+            '📱 YouTube: "${youtubeController.text}" (${hasYoutube ? "Valid" : "Empty"} - Optional)');
         print('🎯 Can proceed: $canProceed');
 
         return canProceed;

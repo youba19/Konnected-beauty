@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,8 +27,7 @@ class InfluencerDetailsScreen extends StatefulWidget {
 
 class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? _selectedPromotionType;
-  final _promotionValueController = TextEditingController();
+  final _followersPromotionController = TextEditingController();
   final _messageController = TextEditingController();
   bool _isLoading = false;
 
@@ -45,7 +45,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
 
   @override
   void dispose() {
-    _promotionValueController.dispose();
+    _followersPromotionController.dispose();
     _messageController.dispose();
     super.dispose();
   }
@@ -212,11 +212,26 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     final profile = data['profile'] ?? {};
     final socials = data['socials'] ?? [];
     final receivedRatings = data['receivedRatings'] ?? [];
+    final email = data['email'] ?? '';
+    final phoneNumber = data['phoneNumber'] ?? '';
+
+    // Calculate average rating
+    double averageRating = 0.0;
+    if (receivedRatings.isNotEmpty) {
+      final totalStars = receivedRatings.fold<int>(
+        0,
+        (int sum, dynamic rating) => sum + ((rating['stars'] as int?) ?? 0),
+      );
+      averageRating = totalStars / receivedRatings.length;
+    }
 
     print('🎨 === BUILDING LOADED STATE ===');
     print('🎨 Profile: $profile');
     print('🎨 Socials: $socials');
     print('🎨 Received Ratings: $receivedRatings');
+    print('🎨 Email: $email');
+    print('🎨 Phone: $phoneNumber');
+    print('🎨 Average Rating: $averageRating');
 
     return Container(
       decoration: const BoxDecoration(
@@ -244,11 +259,12 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildProfileSection(profile),
+                      _buildProfileSection(
+                          profile, email, phoneNumber, averageRating),
+                      const SizedBox(height: 16),
+                      _buildBioSection(profile),
                       const SizedBox(height: 24),
                       _buildInviteButton(),
-                      const SizedBox(height: 32),
-                      _buildInformationSection(profile),
                       const SizedBox(height: 32),
                       _buildSocialMediaSection(socials),
                       const SizedBox(height: 32),
@@ -267,7 +283,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(0.0),
       child: Row(
         children: [
           IconButton(
@@ -283,69 +299,165 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildProfileSection(Map<String, dynamic> profile) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildProfileSection(
+    Map<String, dynamic> profile,
+    String email,
+    String phoneNumber,
+    double averageRating,
+  ) {
+    final profilePicture = profile['profilePicture'];
+    final pseudo = profile['pseudo'] ?? 'Unknown';
+    final zone = profile['zone'] ?? '';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 3,
-            ),
-          ),
-          child: ClipOval(
-            child: profile['profilePicture'] != null
-                ? Image.network(
-                    profile['profilePicture'],
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
+        // Profile Picture with Rating Badge
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 2,
+                ),
+              ),
+              child: ClipOval(
+                child: profilePicture != null && profilePicture.isNotEmpty
+                    ? Image.network(
+                        profilePicture,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.white.withOpacity(0.1),
+                            child: const Icon(
+                              LucideIcons.user,
+                              color: Colors.white54,
+                              size: 50,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
                         color: Colors.white.withOpacity(0.1),
                         child: const Icon(
                           LucideIcons.user,
                           color: Colors.white54,
-                          size: 60,
+                          size: 50,
                         ),
-                      );
-                    },
-                  )
-                : Container(
-                    color: Colors.white.withOpacity(0.1),
-                    child: const Icon(
-                      LucideIcons.user,
-                      color: Colors.white54,
-                      size: 60,
+                      ),
+              ),
+            ),
+            // Rating Badge overlapping bottom-center
+            if (averageRating > 0)
+              Positioned(
+                bottom: -4,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          averageRating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.star,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ],
                     ),
                   ),
-          ),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          '@${profile['pseudo'] ?? 'Unknown'}',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: 16),
+        // User Information in the middle (centered with image)
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Handle
+              Text(
+                '@$pseudo',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Location
+              if (zone.isNotEmpty)
+                Text(
+                  zone,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              if (zone.isNotEmpty) const SizedBox(height: 6),
+              // Phone Number
+              if (phoneNumber.isNotEmpty)
+                Text(
+                  phoneNumber,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              if (phoneNumber.isNotEmpty) const SizedBox(height: 6),
+              // Email
+              if (email.isNotEmpty)
+                Text(
+                  email,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+            ],
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          profile['bio'] ??
-              AppTranslations.getString(context, 'no_bio_available'),
-          style: const TextStyle(
-            color: AppTheme.textSecondaryColor,
-            fontSize: 16,
-            height: 1.4,
-          ),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+  }
+
+  Widget _buildBioSection(Map<String, dynamic> profile) {
+    final bio = profile['bio'] ??
+        AppTranslations.getString(context, 'no_bio_available');
+
+    return Text(
+      bio,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        height: 1.5,
+      ),
     );
   }
 
@@ -407,14 +519,18 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
         Expanded(
           child: Row(
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: isRating
-                      ? AppTheme.textSecondaryColor
-                      : AppTheme.textPrimaryColor,
-                  fontSize: 16,
-                  fontWeight: isRating ? FontWeight.bold : FontWeight.normal,
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: isRating
+                        ? AppTheme.textSecondaryColor
+                        : AppTheme.textPrimaryColor,
+                    fontSize: 16,
+                    fontWeight: isRating ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
                 ),
               ),
               if (isRating) ...[
@@ -510,8 +626,6 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 20),
-                const SizedBox(width: 12),
                 Text(
                   platform,
                   style: const TextStyle(
@@ -566,6 +680,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                 AppTranslations.getString(context, 'unknown_salon');
             final comment = rating['comment'] ?? '';
             final createdAt = rating['createdAt'] ?? '';
+            final stars = rating['stars'] ?? 0;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -575,6 +690,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                     ? AppTranslations.getString(context, 'no_comment')
                     : comment,
                 _formatDate(createdAt),
+                stars,
               ),
             );
           }).toList(),
@@ -583,7 +699,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
   }
 
   Widget _buildReviewCard(
-      String companyName, String reviewText, String timestamp) {
+      String companyName, String reviewText, String timestamp, int stars) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -596,12 +712,14 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                companyName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  companyName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Text(
@@ -611,6 +729,8 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                   fontSize: 14,
                 ),
               ),
+              const SizedBox(width: 8),
+              _buildStarRating(stars),
             ],
           ),
           const SizedBox(height: 8),
@@ -627,34 +747,84 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
+  Widget _buildStarRating(int rating) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Show the numeric rating
+        Text(
+          '$rating',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(width: 4),
+        // Show the star icon
+        const Icon(
+          Icons.star,
+          color: Colors.yellow,
+          size: 16,
+        ),
+      ],
+    );
+  }
+
   void _openSocialMedia(String url) async {
     try {
       // Ensure the URL has a proper scheme
-      String launchUrl = url;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        launchUrl = 'https://$url';
+      String urlToLaunch = url.trim();
+      if (!urlToLaunch.startsWith('http://') &&
+          !urlToLaunch.startsWith('https://')) {
+        urlToLaunch = 'https://$urlToLaunch';
       }
 
-      final Uri uri = Uri.parse(launchUrl);
+      final Uri uri = Uri.parse(urlToLaunch);
 
-      if (await canLaunchUrl(uri)) {
-        await launch(launchUrl);
+      print('🔗 Attempting to open URL: $urlToLaunch');
 
+      // Try to launch the URL directly (canLaunchUrl can be unreliable on Android)
+      bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (launched) {
+        print('✅ URL launched successfully');
         TopNotificationService.showSuccess(
           context: context,
           message: 'Opening link...',
         );
       } else {
-        TopNotificationService.showError(
-          context: context,
-          message: 'Could not open the link',
+        // If external application mode fails, try platform default
+        print('⚠️ External application mode failed, trying platform default');
+        bool launchedDefault = await launchUrl(
+          uri,
+          mode: LaunchMode.platformDefault,
         );
+
+        if (launchedDefault) {
+          print('✅ URL launched with platform default mode');
+          TopNotificationService.showSuccess(
+            context: context,
+            message: 'Opening link...',
+          );
+        } else {
+          print('❌ Failed to launch URL with both modes');
+          TopNotificationService.showError(
+            context: context,
+            message:
+                'Could not open the link. Please check if the URL is valid.',
+          );
+        }
       }
     } catch (e) {
       print('❌ Error opening URL: $e');
+      print('❌ URL was: $url');
       TopNotificationService.showError(
         context: context,
-        message: 'Error opening link: $e',
+        message: 'Error opening link. Please check if the URL is valid.',
       );
     }
   }
@@ -719,66 +889,10 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
+                          // Followers promotion value
                           Text(
                             AppTranslations.getString(
-                                context, 'promotion_type'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedPromotionType,
-                              decoration: InputDecoration(
-                                hintText: AppTranslations.getString(
-                                    context, 'select_type'),
-                                hintStyle:
-                                    const TextStyle(color: Colors.white70),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                              ),
-                              dropdownColor: const Color(0xFF2A2A2A),
-                              style: const TextStyle(color: Colors.white),
-                              icon: const Icon(Icons.keyboard_arrow_down,
-                                  color: Colors.white),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return AppTranslations.getString(
-                                      context, 'please_select_promotion_type');
-                                }
-                                return null;
-                              },
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedPromotionType = newValue;
-                                });
-                              },
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'percentage',
-                                  child: Text(AppTranslations.getString(
-                                      context, 'percentage')),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'fixed',
-                                  child: Text(AppTranslations.getString(
-                                      context, 'fixed_amount')),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppTranslations.getString(
-                                context, 'promotion_value'),
+                                context, 'followers_promotion_value'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -787,11 +901,13 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
-                            controller: _promotionValueController,
+                            controller: _followersPromotionController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             decoration: InputDecoration(
-                              hintText: _selectedPromotionType == 'percentage'
-                                  ? '20'
-                                  : '100',
+                              hintText: '00',
                               hintStyle: const TextStyle(color: Colors.white70),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -810,6 +926,19 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                               ),
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 12),
+                              suffixIcon: const Padding(
+                                padding: EdgeInsets.only(right: 16),
+                                child: Center(
+                                  widthFactor: 1.0,
+                                  child: Text(
+                                    '%',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                             style: const TextStyle(color: Colors.white),
                             validator: (value) {
@@ -818,27 +947,78 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                                     context, 'please_enter_promotion_value');
                               }
 
-                              // Parse the value as integer
                               final intValue = int.tryParse(value);
                               if (intValue == null) {
                                 return 'Please enter a valid number';
                               }
 
-                              // Validate based on promotion type
-                              if (_selectedPromotionType == 'percentage') {
-                                if (intValue < 0 || intValue > 100) {
-                                  return AppTranslations.getString(
-                                      context, 'percentage_validation');
-                                }
-                              } else if (_selectedPromotionType == 'fixed') {
-                                if (intValue <= 0) {
-                                  return AppTranslations.getString(
-                                      context, 'fixed_amount_validation');
-                                }
+                              if (intValue < 0 || intValue > 100) {
+                                return AppTranslations.getString(
+                                    context, 'percentage_validation');
                               }
 
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 16),
+                          // Commission influencer
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                AppTranslations.getString(
+                                    context, 'commission_influencer'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Text(
+                                '8%',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Commission Kbeauty
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                AppTranslations.getString(
+                                    context, 'commission_kbeauty'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Text(
+                                '3%',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -949,13 +1129,9 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                             child: ElevatedButton(
                               onPressed: () => Navigator.of(context).pop(),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryColor,
+                                backgroundColor: const Color(0xFF2A2A2A),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  side: BorderSide(
-                                    color: AppTheme.textPrimaryColor,
-                                    width: 1,
-                                  ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
@@ -992,9 +1168,9 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     });
 
     try {
-      // Get form data
-      final promotionType = _selectedPromotionType!;
-      final promotionValue = int.parse(_promotionValueController.text);
+      // Get form data - always use percentage
+      final promotionType = 'percentage';
+      final promotionValue = int.parse(_followersPromotionController.text);
       final message = _messageController.text;
 
       print('📝 === CREATING CAMPAIGN INVITE ===');

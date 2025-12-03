@@ -8,6 +8,7 @@ import '../../../../core/bloc/saloons/saloons_event.dart';
 import '../../../../core/bloc/saloons/saloons_state.dart';
 import '../../../../core/bloc/salon_details/salon_details_bloc.dart';
 import 'salon_details_screen.dart';
+import '../../../../widgets/common/motivational_banner.dart';
 
 class SaloonsScreen extends StatefulWidget {
   const SaloonsScreen({super.key});
@@ -20,7 +21,6 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
-  String _selectedFilter = 'all';
 
   @override
   void initState() {
@@ -86,6 +86,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // TOP GREEN GLOW
@@ -114,44 +115,43 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
           // CONTENT
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: BlocListener<SaloonsBloc, SaloonsState>(
-                    listener: (context, state) {
-                      if (state is SaloonsLoaded) {
-                        _isLoadingMore = false;
-                      } else if (state is SaloonsError) {
-                        _isLoadingMore = false;
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
+              },
+              child: BlocListener<SaloonsBloc, SaloonsState>(
+                listener: (context, state) {
+                  if (state is SaloonsLoaded) {
+                    _isLoadingMore = false;
+                  } else if (state is SaloonsError) {
+                    _isLoadingMore = false;
+                  }
+                },
+                child: BlocBuilder<SaloonsBloc, SaloonsState>(
+                  builder: (context, state) {
+                    if (state is SaloonsLoading) {
+                      return _buildLoadingState();
+                    } else if (state is SaloonsError) {
+                      return _buildErrorState(state);
+                    } else if (state is SaloonsLoaded) {
+                      if (state.saloons.isEmpty) {
+                        return _buildNoSaloonsState();
+                      } else {
+                        return _buildSaloonsList(state);
                       }
-                    },
-                    child: BlocBuilder<SaloonsBloc, SaloonsState>(
-                      builder: (context, state) {
-                        if (state is SaloonsLoading) {
-                          return _buildLoadingState();
-                        } else if (state is SaloonsError) {
-                          return _buildErrorState(state);
-                        } else if (state is SaloonsLoaded) {
-                          if (state.saloons.isEmpty) {
-                            return _buildNoSaloonsState();
-                          } else {
-                            return _buildSaloonsList(state);
-                          }
-                        } else if (state is SaloonsLoadingMore) {
-                          if (state.saloons.isEmpty) {
-                            return _buildNoSaloonsState();
-                          } else {
-                            return _buildSaloonsListWithLoading(state);
-                          }
-                        } else {
-                          return _buildInitialState();
-                        }
-                      },
-                    ),
-                  ),
+                    } else if (state is SaloonsLoadingMore) {
+                      if (state.saloons.isEmpty) {
+                        return _buildNoSaloonsState();
+                      } else {
+                        return _buildSaloonsListWithLoading(state);
+                      }
+                    } else {
+                      return _buildInitialState();
+                    }
+                  },
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -171,62 +171,39 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
             style: AppTheme.headingStyle.copyWith(fontSize: 32),
           ),
           const SizedBox(height: 16),
-          // Search bar and filter button
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTheme.transparentBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.textPrimaryColor),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    style: AppTheme.applyPoppins(
-                        const TextStyle(color: AppTheme.textPrimaryColor)),
-                    decoration: InputDecoration(
-                      hintText: AppTranslations.getString(
-                          context, 'search_placeholder'),
-                      hintStyle: AppTheme.applyPoppins(
-                          const TextStyle(color: AppTheme.textSecondaryColor)),
-                      suffixIcon: Icon(
-                        Icons.search,
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
+          // Search bar
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppTheme.transparentBackground,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.textPrimaryColor),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              style: AppTheme.applyPoppins(
+                  const TextStyle(color: AppTheme.textPrimaryColor)),
+              decoration: InputDecoration(
+                hintText:
+                    AppTranslations.getString(context, 'search_placeholder'),
+                hintStyle: AppTheme.applyPoppins(
+                    const TextStyle(color: AppTheme.textSecondaryColor)),
+                suffixIcon: Icon(
+                  Icons.search,
+                  color: AppTheme.textSecondaryColor,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
               ),
-              const SizedBox(width: 12),
-              // Filter button
-              GestureDetector(
-                onTap: () {
-                  _showFilterModal();
-                },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTheme.transparentBackground,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.border2),
-                  ),
-                  child: Icon(
-                    Icons.filter_list,
-                    color: AppTheme.textPrimaryColor,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          MotivationalBanner(
+            text: AppTranslations.getString(context, 'invite_saloons_hint'),
           ),
         ],
       ),
@@ -238,110 +215,139 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
       onRefresh: () async {
         context.read<SaloonsBloc>().add(RefreshSaloons(
               search: state.currentSearch,
-              limit: 50, // Use higher limit like campaigns
+              limit: 50,
             ));
       },
-      child: ListView.builder(
+      child: CustomScrollView(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: state.saloons.length + (state.hasMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == state.saloons.length) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  if (state.hasMore) ...[
-                    // Loading indicator removed for better UX
-                  ] else ...[
-                    Text(
-                      'No more saloons available',
-                      style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  // Show pagination info like campaigns screen
-                  Text(
-                    'All saloons loaded (${state.saloons.length}/${state.total})',
-                    style: TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _buildSaloonCard(state.saloons[index]),
-          );
-        },
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index == state.saloons.length) {
+                  if (state.hasMore) {
+                    return const SizedBox(height: 32);
+                  }
+                  return _buildListFooter(
+                    loaded: state.saloons.length,
+                    total: state.total,
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: _buildSaloonCard(state.saloons[index]),
+                );
+              },
+              childCount: state.saloons.length + 1,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSaloonsListWithLoading(SaloonsLoadingMore state) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: state.saloons.length + 1, // +1 for loading indicator
-      itemBuilder: (context, index) {
-        if (index == state.saloons.length) {
-          // Show loading indicator at the bottom
-          return Container(
-            padding: const EdgeInsets.all(16),
-            child: const Center(
-              child: CircularProgressIndicator(
-                color: AppTheme.accentColor,
-              ),
-            ),
-          );
-        }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _buildSaloonCard(state.saloons[index]),
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<SaloonsBloc>().add(RefreshSaloons(
+              search: _searchController.text.isEmpty
+                  ? null
+                  : _searchController.text,
+              limit: 50,
+            ));
       },
+      child: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (index == state.saloons.length) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppTheme.accentColor,
+                      ),
+                    ),
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: _buildSaloonCard(state.saloons[index]),
+                );
+              },
+              childCount: state.saloons.length + 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListFooter({required int loaded, required int total}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Column(
+        children: [
+          Text(
+            AppTranslations.getString(context, 'no_more_saloons'),
+            style: TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            AppTranslations.getString(
+              context,
+              'saloons_loaded_count',
+            ).replaceAll('{loaded}', loaded.toString()).replaceAll(
+                  '{total}',
+                  total.toString(),
+                ),
+            style: TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSaloonCard(Map<String, dynamic> saloon) {
-    // Extract saloon data with fallbacks
-    final name = saloon['name'] ??
-        AppTranslations.getString(context, 'saloon_name_default');
-    final domain = saloon['domain'] ??
-        AppTranslations.getString(context, 'saloon_domain_default');
+    // Extract saloon data from new API structure
+    final salonInfo = saloon['salonInfo'] as Map<String, dynamic>? ?? {};
+    final salonProfile = saloon['salonProfile'] as Map<String, dynamic>? ?? {};
 
-    // Extract real services from API response
+    final name = salonInfo['name'] as String? ??
+        AppTranslations.getString(context, 'saloon_name_default');
+    final domain = salonInfo['domain'] as String? ??
+        AppTranslations.getString(context, 'saloon_domain_default');
+    final description = salonProfile['description'] as String? ?? '';
+
+    // Extract pictures from salonProfile
+    final picturesData = salonProfile['pictures'] as List<dynamic>? ?? [];
+    final pictures = picturesData
+        .map((pic) => pic['url'] as String? ?? '')
+        .where((url) => url.isNotEmpty)
+        .toList();
+
+    // Extract services from API response
     final servicesData = saloon['services'] as List<dynamic>? ?? [];
     final services = servicesData
         .map((service) => service['name'] as String? ?? 'Unknown Service')
         .toList();
 
-    // Debug: Print services data
-    print('🔍 === SALON CARD DEBUG ===');
-    print('🔍 Salon: ${saloon['name']}');
-    print('🔍 Services Data: $servicesData');
-    print('🔍 Services Count: ${servicesData.length}');
-    print('🔍 Parsed Services: $services');
-    print('🔍 Services Empty: ${services.isEmpty}');
-    print('🔍 === END SALON CARD DEBUG ===');
-
-    // Use a simple metric (could be based on opening hours or other data)
-    final metric = 12; // Fixed metric as shown in the image
+    final serviceCount = services.length;
+    final salonId = saloon['id'] as String?;
 
     return GestureDetector(
       onTap: () {
         // Navigate to salon details screen
-        final salonId = saloon['id'] as String?;
-        final salonName = saloon['name'] as String?;
-        final salonDomain = saloon['domain'] as String?;
-        final salonAddress = saloon['address'] as String?;
-
         if (salonId != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -349,9 +355,9 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 create: (context) => SalonDetailsBloc(),
                 child: SalonDetailsScreen(
                   salonId: salonId,
-                  salonName: salonName,
-                  salonDomain: salonDomain,
-                  salonAddress: salonAddress,
+                  salonName: name,
+                  salonDomain: domain,
+                  salonAddress: salonInfo['address'] as String?,
                 ),
               ),
             ),
@@ -359,135 +365,195 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(
-            vertical: 16), // Only top and bottom padding
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A), // Dark grey background as in image
-
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.navBartextColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Content with horizontal padding
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Saloon name
-                  Text(
-                    name,
-                    style: AppTheme.applyPoppins(const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    )),
-                  ),
-                  const SizedBox(height: 4),
-                  // Domain and metric row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          domain,
-                          style: AppTheme.applyPoppins(const TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 14,
-                          )),
-                        ),
-                      ),
-                      // Metric with trending up icon
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            metric.toString(),
-                            style: AppTheme.applyPoppins(const TextStyle(
-                              color: AppTheme.textPrimaryColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            )),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            LucideIcons.ticket,
-                            color: AppTheme.accentColor,
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
+            // Images row (horizontally scrollable)
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: pictures.length > 0 ? pictures.length : 3,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  return SizedBox(
+                    width: 129, // Fixed width for each image
+                    child: _buildSalonImage(
+                      index < pictures.length ? pictures[index] : null,
+                      index: index,
+                    ),
+                  );
+                },
               ),
             ),
-            // Services row (no horizontal padding to allow edge-to-edge scrolling)
-            services.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
+            const SizedBox(height: 12),
+
+            // Saloon name (large, bold white text)
+            Text(
+              name,
+              style: AppTheme.applyPoppins(const TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              )),
+            ),
+            const SizedBox(height: 8),
+
+            // Description (max 1 line)
+            if (description.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  description,
+                  style: AppTheme.applyPoppins(const TextStyle(
+                    color: AppTheme.textPrimaryColor,
+                    fontSize: 14,
+                    height: 1.4,
+                  )),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            if (description.isNotEmpty) const SizedBox(height: 8),
+
+            // Domain and service count row
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    domain,
+                    style: AppTheme.applyPoppins(const TextStyle(
+                      color: AppTheme.textPrimaryColor,
+                      fontSize: 14,
+                    )),
+                  ),
+                ),
+                // Service count with icon
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$serviceCount',
+                      style: AppTheme.applyPoppins(const TextStyle(
+                        color: AppTheme.textPrimaryColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      )),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      LucideIcons.zap,
+                      color: AppTheme.textPrimaryColor,
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Service tags (dark grey rounded rectangles) - horizontally scrollable
+            if (services.isNotEmpty)
+              SizedBox(
+                height: 32,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: services.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final serviceName = services[index];
+                    return Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.border2,
+                        color: const Color(0xFF2A2A2A), // Dark grey background
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        AppTranslations.getString(
-                            context, 'no_services_available'),
+                        serviceName,
                         style: AppTheme.applyPoppins(const TextStyle(
-                          color: AppTheme.textSecondaryColor,
+                          color: AppTheme.textPrimaryColor,
                           fontSize: 12,
                         )),
                       ),
-                    ),
-                  )
-                : SizedBox(
-                    height: 32, // Fixed height for horizontal scroll
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.only(
-                          left: 16), // Add space at the beginning
-                      itemCount: services.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final serviceName = services[index];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.border2,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            serviceName,
-                            style: AppTheme.applyPoppins(const TextStyle(
-                              color: AppTheme.textPrimaryColor,
-                              fontSize: 12,
-                            )),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                    );
+                  },
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildSalonImage(String? imageUrl, {required int index}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: imageUrl != null && imageUrl.isNotEmpty
+          ? Image.network(
+              imageUrl,
+              height: 120,
+              width: 129,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 120,
+                  width: 129,
+                  color: const Color(0xFF2A2A2A),
+                  child: const Icon(
+                    Icons.image_outlined,
+                    color: AppTheme.textSecondaryColor,
+                    size: 30,
+                  ),
+                );
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 120,
+                  width: 129,
+                  color: const Color(0xFF2A2A2A),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                      strokeWidth: 2,
+                      color: AppTheme.accentColor,
+                    ),
+                  ),
+                );
+              },
+            )
+          : Container(
+              height: 120,
+              width: 129,
+              color: const Color(0xFF2A2A2A),
+              child: const Icon(
+                Icons.image_outlined,
+                color: AppTheme.textSecondaryColor,
+                size: 30,
+              ),
+            ),
+    );
+  }
+
   Widget _buildLoadingState() {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: AppTheme.accentColor,
+    return _buildScrollableStateWrapper(
+      const Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.accentColor,
+        ),
       ),
     );
   }
@@ -496,287 +562,123 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
     // Check if it's a 403 status code
     final isAccountNotActive = state.statusCode == 403;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isAccountNotActive
-                  ? Icons.account_circle_outlined
-                  : Icons.error_outline,
-              size: 64,
-              color: AppTheme.greenColor,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isAccountNotActive
-                  ? AppTranslations.getString(context, 'account_not_active')
-                  : AppTranslations.getString(context, 'error_loading_saloons'),
-              style: AppTheme.applyPoppins(const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              )),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isAccountNotActive
-                  ? AppTranslations.getString(context, 'account_not_active')
-                  : state.message,
-              style: AppTheme.applyPoppins(TextStyle(
+    return _buildScrollableStateWrapper(
+      Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isAccountNotActive
+                    ? Icons.account_circle_outlined
+                    : Icons.error_outline,
+                size: 64,
                 color: AppTheme.greenColor,
-                fontSize: 14,
-              )),
-              textAlign: TextAlign.center,
-            ),
-            // Only show retry button if it's not a 403 error
-            if (!isAccountNotActive) ...[
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  context.read<SaloonsBloc>().add(LoadSaloons(
-                        page: 1,
-                        limit: 10,
-                      ));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accentColor,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(AppTranslations.getString(context, 'retry')),
               ),
+              const SizedBox(height: 16),
+              Text(
+                isAccountNotActive
+                    ? AppTranslations.getString(context, 'account_not_active')
+                    : AppTranslations.getString(
+                        context, 'error_loading_saloons'),
+                style: AppTheme.applyPoppins(const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                )),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isAccountNotActive
+                    ? AppTranslations.getString(context, 'account_not_active')
+                    : state.message,
+                style: AppTheme.applyPoppins(TextStyle(
+                  color: AppTheme.greenColor,
+                  fontSize: 14,
+                )),
+                textAlign: TextAlign.center,
+              ),
+              if (!isAccountNotActive) ...[
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<SaloonsBloc>().add(LoadSaloons(
+                          page: 1,
+                          limit: 10,
+                        ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(AppTranslations.getString(context, 'retry')),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildNoSaloonsState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.storefront_outlined,
-              size: 64,
-              color: AppTheme.textSecondaryColor,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              AppTranslations.getString(context, 'no_saloons_found'),
-              style: AppTheme.applyPoppins(TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              )),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              AppTranslations.getString(context, 'no_saloons_message'),
-              style: AppTheme.applyPoppins(TextStyle(
+    return _buildScrollableStateWrapper(
+      Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.storefront_outlined,
+                size: 64,
                 color: AppTheme.textSecondaryColor,
-                fontSize: 14,
-              )),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                AppTranslations.getString(context, 'no_saloons_found'),
+                style: AppTheme.applyPoppins(TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                )),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                AppTranslations.getString(context, 'no_saloons_message'),
+                style: AppTheme.applyPoppins(TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 14,
+                )),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildInitialState() {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: AppTheme.accentColor,
-      ),
-    );
-  }
-
-  void _showFilterModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-      isDismissible: true,
-      useSafeArea: true,
-      builder: (context) => _buildFilterModal(),
-    );
-  }
-
-  Widget _buildFilterModal() {
-    return StatefulBuilder(
-      builder: (context, setModalState) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.secondaryColor,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              Text(
-                AppTranslations.getString(context, 'filter_saloons'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Filter Options
-              Text(
-                AppTranslations.getString(context, 'filter_by_status'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Filter chips
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildFilterChip('all',
-                      AppTranslations.getString(context, 'all'), setModalState),
-                  _buildFilterChip(
-                      'active',
-                      AppTranslations.getString(context, 'active'),
-                      setModalState),
-                  _buildFilterChip(
-                      'inactive',
-                      AppTranslations.getString(context, 'inactive'),
-                      setModalState),
-                  _buildFilterChip(
-                      'verified',
-                      AppTranslations.getString(context, 'verified'),
-                      setModalState),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Action Buttons
-              Row(
-                children: [
-                  // Clear Button
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setModalState(() {
-                          _selectedFilter = 'all';
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white, width: 1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: Text(
-                        AppTranslations.getString(context, 'clear'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Apply Button
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _applyFilter();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.greenColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: Text(
-                        AppTranslations.getString(context, 'apply'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFilterChip(
-      String value, String label, StateSetter setModalState) {
-    final isSelected = _selectedFilter == value;
-
-    return GestureDetector(
-      onTap: () {
-        setModalState(() {
-          _selectedFilter = value;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              isSelected ? AppTheme.greenColor : AppTheme.transparentBackground,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppTheme.greenColor : AppTheme.borderColor,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.textPrimaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+    return _buildScrollableStateWrapper(
+      const Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.accentColor,
         ),
       ),
     );
   }
 
-  void _applyFilter() {
-    // Apply the selected filter
-    setState(() {});
-
-    // Reload saloons with current search and filter
-    final currentSearch = _searchController.text.trim();
-    context.read<SaloonsBloc>().add(LoadSaloons(
-          search: currentSearch.isNotEmpty ? currentSearch : null,
-          page: 1,
-          limit: 50, // Use higher limit like campaigns
-        ));
+  Widget _buildScrollableStateWrapper(Widget child) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(child: _buildHeader()),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: child,
+        ),
+      ],
+    );
   }
 }

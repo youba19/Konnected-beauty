@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "712681738234",
+    "project_id": "konected-beauty",
+    "storage_bucket": "konected-beauty.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:712681738234:android:666b0d5c00ec6a537bde43",
+        "android_client_info": {
+          "package_name": "com.konnectedbeauty.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZ8AJrJLRe528MeKc2x2YLp3bWZOK5de4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -73,4 +73,3 @@ void main() async {
   print('   - If all pages return the same campaign IDs, pagination is broken');
   print('   - Page 2 should return different campaigns than Page 1');
 }
-

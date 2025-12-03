@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
@@ -501,10 +502,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
 
   void _showInviteDialog() {
     final _formKey = GlobalKey<FormState>();
-    final promotionController = TextEditingController(text: '20');
-    final messageController = TextEditingController(
-        text: AppTranslations.getString(context, 'invitation_message_default'));
-    String selectedPromotionType = 'percentage';
+    final followersPromotionController = TextEditingController();
     bool isLoading = false;
 
     showGeneralDialog(
@@ -531,7 +529,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                     children: [
                       Text(
                         AppTranslations.getString(
-                            context, 'invite_for_campaign'),
+                            context, 'salon_invite_title'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -540,64 +538,18 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Invite this salon to collaborate on a campaign',
+                        AppTranslations.getString(
+                            context, 'salon_invite_instructions'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 24),
+                      // Followers promotion value
                       Text(
-                        AppTranslations.getString(context, 'promotion_type'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white, width: 1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: selectedPromotionType,
-                          decoration: InputDecoration(
-                            hintText: 'Select promotion type',
-                            hintStyle: const TextStyle(color: Colors.white70),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                          ),
-                          dropdownColor: const Color(0xFF2A2A2A),
-                          style: const TextStyle(color: Colors.white),
-                          icon: const Icon(Icons.keyboard_arrow_down,
-                              color: Colors.white),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please select promotion type';
-                            }
-                            return null;
-                          },
-                          onChanged: (String? newValue) {
-                            selectedPromotionType = newValue!;
-                          },
-                          items: [
-                            DropdownMenuItem(
-                                value: 'percentage',
-                                child: Text(AppTranslations.getString(
-                                    context, 'percentage'))),
-                            DropdownMenuItem(
-                                value: 'fixed',
-                                child: Text(AppTranslations.getString(
-                                    context, 'fixed'))),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        AppTranslations.getString(context, 'promotion'),
+                        AppTranslations.getString(
+                            context, 'followers_promotion_value'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -606,12 +558,13 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                       ),
                       const SizedBox(height: 8),
                       TextFormField(
-                        controller: promotionController,
+                        controller: followersPromotionController,
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         decoration: InputDecoration(
-                          hintText: selectedPromotionType == 'percentage'
-                              ? '20'
-                              : '100',
+                          hintText: '00',
                           hintStyle: const TextStyle(color: Colors.white70),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -630,11 +583,25 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
+                          suffixIcon: const Padding(
+                            padding: EdgeInsets.only(right: 16),
+                            child: Center(
+                              widthFactor: 1.0,
+                              child: Text(
+                                '%',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                         style: const TextStyle(color: Colors.white),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter promotion value';
+                            return AppTranslations.getString(
+                                context, 'please_enter_promotion_value');
                           }
 
                           final intValue = int.tryParse(value);
@@ -642,67 +609,76 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                             return 'Please enter a valid number';
                           }
 
-                          if (selectedPromotionType == 'percentage') {
-                            if (intValue < 0 || intValue > 100) {
-                              return 'Percentage must be between 0 and 100';
-                            }
-                          } else if (selectedPromotionType == 'fixed') {
-                            if (intValue <= 0) {
-                              return 'Fixed amount must be greater than 0';
-                            }
+                          if (intValue < 0 || intValue > 100) {
+                            return AppTranslations.getString(
+                                context, 'percentage_validation');
                           }
 
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        AppTranslations.getString(context, 'message'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      // Your Commission
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'your_commission'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Text(
+                            '8%',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: messageController,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: AppTranslations.getString(
-                              context, 'invitation_message_default'),
-                          hintStyle: const TextStyle(color: Colors.white70),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
+                      const SizedBox(height: 12),
+                      // Commission Kbeauty
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
+                          const SizedBox(width: 8),
+                          Text(
+                            AppTranslations.getString(
+                                context, 'commission_kbeauty'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
+                          const Spacer(),
+                          const Text(
+                            '3%',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                        style: const TextStyle(color: Colors.white),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a message';
-                          }
-                          if (value.length < 10) {
-                            return 'Message must be at least 10 characters';
-                          }
-                          return null;
-                        },
+                        ],
                       ),
                       const SizedBox(height: 24),
-                      // Send Invitation Button
+                      // Create Campaign & Invite Button
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -718,18 +694,17 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                                     isLoading = true;
                                   });
 
-                                  final promotion =
-                                      int.tryParse(promotionController.text) ??
-                                          20;
-                                  final message = messageController.text.trim();
+                                  final promotion = int.tryParse(
+                                          followersPromotionController.text) ??
+                                      20;
 
                                   context
                                       .read<InviteSalonBloc>()
                                       .add(InviteSalon(
                                         receiverId: widget.salonId,
                                         promotion: promotion,
-                                        promotionType: selectedPromotionType,
-                                        invitationMessage: message,
+                                        promotionType: 'percentage',
+                                        invitationMessage: '',
                                       ));
 
                                   Navigator.of(context).pop();
@@ -757,7 +732,8 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        'Send Invitation',
+                                        AppTranslations.getString(
+                                            context, 'create_campaign_invite'),
                                         style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
@@ -768,7 +744,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                                     ),
                                     const SizedBox(width: 6),
                                     const Icon(
-                                      LucideIcons.ticket,
+                                      LucideIcons.tag,
                                       size: 18,
                                     ),
                                   ],
@@ -783,18 +759,18 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                         child: ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
+                            backgroundColor: Colors.transparent,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              side: BorderSide(
-                                color: AppTheme.textPrimaryColor,
+                              side: const BorderSide(
+                                color: Colors.white,
                                 width: 1,
                               ),
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: Text(
-                            'Cancel',
+                            AppTranslations.getString(context, 'cancel'),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,

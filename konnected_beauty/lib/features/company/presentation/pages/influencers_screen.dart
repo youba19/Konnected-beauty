@@ -8,6 +8,7 @@ import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/influencers/influencers_bloc.dart';
 import '../../../../core/bloc/influencer_details/influencer_details_bloc.dart';
 import '../../../../core/models/filter_model.dart';
+import '../../../../widgets/common/motivational_banner.dart';
 import 'influencer_details_screen.dart';
 import 'influencers_filter_screen.dart';
 
@@ -66,9 +67,6 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
 
     // Add search listener with debounce
     searchController.addListener(() => _onSearchChanged(searchController.text));
-
-    // Add scroll listener for pagination
-    _scrollController.addListener(_onScrollChanged);
   }
 
   @override
@@ -207,59 +205,6 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     });
   }
 
-  void _onScrollChanged() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      // Load more influencers when near the bottom
-      final currentState = context.read<InfluencersBloc>().state;
-      if (currentState is InfluencersLoaded &&
-          currentState.influencers.length < currentState.total &&
-          !_isLoadingMore) {
-        print('📄 === LOADING MORE INFLUENCERS ===');
-        print('📄 Current Page: ${currentState.currentPage}');
-        print('📄 Total Pages: ${currentState.totalPages}');
-        print('📄 Current Influencers: ${currentState.influencers.length}');
-        print('📄 Total Available: ${currentState.total}');
-        print(
-            '📄 Has More Pages: ${currentState.currentPage < currentState.totalPages}');
-        print(
-            '📄 Has More By Total: ${currentState.influencers.length < currentState.total}');
-
-        // Set loading flag to prevent duplicate requests
-        setState(() {
-          _isLoadingMore = true;
-        });
-
-        // Create filters for pagination
-        List<FilterModel> filters = List.from(currentState.currentFilters);
-
-        // Update page filter
-        final pageFilterIndex =
-            filters.indexWhere((filter) => filter.key == 'page');
-        if (pageFilterIndex != -1) {
-          filters[pageFilterIndex] = filters[pageFilterIndex].copyWith(
-            value: (currentState.currentPage + 1).toString(),
-            enabled: true,
-          );
-        } else {
-          filters.add(FilterModel(
-            key: 'page',
-            value: (currentState.currentPage + 1).toString(),
-            description: 'Page number',
-            enabled: true,
-            equals: true,
-            uuid: DateTime.now().millisecondsSinceEpoch.toString(),
-          ));
-        }
-
-        print('📄 Loading page: ${currentState.currentPage + 1}');
-        context
-            .read<InfluencersBloc>()
-            .add(FilterInfluencers(filters: filters));
-      }
-    }
-  }
-
   void _showFilterScreen() {
     final currentState = context.read<InfluencersBloc>().state;
     String? currentZone;
@@ -386,148 +331,366 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: SafeArea(
-              child: Column(
-                children: [
-                  // Header Section with BLoC state management
-                  BlocListener<InfluencersBloc, InfluencersState>(
-                    listener: (context, state) {
-                      // Reset loading flag when state changes
-                      if (state is InfluencersLoaded ||
-                          state is InfluencersError) {
-                        setState(() {
-                          _isLoadingMore = false;
-                        });
+              child: GestureDetector(
+                onTap: () {
+                  // Close keyboard when tapping outside text fields
+                  FocusScope.of(context).unfocus();
+                },
+                child: BlocListener<InfluencersBloc, InfluencersState>(
+                  listener: (context, state) {
+                    // Reset loading flag when state changes
+                    if (state is InfluencersLoaded ||
+                        state is InfluencersError) {
+                      setState(() {
+                        _isLoadingMore = false;
+                      });
+                    }
+                  },
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      final currentState =
+                          context.read<InfluencersBloc>().state;
+                      if (currentState is InfluencersLoaded) {
+                        final filters =
+                            List<FilterModel>.from(currentState.currentFilters);
+                        final pageFilterIndex = filters
+                            .indexWhere((filter) => filter.key == 'page');
+                        if (pageFilterIndex != -1) {
+                          filters[pageFilterIndex] =
+                              filters[pageFilterIndex].copyWith(
+                            value: '1',
+                            enabled: true,
+                          );
+                        }
+                        context
+                            .read<InfluencersBloc>()
+                            .add(FilterInfluencers(filters: filters));
+                      } else {
+                        final defaultFilters = [
+                          FilterModel(
+                            key: 'page',
+                            value: '1',
+                            description: 'Page number',
+                            enabled: true,
+                            equals: true,
+                            uuid: DateTime.now()
+                                .millisecondsSinceEpoch
+                                .toString(),
+                          ),
+                          FilterModel(
+                            key: 'limit',
+                            value: '50',
+                            description: 'Items per page',
+                            enabled: true,
+                            equals: true,
+                            uuid: (DateTime.now().millisecondsSinceEpoch + 1)
+                                .toString(),
+                          ),
+                          FilterModel(
+                            key: 'sortOrder',
+                            value: 'DESC',
+                            description: 'Sort order',
+                            enabled: true,
+                            equals: true,
+                            uuid: (DateTime.now().millisecondsSinceEpoch + 2)
+                                .toString(),
+                          ),
+                        ];
+                        context
+                            .read<InfluencersBloc>()
+                            .add(FilterInfluencers(filters: defaultFilters));
                       }
                     },
-                    child: BlocBuilder<InfluencersBloc, InfluencersState>(
-                      builder: (context, state) {
-                        return _buildHeader(state);
-                      },
-                    ),
-                  ),
+                    color: AppTheme.textPrimaryColor,
+                    backgroundColor: AppTheme.transparentBackground,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (ScrollNotification scrollInfo) {
+                        // Check if user has scrolled to the bottom
+                        final isNearBottom = scrollInfo.metrics.pixels >=
+                            scrollInfo.metrics.maxScrollExtent - 200;
+                        final isAtBottom = scrollInfo.metrics.pixels >=
+                            scrollInfo.metrics.maxScrollExtent;
+                        final isNotScrollable =
+                            scrollInfo.metrics.maxScrollExtent <= 0;
 
-                  // Main Content
-                  Expanded(
-                    child: BlocBuilder<InfluencersBloc, InfluencersState>(
-                      builder: (context, state) {
-                        print('🎨 === BLOC BUILDER REBUILD ===');
-                        print('🎨 State Type: ${state.runtimeType}');
-                        if (state is InfluencersLoaded) {
-                          print(
-                              '🎨 Influencers Count: ${state.influencers.length}');
-                          print(
-                              '🎨 Current Search: ${state.currentFilters.where((f) => f.key == 'search' && f.enabled).map((f) => f.value).join(', ')}');
-                        }
+                        if (isNearBottom || isAtBottom || isNotScrollable) {
+                          final currentState =
+                              context.read<InfluencersBloc>().state;
+                          if (currentState is InfluencersLoaded &&
+                              currentState.influencers.length <
+                                  currentState.total &&
+                              !_isLoadingMore) {
+                            setState(() {
+                              _isLoadingMore = true;
+                            });
 
-                        if (state is InfluencersLoading) {
-                          return _buildShimmerList();
-                        } else if (state is InfluencersError) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(32.0),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.wifi_off,
-                                    size: 64,
-                                    color: Colors.orange,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    'Connection Problem',
-                                    style: TextStyle(
-                                      color: AppTheme.textPrimaryColor,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Please check your internet connection and try again.',
-                                    style: TextStyle(
-                                      color: Colors.orange,
-                                      fontSize: 16,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      final currentState =
-                                          context.read<InfluencersBloc>().state;
-                                      if (currentState is InfluencersLoaded) {
-                                        context
-                                            .read<InfluencersBloc>()
-                                            .add(LoadInfluencers(
-                                              zone: currentState.currentZone,
-                                              sortOrder:
-                                                  currentState.currentSortOrder,
-                                            ));
-                                      } else {
-                                        context
-                                            .read<InfluencersBloc>()
-                                            .add(LoadInfluencers());
-                                      }
-                                    },
-                                    icon: const Icon(Icons.refresh),
-                                    label: Text(AppTranslations.getString(
-                                        context, 'retry')),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.accentColor,
-                                      foregroundColor: AppTheme.primaryColor,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        } else if (state is InfluencersLoaded) {
-                          if (state.influencers.isEmpty) {
-                            return Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.people_outline,
-                                    color: AppTheme.textSecondaryColor,
-                                    size: 48,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    state.currentSearch != null
-                                        ? 'No influencers found for "${state.currentSearch}"'
-                                        : 'No influencers available',
-                                    style: const TextStyle(
-                                      color: AppTheme.textSecondaryColor,
-                                      fontSize: 16,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            );
+                            // Create filters for pagination
+                            List<FilterModel> filters =
+                                List.from(currentState.currentFilters);
+                            final pageFilterIndex = filters
+                                .indexWhere((filter) => filter.key == 'page');
+                            if (pageFilterIndex != -1) {
+                              filters[pageFilterIndex] =
+                                  filters[pageFilterIndex].copyWith(
+                                value:
+                                    (currentState.currentPage + 1).toString(),
+                                enabled: true,
+                              );
+                            } else {
+                              filters.add(FilterModel(
+                                key: 'page',
+                                value:
+                                    (currentState.currentPage + 1).toString(),
+                                description: 'Page number',
+                                enabled: true,
+                                equals: true,
+                                uuid: DateTime.now()
+                                    .millisecondsSinceEpoch
+                                    .toString(),
+                              ));
+                            }
+                            context
+                                .read<InfluencersBloc>()
+                                .add(FilterInfluencers(filters: filters));
                           }
-                          return _buildMainContent(state.influencers);
-                        } else {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: AppTheme.accentColor,
-                            ),
-                          );
                         }
+                        return false;
                       },
+                      child: CustomScrollView(
+                        controller: _scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          // Header
+                          BlocBuilder<InfluencersBloc, InfluencersState>(
+                            builder: (context, state) {
+                              return SliverToBoxAdapter(
+                                child: _buildHeader(state),
+                              );
+                            },
+                          ),
+
+                          // Motivational Banner
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: MotivationalBanner(
+                                text: AppTranslations.getString(
+                                    context, 'select_ambassadors_message'),
+                              ),
+                            ),
+                          ),
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: 16),
+                          ),
+
+                          // Content based on state
+                          BlocBuilder<InfluencersBloc, InfluencersState>(
+                            builder: (context, state) {
+                              print('🎨 === BLOC BUILDER REBUILD ===');
+                              print('🎨 State Type: ${state.runtimeType}');
+                              if (state is InfluencersLoaded) {
+                                print(
+                                    '🎨 Influencers Count: ${state.influencers.length}');
+                                print(
+                                    '🎨 Current Search: ${state.currentFilters.where((f) => f.key == 'search' && f.enabled).map((f) => f.value).join(', ')}');
+                              }
+
+                              if (state is InfluencersLoading) {
+                                return _buildShimmerSliver();
+                              } else if (state is InfluencersError) {
+                                // Check if it's a 403 Forbidden error (account not active)
+                                final isAccountNotActive = state.error
+                                        .toLowerCase()
+                                        .contains('forbidden') ||
+                                    state.error.toLowerCase().contains('403') ||
+                                    (state.details != null &&
+                                        state.details
+                                            .toString()
+                                            .toLowerCase()
+                                            .contains('forbidden'));
+
+                                if (isAccountNotActive) {
+                                  return SliverToBoxAdapter(
+                                    child: SizedBox(
+                                      height: 300,
+                                      child: Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(24.0),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.account_circle_outlined,
+                                                size: 80,
+                                                color: AppTheme.greenColor,
+                                              ),
+                                              const SizedBox(height: 24),
+                                              Text(
+                                                AppTranslations.getString(
+                                                    context,
+                                                    'account_not_active'),
+                                                style: AppTheme.applyPoppins(
+                                                    const TextStyle(
+                                                  color:
+                                                      AppTheme.textPrimaryColor,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                )),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                AppTranslations.getString(
+                                                    context,
+                                                    'account_not_active'),
+                                                style: AppTheme.applyPoppins(
+                                                    TextStyle(
+                                                  color: AppTheme.greenColor,
+                                                  fontSize: 16,
+                                                )),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  return SliverToBoxAdapter(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(32.0),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.wifi_off,
+                                              size: 64,
+                                              color: Colors.orange,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              AppTranslations.getString(context,
+                                                  'connection_problem'),
+                                              style: TextStyle(
+                                                color:
+                                                    AppTheme.textPrimaryColor,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              AppTranslations.getString(context,
+                                                  'check_internet_connection'),
+                                              style: TextStyle(
+                                                color: Colors.orange,
+                                                fontSize: 16,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 24),
+                                            ElevatedButton.icon(
+                                              onPressed: () {
+                                                final currentState = context
+                                                    .read<InfluencersBloc>()
+                                                    .state;
+                                                if (currentState
+                                                    is InfluencersLoaded) {
+                                                  context
+                                                      .read<InfluencersBloc>()
+                                                      .add(LoadInfluencers(
+                                                        zone: currentState
+                                                            .currentZone,
+                                                        sortOrder: currentState
+                                                            .currentSortOrder,
+                                                      ));
+                                                } else {
+                                                  context
+                                                      .read<InfluencersBloc>()
+                                                      .add(LoadInfluencers());
+                                                }
+                                              },
+                                              icon: const Icon(Icons.refresh),
+                                              label: Text(
+                                                  AppTranslations.getString(
+                                                      context, 'retry')),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppTheme.accentColor,
+                                                foregroundColor:
+                                                    AppTheme.primaryColor,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 24,
+                                                  vertical: 12,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } else if (state is InfluencersLoaded) {
+                                if (state.influencers.isEmpty) {
+                                  return SliverToBoxAdapter(
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.people_outline,
+                                            color: AppTheme.textSecondaryColor,
+                                            size: 48,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            state.currentSearch != null
+                                                ? '${AppTranslations.getString(context, 'no_influencers_found_for')} "${state.currentSearch}"'
+                                                : AppTranslations.getString(
+                                                    context,
+                                                    'no_influencers_available'),
+                                            style: const TextStyle(
+                                              color:
+                                                  AppTheme.textSecondaryColor,
+                                              fontSize: 16,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return _buildInfluencersListSliver(
+                                    state.influencers);
+                              } else {
+                                return SliverToBoxAdapter(
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppTheme.accentColor,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -647,20 +810,23 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     );
   }
 
-  Widget _buildMainContent(List<Map<String, dynamic>> influencers) {
-    return ListView.builder(
-      controller: _scrollController,
+  Widget _buildInfluencersListSliver(List<Map<String, dynamic>> influencers) {
+    return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      itemCount: influencers.length,
-      itemBuilder: (context, index) {
-        final influencer = influencers[index];
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: index < influencers.length - 1 ? 16.0 : 0.0,
-          ),
-          child: _buildInfluencerCard(influencer),
-        );
-      },
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final influencer = influencers[index];
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index < influencers.length - 1 ? 16.0 : 0.0,
+              ),
+              child: _buildInfluencerCard(influencer),
+            );
+          },
+          childCount: influencers.length,
+        ),
+      ),
     );
   }
 
@@ -707,8 +873,8 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
                   child: influencer['profile']?['profilePicture'] != null
                       ? Image.network(
                           influencer['profile']['profilePicture'],
-                          width: 40,
-                          height: 40,
+                          width: 72,
+                          height: 72,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
@@ -855,17 +1021,17 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Contact Support'),
-          content: const Text(
-            'To activate your salon account, please contact our support team:\n\n'
+          title: Text(AppTranslations.getString(context, 'contact_support')),
+          content: Text(
+            '${AppTranslations.getString(context, 'activate_salon_account_message')}'
             '📧 Email: support@konnectedbeauty.com\n'
             '📱 Phone: +1 (555) 123-4567\n\n'
-            'We\'ll help you get your account activated quickly!',
+            '${AppTranslations.getString(context, 'support_help_message')}',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
+              child: Text(AppTranslations.getString(context, 'close')),
             ),
           ],
         );
@@ -873,21 +1039,25 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     );
   }
 
-  Widget _buildShimmerList() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        itemCount: 5, // Show 5 shimmer items
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < 4 ? 16.0 : 0.0,
-            ),
-            child: _buildShimmerInfluencerCard(),
-          );
-        },
+  Widget _buildShimmerSliver() {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index < 4 ? 16.0 : 0.0,
+              ),
+              child: Shimmer.fromColors(
+                baseColor: Colors.grey[800]!,
+                highlightColor: Colors.grey[600]!,
+                child: _buildShimmerInfluencerCard(),
+              ),
+            );
+          },
+          childCount: 5,
+        ),
       ),
     );
   }
