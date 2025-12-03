@@ -4,7 +4,7 @@ import '../storage/token_storage_service.dart';
 import '../../models/filter_model.dart';
 
 class InfluencersService {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
 
   /// Fetch all influencers with dynamic filter support
   static Future<Map<String, dynamic>> getInfluencersWithFilters({
@@ -1230,6 +1230,55 @@ class InfluencersService {
       }
     } catch (e) {
       print('❌ Error in getInfluencerCampaignDetails: $e');
+      return {
+        'success': false,
+        'message': 'Error fetching campaign details: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Get salon campaign details by ID
+  static Future<Map<String, dynamic>> getSalonCampaignDetails({
+    required String campaignId,
+  }) async {
+    try {
+      print('📋 === FETCHING SALON CAMPAIGN DETAILS ===');
+      print('📋 Campaign ID: $campaignId');
+
+      // Use the HTTP interceptor for automatic token management
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/campaign/salon-campaign/$campaignId',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('📋 Response Status: ${response.statusCode}');
+      print('📋 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ??
+              'Campaign details fetched successfully',
+          'data': responseData['data'],
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to fetch campaign details',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error in getSalonCampaignDetails: $e');
       return {
         'success': false,
         'message': 'Error fetching campaign details: $e',

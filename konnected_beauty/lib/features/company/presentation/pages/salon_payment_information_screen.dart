@@ -439,13 +439,19 @@ class _SalonPaymentInformationContent extends StatelessWidget {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
-            child: Column(
-              children: [
-                parentState._buildHeader(),
-                Expanded(
-                  child: parentState._buildContent(),
-                ),
-              ],
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
+              },
+              child: Column(
+                children: [
+                  parentState._buildHeader(),
+                  Expanded(
+                    child: parentState._buildContent(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

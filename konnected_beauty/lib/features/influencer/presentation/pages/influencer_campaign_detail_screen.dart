@@ -370,6 +370,8 @@ class _InfluencerCampaignDetailScreenState
 
   Widget _buildStatusButton() {
     final status = widget.campaign['status']?.toString().toLowerCase() ?? '';
+    final initiator =
+        widget.campaign['initiator']?.toString().toLowerCase() ?? '';
 
     if (status == 'finished') {
       return Container(
@@ -398,27 +400,30 @@ class _InfluencerCampaignDetailScreenState
           ],
         ),
       );
-    } else if (status == 'waiting for you') {
+    } else if (status == 'waiting for you' ||
+        (status == 'pending' && initiator == 'salon')) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
           color: AppTheme.textPrimaryColor,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             Text(
-              'Waiting for you',
-              style: TextStyle(
+              status == 'waiting for you'
+                  ? 'Waiting for you'
+                  : AppTranslations.getString(context, 'received_invitation'),
+              style: const TextStyle(
                 color: AppTheme.secondaryColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(width: 5),
+            const SizedBox(width: 5),
             Icon(
-              Icons.person,
+              status == 'waiting for you' ? Icons.person : Icons.mail,
               color: AppTheme.secondaryColor,
               size: 20,
             ),
@@ -473,12 +478,15 @@ class _InfluencerCampaignDetailScreenState
 
   Widget _buildActionButtons() {
     final status = widget.campaign['status']?.toString().toLowerCase() ?? '';
+    final initiator =
+        widget.campaign['initiator']?.toString().toLowerCase() ?? '';
 
     if (status == 'finished') {
       // No buttons for finished campaigns
       return const SizedBox.shrink();
-    } else if (status == 'waiting for you') {
-      // Accept and Refuse buttons for waiting campaigns
+    } else if (status == 'waiting for you' ||
+        (status == 'pending' && initiator == 'salon')) {
+      // Accept and Refuse buttons for waiting campaigns and received invitations
       return Column(
         children: [
           // Accept Campaign Button

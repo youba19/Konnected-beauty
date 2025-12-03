@@ -707,7 +707,12 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
   Widget _buildShimmerContent() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(24.0),
+      padding: EdgeInsets.only(
+        left: 24.0,
+        top: 24.0,
+        right: 24.0,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -826,58 +831,69 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
           ),
         ),
         child: SafeArea(
-          child: BlocConsumer<SalonInfoBloc, SalonInfoState>(
-            listener: (context, state) {
-              if (state is SalonInfoLoaded) {
-                // Schedule the async operation
-                WidgetsBinding.instance.addPostFrameCallback((_) async {
-                  await _populateControllers(
-                      state.salonInfo, state.salonProfile);
-                });
-              } else if (state is SalonInfoUpdated) {
-                // Show one summary notification for all updates
-                TopNotificationService.showSuccess(
-                  context: context,
-                  message: "Salon information updated successfully",
-                );
-                _refreshImageLists(); // Refresh image lists after successful update
-
-                // Navigate back to settings screen after successful update
-                Navigator.of(context).pop();
-              } else if (state is SalonProfileUpdated) {
-                // Don't show notification for profile update - already shown for info update
-                print(
-                    '✅ Profile update completed - notification already shown');
-                _refreshImageLists(); // Refresh image lists after successful update
-              } else if (state is SalonInfoError) {
-                TopNotificationService.showError(
-                  context: context,
-                  message: state.error,
-                );
-              }
+          child: GestureDetector(
+            onTap: () {
+              // Close keyboard when tapping outside text fields
+              FocusScope.of(context).unfocus();
             },
-            builder: (context, state) {
-              if (state is SalonInfoLoading) {
-                return _buildShimmerContent();
-              }
+            child: BlocConsumer<SalonInfoBloc, SalonInfoState>(
+              listener: (context, state) {
+                if (state is SalonInfoLoaded) {
+                  // Schedule the async operation
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    await _populateControllers(
+                        state.salonInfo, state.salonProfile);
+                  });
+                } else if (state is SalonInfoUpdated) {
+                  // Show one summary notification for all updates
+                  TopNotificationService.showSuccess(
+                    context: context,
+                    message: "Salon information updated successfully",
+                  );
+                  _refreshImageLists(); // Refresh image lists after successful update
 
-              return SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    _buildSalonInformationSection(),
-                    const SizedBox(height: 40),
-                    _buildSaveButton(),
-                    const SizedBox(height: 16),
-                    const SizedBox(height: 50),
-                  ],
-                ),
-              );
-            },
+                  // Navigate back to settings screen after successful update
+                  Navigator.of(context).pop();
+                } else if (state is SalonProfileUpdated) {
+                  // Don't show notification for profile update - already shown for info update
+                  print(
+                      '✅ Profile update completed - notification already shown');
+                  _refreshImageLists(); // Refresh image lists after successful update
+                } else if (state is SalonInfoError) {
+                  TopNotificationService.showError(
+                    context: context,
+                    message: state.error,
+                  );
+                }
+              },
+              builder: (context, state) {
+                if (state is SalonInfoLoading) {
+                  return _buildShimmerContent();
+                }
+
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    left: 24.0,
+                    top: 24.0,
+                    right: 24.0,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildSalonInformationSection(),
+                      const SizedBox(height: 40),
+                      _buildSaveButton(),
+                      const SizedBox(height: 16),
+                      const SizedBox(height: 50),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -908,12 +924,16 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
               size: 20,
             ),
             const SizedBox(width: 8),
-            Text(
-              AppTranslations.getString(context, 'salon_information'),
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                AppTranslations.getString(context, 'salon_information'),
+                style: const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],

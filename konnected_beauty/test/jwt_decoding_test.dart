@@ -11,8 +11,9 @@ void main() {
 
     test('JWT token structure validation', () {
       // Test with a valid JWT token structure
-      const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InRlc3QiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlIjoic2Fsb24iLCJpYXQiOjE3NTQ5MTA4MTAsImV4cCI6MTc1NDkxMTcxMH0.test';
-      
+      const validToken =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InRlc3QiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlIjoic2Fsb24iLCJpYXQiOjE3NTQ5MTA4MTAsImV4cCI6MTc1NDkxMTcxMH0.test';
+
       final parts = validToken.split('.');
       expect(parts.length, equals(3));
       expect(parts[0], isNotEmpty);
@@ -23,7 +24,7 @@ void main() {
     test('Invalid JWT token structure', () {
       // Test with an invalid JWT token structure
       const invalidToken = 'invalid.token';
-      
+
       final parts = invalidToken.split('.');
       expect(parts.length, isNot(equals(3)));
     });

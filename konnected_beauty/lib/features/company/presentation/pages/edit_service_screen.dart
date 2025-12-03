@@ -129,95 +129,101 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                _buildHeader(),
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  _buildHeader(),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Text(
-                    AppTranslations.getString(context, 'edit_service'),
-                    style: AppTheme.headingStyle,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(left: 24.0, right: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Information Banner
-
-                        const SizedBox(height: 32),
-
-                        // Service Name Field
-                        CustomTextField(
-                          label: AppTranslations.getString(
-                              context, 'service_name'),
-                          placeholder: AppTranslations.getString(
-                              context, 'enter_service_name'),
-                          controller: serviceNameController,
-                          keyboardType: TextInputType.text,
-                          formFieldKey: serviceNameFormKey,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Service Price Field
-                        CustomTextField(
-                          label: AppTranslations.getString(
-                              context, 'service_price'),
-                          placeholder: AppTranslations.getString(
-                              context, 'enter_service_price'),
-                          controller: servicePriceController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9.]')),
-                          ],
-                          formFieldKey: servicePriceFormKey,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Service Description Field
-                        CustomTextField(
-                          label: AppTranslations.getString(
-                              context, 'service_description'),
-                          placeholder: AppTranslations.getString(
-                              context, 'describe_service'),
-                          controller: serviceDescriptionController,
-                          keyboardType: TextInputType.multiline,
-                          maxLines: 5,
-                          formFieldKey: serviceDescriptionFormKey,
-                        ),
-
-                        const SizedBox(height: 40),
-
-                        // Save Changes Button
-                        BlocBuilder<SalonServicesBloc, SalonServicesState>(
-                          builder: (context, state) {
-                            return CustomButton(
-                              text: AppTranslations.getString(
-                                  context, 'save_changes'),
-                              onPressed: _updateService,
-                              isLoading: state is SalonServiceUpdating,
-                              leadingIcon: LucideIcons.save,
-                            );
-                          },
-                        ),
-                      ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      AppTranslations.getString(context, 'edit_service'),
+                      style: AppTheme.headingStyle,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
-                ),
-              ],
+
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(left: 24.0, right: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Information Banner
+
+                          const SizedBox(height: 32),
+
+                          // Service Name Field
+                          CustomTextField(
+                            label: AppTranslations.getString(
+                                context, 'service_name'),
+                            placeholder: AppTranslations.getString(
+                                context, 'enter_service_name'),
+                            controller: serviceNameController,
+                            keyboardType: TextInputType.text,
+                            formFieldKey: serviceNameFormKey,
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Service Price Field
+                          CustomTextField(
+                            label: AppTranslations.getString(
+                                context, 'service_price'),
+                            placeholder: AppTranslations.getString(
+                                context, 'enter_service_price'),
+                            controller: servicePriceController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.]')),
+                            ],
+                            formFieldKey: servicePriceFormKey,
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Service Description Field
+                          CustomTextField(
+                            label: AppTranslations.getString(
+                                context, 'service_description'),
+                            placeholder: AppTranslations.getString(
+                                context, 'describe_service'),
+                            controller: serviceDescriptionController,
+                            keyboardType: TextInputType.multiline,
+                            maxLines: 5,
+                            formFieldKey: serviceDescriptionFormKey,
+                          ),
+
+                          const SizedBox(height: 40),
+
+                          // Save Changes Button
+                          BlocBuilder<SalonServicesBloc, SalonServicesState>(
+                            builder: (context, state) {
+                              return CustomButton(
+                                text: AppTranslations.getString(
+                                    context, 'save_changes'),
+                                onPressed: _updateService,
+                                isLoading: state is SalonServiceUpdating,
+                                leadingIcon: LucideIcons.save,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

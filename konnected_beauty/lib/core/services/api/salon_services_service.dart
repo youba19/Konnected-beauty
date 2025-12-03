@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../storage/token_storage_service.dart';
-import 'salon_auth_service.dart';
+import 'http_interceptor.dart';
 
 class SalonServicesService {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
 
   // Salon services endpoint
   static const String servicesEndpoint = '/salon-service';
@@ -15,6 +15,49 @@ class SalonServicesService {
   static const Map<String, String> headers = {
     'Content-Type': 'application/json',
   };
+
+  /// Get salon services using HTTP interceptor
+  static Future<Map<String, dynamic>> getServicesWithInterceptor() async {
+    try {
+      print('🔍 === GETTING SALON SERVICES WITH INTERCEPTOR ===');
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'GET',
+        endpoint: '/salon-service',
+        queryParameters: null,
+      );
+
+      print('🔍 Services API Response Status: ${response.statusCode}');
+      print('🔍 Services API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        return {
+          'success': true,
+          'data': responseData['data'] ?? [],
+          'message':
+              responseData['message'] ?? 'Services retrieved successfully',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to fetch services',
+          'error': responseData['error'],
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error getting services with interceptor: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'error': 'NetworkError',
+        'statusCode': 0,
+      };
+    }
+  }
 
   /// Get salon services with filtering and pagination
   static Future<Map<String, dynamic>> getServices({
@@ -190,13 +233,6 @@ class SalonServicesService {
           'error': 'InternalServerError',
           'statusCode': response.statusCode,
         };
-
-        return {
-          'success': false,
-          'message': 'Internal server error - please try again',
-          'error': 'InternalServerError',
-          'statusCode': response.statusCode,
-        };
       } else {
         return {
           'success': false,
@@ -316,27 +352,17 @@ class SalonServicesService {
     return getServices(minPrice: minPrice, maxPrice: maxPrice);
   }
 
-  /// Create a new salon service
+  /// Create a new salon service using HTTP interceptor
   static Future<Map<String, dynamic>> createSalonService({
     required String name,
     required int price,
     required String description,
   }) async {
     try {
-      print('🆕 === CREATE SALON SERVICE ===');
+      print('🆕 === CREATE SALON SERVICE WITH INTERCEPTOR ===');
       print('📝 Name: $name');
       print('💰 Price: $price');
       print('📄 Description: $description');
-
-      // Get access token for authentication
-      final accessToken = await TokenStorageService.getAccessToken();
-      print('🔑 Access Token: ${accessToken != null ? 'Present' : 'Missing'}');
-
-      // Build headers with authentication
-      final Map<String, String> requestHeaders = Map.from(headers);
-      if (accessToken != null) {
-        requestHeaders['Authorization'] = 'Bearer $accessToken';
-      }
 
       final requestBody = {
         'name': name,
@@ -344,14 +370,15 @@ class SalonServicesService {
         'description': description,
       };
 
-      print('🔗 URL: $baseUrl$servicesEndpoint');
       print('📦 Request Body: ${jsonEncode(requestBody)}');
-      print('🔑 Headers: $requestHeaders');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl$servicesEndpoint'),
-        headers: requestHeaders,
-        body: jsonEncode(requestBody),
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/salon-service',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
       );
 
       print('📡 Response Status Code: ${response.statusCode}');
@@ -375,6 +402,7 @@ class SalonServicesService {
         };
       }
     } catch (e) {
+      print('❌ Error creating service: $e');
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',
@@ -384,7 +412,7 @@ class SalonServicesService {
     }
   }
 
-  /// Update an existing salon service
+  /// Update an existing salon service using HTTP interceptor
   static Future<Map<String, dynamic>> updateSalonService({
     required String serviceId,
     String? name,
@@ -392,145 +420,26 @@ class SalonServicesService {
     String? description,
   }) async {
     try {
-      print('🔄 === UPDATE SALON SERVICE ===');
+      print('🔄 === UPDATE SALON SERVICE WITH INTERCEPTOR ===');
       print('🆔 Service ID: $serviceId');
       print('📝 Name: $name');
       print('💰 Price: $price');
       print('📄 Description: $description');
-
-      // Check if token is expired and refresh if needed
-      if (await TokenStorageService.isAccessTokenExpired()) {
-        print('⚠️ Access token is expired, attempting to refresh...');
-        final storedRefreshToken = await TokenStorageService.getRefreshToken();
-        if (storedRefreshToken != null) {
-          final refreshResult = await SalonAuthService.refreshToken(
-            refreshToken: storedRefreshToken,
-          );
-          if (refreshResult['success']) {
-            print('✅ Token refreshed successfully');
-            // Save the new access token
-            final newAccessToken = refreshResult['data']['access_token'];
-            await TokenStorageService.saveAccessToken(newAccessToken);
-            print('💾 New access token saved');
-          } else {
-            print('❌ Token refresh failed: ${refreshResult['message']}');
-            return {
-              'success': false,
-              'message': 'Authentication failed. Please login again.',
-              'error': 'TokenRefreshFailed',
-              'statusCode': 401,
-            };
-          }
-        } else {
-          print('❌ No refresh token available');
-          return {
-            'success': false,
-            'message': 'Authentication failed. Please login again.',
-            'error': 'NoRefreshToken',
-            'statusCode': 401,
-          };
-        }
-      }
-
-      // Get access token for authentication
-      final accessToken = await TokenStorageService.getAccessToken();
-      print('🔑 Access Token: ${accessToken != null ? 'Present' : 'Missing'}');
-
-      if (accessToken == null) {
-        print('❌ No access token available');
-        return {
-          'success': false,
-          'message': 'Authentication failed. Please login again.',
-          'error': 'NoAccessToken',
-          'statusCode': 401,
-        };
-      }
-
-      // SECURITY: Validate that the service belongs to the current user
-      print('🔒 === SECURITY: VALIDATING SERVICE OWNERSHIP ===');
-      final userInfo = await TokenStorageService.getUserInfoFromToken();
-      final currentUserId = userInfo?['id'] as String?;
-
-      if (currentUserId == null) {
-        print('❌ SECURITY ERROR: No user ID found in token');
-        return {
-          'success': false,
-          'message': 'Invalid authentication token. Please login again.',
-          'error': 'NoUserIdInToken',
-          'statusCode': 401,
-        };
-      }
-
-      // Get the service details to check ownership
-      final serviceResult = await getServiceById(serviceId);
-      if (!serviceResult['success']) {
-        print(
-            '❌ SECURITY ERROR: Could not fetch service to validate ownership');
-        return {
-          'success': false,
-          'message': 'Service not found or access denied',
-          'error': 'ServiceNotFound',
-          'statusCode': 404,
-        };
-      }
-
-      final serviceData = serviceResult['data'] as Map<String, dynamic>;
-      final serviceCreatedBy = serviceData['createdBy'] as String?;
-
-      print('🔒 Service created by: $serviceCreatedBy');
-      print('🔒 Current user ID: $currentUserId');
-
-      // Use the same ownership logic as isServiceOwnedByCurrentUser
-      final exactMatch = serviceCreatedBy == currentUserId;
-      final stringMatch =
-          serviceCreatedBy.toString() == currentUserId.toString();
-      final containsMatch =
-          serviceCreatedBy.toString().contains(currentUserId.toString());
-      final isOwned = stringMatch || containsMatch;
-
-      print(
-          '🔒 Ownership check - Exact: $exactMatch, String: $stringMatch, Contains: $containsMatch, Final: $isOwned');
-
-      if (!isOwned) {
-        print('⚠️ WARNING: Ownership check failed but service is visible');
-        print(
-            '⚠️ This might indicate a backend filtering issue or data mismatch');
-        print(
-            '⚠️ For now, allowing access since backend should filter correctly');
-
-        // If the backend is correctly filtering, we can trust that visible services are owned
-        // But log this for investigation
-        print(
-            '🔒 BACKEND FILTERING TRUST: Allowing access since backend filters correctly');
-
-        // Continue with the update instead of blocking
-        print(
-            '✅ SECURITY: Service ownership validated - user can update this service (trusting backend)');
-      } else {
-        print(
-            '✅ SECURITY: Service ownership validated - user can update this service');
-      }
-
-      print(
-          '✅ SECURITY: Service ownership validated - user can update this service');
-
-      // Build headers with authentication
-      final Map<String, String> requestHeaders = Map.from(headers);
-      requestHeaders['Authorization'] = 'Bearer $accessToken';
 
       final Map<String, dynamic> updateData = {};
       if (name != null) updateData['name'] = name;
       if (price != null) updateData['price'] = price;
       if (description != null) updateData['description'] = description;
 
-      print('🔗 URL: $baseUrl$servicesEndpoint/$serviceId');
       print('📦 Request Body: ${jsonEncode(updateData)}');
-      print('🔑 Headers: $requestHeaders');
 
-      final response = await http.patch(
-        Uri.parse('$baseUrl$servicesEndpoint/$serviceId'),
-        headers: requestHeaders,
-        body: jsonEncode(updateData),
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'PATCH',
+        endpoint: '/salon-service/$serviceId',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: updateData,
       );
 
       print('📡 Response Status Code: ${response.statusCode}');
@@ -574,6 +483,7 @@ class SalonServicesService {
         };
       }
     } catch (e) {
+      print('❌ Error updating service: $e');
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',
@@ -583,103 +493,21 @@ class SalonServicesService {
     }
   }
 
-  /// Delete a salon service
+  /// Delete a salon service using HTTP interceptor
   static Future<Map<String, dynamic>> deleteSalonService({
     required String serviceId,
   }) async {
     try {
-      print('🗑️ === DELETE SALON SERVICE ===');
+      print('🗑️ === DELETE SALON SERVICE WITH INTERCEPTOR ===');
       print('🆔 Service ID: $serviceId');
 
-      // Get access token for authentication
-      final accessToken = await TokenStorageService.getAccessToken();
-
-      if (accessToken == null) {
-        print('❌ No access token available');
-        return {
-          'success': false,
-          'message': 'Authentication failed. Please login again.',
-          'error': 'NoAccessToken',
-          'statusCode': 401,
-        };
-      }
-
-      // SECURITY: Validate that the service belongs to the current user
-      print('🔒 === SECURITY: VALIDATING SERVICE OWNERSHIP ===');
-      final userInfo = await TokenStorageService.getUserInfoFromToken();
-      final currentUserId = userInfo?['id'] as String?;
-
-      if (currentUserId == null) {
-        print('❌ SECURITY ERROR: No user ID found in token');
-        return {
-          'success': false,
-          'message': 'Invalid authentication token. Please login again.',
-          'error': 'NoUserIdInToken',
-          'statusCode': 401,
-        };
-      }
-
-      // Get the service details to check ownership
-      final serviceResult = await getServiceById(serviceId);
-      if (!serviceResult['success']) {
-        print(
-            '❌ SECURITY ERROR: Could not fetch service to validate ownership');
-        return {
-          'success': false,
-          'message': 'Service not found or access denied',
-          'error': 'ServiceNotFound',
-          'statusCode': 404,
-        };
-      }
-
-      final serviceData = serviceResult['data'] as Map<String, dynamic>;
-      final serviceCreatedBy = serviceData['createdBy'] as String?;
-
-      print('🔒 Service created by: $serviceCreatedBy');
-      print('🔒 Current user ID: $currentUserId');
-
-      // Use the same ownership logic as isServiceOwnedByCurrentUser
-      final exactMatch = serviceCreatedBy == currentUserId;
-      final stringMatch =
-          serviceCreatedBy.toString() == currentUserId.toString();
-      final containsMatch =
-          serviceCreatedBy.toString().contains(currentUserId.toString());
-      final isOwned = stringMatch || containsMatch;
-
-      print(
-          '🔒 Ownership check - Exact: $exactMatch, String: $stringMatch, Contains: $containsMatch, Final: $isOwned');
-
-      if (!isOwned) {
-        print('⚠️ WARNING: Ownership check failed but service is visible');
-        print(
-            '⚠️ This might indicate a backend filtering issue or data mismatch');
-        print(
-            '⚠️ For now, allowing access since backend should filter correctly');
-
-        // If the backend is correctly filtering, we can trust that visible services are owned
-        // But log this for investigation
-        print(
-            '🔒 BACKEND FILTERING TRUST: Allowing access since backend filters correctly');
-
-        // Continue with the delete instead of blocking
-        print(
-            '✅ SECURITY: Service ownership validated - user can delete this service (trusting backend)');
-      } else {
-        print(
-            '✅ SECURITY: Service ownership validated - user can delete this service');
-      }
-
-      print(
-          '✅ SECURITY: Service ownership validated - user can delete this service');
-
-      // Build headers with authentication
-      final Map<String, String> requestHeaders = Map.from(headers);
-      requestHeaders['Authorization'] = 'Bearer $accessToken';
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl$servicesEndpoint/$serviceId'),
-        headers: requestHeaders,
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'DELETE',
+        endpoint: '/salon-service/$serviceId',
       );
+
+      print('📡 Response Status Code: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
 
       final responseData = jsonDecode(response.body);
 
@@ -718,6 +546,7 @@ class SalonServicesService {
         };
       }
     } catch (e) {
+      print('❌ Error deleting service: $e');
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',

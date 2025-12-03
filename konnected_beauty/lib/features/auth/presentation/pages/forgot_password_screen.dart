@@ -132,6 +132,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       context, 'reset_password'),
                                   style: AppTheme.headingStyle,
                                 ),
+                                const SizedBox(height: 8),
+
+                                // Subtitle
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'reset_password_subtitle'),
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondaryColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
 
                                 const SizedBox(height: 32),
 
@@ -211,7 +222,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
               decoration: BoxDecoration(
                 color: selectedRole == 'influencer'
                     ? Colors.grey[300]
@@ -224,6 +235,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.person,
@@ -233,14 +245,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    AppTranslations.getString(context, 'influencer'),
-                    style: TextStyle(
-                      color: selectedRole == 'influencer'
-                          ? AppTheme.primaryColor
-                          : AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Text(
+                      AppTranslations.getString(context, 'influencer'),
+                      style: TextStyle(
+                        color: selectedRole == 'influencer'
+                            ? AppTheme.primaryColor
+                            : AppTheme.textPrimaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],
@@ -257,7 +274,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
               decoration: BoxDecoration(
                 color: selectedRole == 'salon'
                     ? Colors.grey[300]
@@ -270,6 +287,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.business,
@@ -279,14 +297,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    AppTranslations.getString(context, 'salon'),
-                    style: TextStyle(
-                      color: selectedRole == 'salon'
-                          ? AppTheme.primaryColor
-                          : AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  Flexible(
+                    child: Text(
+                      AppTranslations.getString(context, 'saloon'),
+                      style: TextStyle(
+                        color: selectedRole == 'salon'
+                            ? AppTheme.primaryColor
+                            : AppTheme.textPrimaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],

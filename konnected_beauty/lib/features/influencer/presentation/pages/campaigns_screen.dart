@@ -175,52 +175,58 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             ),
           ),
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: BlocListener<InfluencerCampaignsBloc,
-                      InfluencerCampaignsState>(
-                    listener: (context, state) {
-                      if (state is InfluencerCampaignsLoaded) {
-                        _isLoadingMore = false;
-                      } else if (state is InfluencerCampaignsError) {
-                        _isLoadingMore = false;
-                      }
-                    },
-                    child: BlocBuilder<InfluencerCampaignsBloc,
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
+              },
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: BlocListener<InfluencerCampaignsBloc,
                         InfluencerCampaignsState>(
-                      builder: (context, state) {
-                        if (state is InfluencerCampaignsLoading) {
-                          return _buildLoadingState();
+                      listener: (context, state) {
+                        if (state is InfluencerCampaignsLoaded) {
+                          _isLoadingMore = false;
                         } else if (state is InfluencerCampaignsError) {
-                          return _buildErrorState(state);
-                        } else if (state is InfluencerCampaignsLoaded) {
-                          final filteredCampaigns = _filterCampaigns(
-                              state.campaigns.cast<Map<String, dynamic>>());
-                          if (filteredCampaigns.isEmpty) {
-                            return _buildNoCampaignsState();
-                          } else {
-                            return _buildCampaignsList(
-                                state, filteredCampaigns);
-                          }
-                        } else if (state is InfluencerCampaignsLoadingMore) {
-                          final filteredCampaigns = _filterCampaigns(
-                              state.campaigns.cast<Map<String, dynamic>>());
-                          if (filteredCampaigns.isEmpty) {
-                            return _buildNoCampaignsState();
-                          } else {
-                            return _buildCampaignsListWithLoading(
-                                state, filteredCampaigns);
-                          }
-                        } else {
-                          return _buildInitialState();
+                          _isLoadingMore = false;
                         }
                       },
+                      child: BlocBuilder<InfluencerCampaignsBloc,
+                          InfluencerCampaignsState>(
+                        builder: (context, state) {
+                          if (state is InfluencerCampaignsLoading) {
+                            return _buildLoadingState();
+                          } else if (state is InfluencerCampaignsError) {
+                            return _buildErrorState(state);
+                          } else if (state is InfluencerCampaignsLoaded) {
+                            final filteredCampaigns = _filterCampaigns(
+                                state.campaigns.cast<Map<String, dynamic>>());
+                            if (filteredCampaigns.isEmpty) {
+                              return _buildNoCampaignsState();
+                            } else {
+                              return _buildCampaignsList(
+                                  state, filteredCampaigns);
+                            }
+                          } else if (state is InfluencerCampaignsLoadingMore) {
+                            final filteredCampaigns = _filterCampaigns(
+                                state.campaigns.cast<Map<String, dynamic>>());
+                            if (filteredCampaigns.isEmpty) {
+                              return _buildNoCampaignsState();
+                            } else {
+                              return _buildCampaignsListWithLoading(
+                                  state, filteredCampaigns);
+                            }
+                          } else {
+                            return _buildInitialState();
+                          }
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -425,7 +431,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
       itemCount: sortedGroups.length,
       itemBuilder: (context, index) {
         final groupKey = sortedGroups[index];
@@ -542,7 +553,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
       itemCount: sortedGroups.length + 1,
       itemBuilder: (context, index) {
         if (index == sortedGroups.length) {
@@ -876,9 +892,9 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       final difference = now.difference(date);
 
       if (difference.inDays == 0) {
-        return 'Today';
+        return AppTranslations.getString(context, 'today');
       } else if (difference.inDays == 1) {
-        return 'Yesterday';
+        return AppTranslations.getString(context, 'yesterday');
       } else {
         return '${date.day}/${date.month}/${date.year}';
       }

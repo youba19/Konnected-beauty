@@ -13,6 +13,7 @@ import '../../../../core/bloc/campaigns/campaigns_event.dart';
 import '../../../../core/bloc/campaigns/campaigns_state.dart';
 import '../../../../core/services/api/influencers_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
+import 'orders_screen.dart';
 
 class CampaignDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> campaign;
@@ -29,20 +30,97 @@ class CampaignDetailsScreen extends StatefulWidget {
 class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   bool _isLoading = true;
   late ConfettiController _confettiController;
+  Map<String, dynamic>? _freshCampaignData;
 
   @override
   void initState() {
     super.initState();
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 3));
-    // Simulate loading for a short time to show shimmer effect
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
+
+    // Fetch fresh campaign data from API
+    _fetchFreshCampaignData();
+  }
+
+  Future<void> _fetchFreshCampaignData() async {
+    final campaignId = widget.campaign['id'];
+    if (campaignId == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      print('🔍 === FETCHING FRESH CAMPAIGN DATA ===');
+      print('🔍 Campaign ID: $campaignId');
+
+      final result = await InfluencersService.getSalonCampaignDetails(
+        campaignId: campaignId,
+      );
+
+      if (result['success'] == true) {
+        setState(() {
+          _freshCampaignData = result['data'];
+          _isLoading = false;
+        });
+
+        // Debug: Print the fresh campaign data response in JSON format
+        print('🔍 === FRESH CAMPAIGN API RESPONSE ===');
+        print('🔍 JSON Response:');
+        print('{');
+        print('    "message": "success",');
+        print('    "statusCode": 200,');
+        print('    "data": {');
+        print('        "id": "${_freshCampaignData?['id']}",');
+        print('        "createdAt": "${_freshCampaignData?['createdAt']}",');
+        print('        "updatedAt": "${_freshCampaignData?['updatedAt']}",');
+        print('        "status": "${_freshCampaignData?['status']}",');
+        print('        "promotion": ${_freshCampaignData?['promotion']},');
+        print(
+            '        "promotionType": "${_freshCampaignData?['promotionType']}",');
+        print(
+            '        "invitationMessage": "${_freshCampaignData?['invitationMessage'] ?? ""}",');
+        print('        "initiator": "${_freshCampaignData?['initiator']}",');
+        print('        "clicks": ${_freshCampaignData?['clicks']},');
+        print('        "link": "${_freshCampaignData?['link']}",');
+        print('        "influencer": {');
+        print(
+            '            "id": "${_freshCampaignData?['influencer']?['id'] ?? ""}",');
+        print('            "profile": {');
+        print(
+            '                "pseudo": "${_freshCampaignData?['influencer']?['profile']?['pseudo'] ?? ""}",');
+        print(
+            '                "bio": "${_freshCampaignData?['influencer']?['profile']?['bio'] ?? ""}",');
+        print(
+            '                "zone": "${_freshCampaignData?['influencer']?['profile']?['zone'] ?? ""}",');
+        print(
+            '                "profilePicture": "${_freshCampaignData?['influencer']?['profile']?['profilePicture'] ?? null}"');
+        print('            }');
+        print('        },');
+        print('        "totalAmount": ${_freshCampaignData?['totalAmount']},');
+        print(
+            '        "totalCompletedOrders": ${_freshCampaignData?['totalCompletedOrders']}');
+        print('    }');
+        print('}');
+        print('🔍 === END FRESH CAMPAIGN API RESPONSE ===');
+      } else {
+        print('❌ Failed to fetch fresh campaign data: ${result['message']}');
         setState(() {
           _isLoading = false;
         });
       }
-    });
+    } catch (e) {
+      print('❌ Error fetching fresh campaign data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Helper method to get campaign data (fresh from API or fallback to widget data)
+  Map<String, dynamic> get campaignData {
+    return _freshCampaignData ?? widget.campaign;
   }
 
   @override
@@ -93,6 +171,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                                   _buildClicksSection(),
                                   const SizedBox(height: 24),
                                   _buildCompletedOrdersSection(),
+                                  const SizedBox(height: 24),
+                                  _buildViewOrdersButton(),
                                   const SizedBox(height: 24),
                                   _buildTotalSection(),
                                   const SizedBox(height: 20),
@@ -184,14 +264,18 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              AppTranslations.getString(context, 'campaign_with'),
-              style: TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 14,
+            Flexible(
+              child: Text(
+                AppTranslations.getString(context, 'campaign_with'),
+                style: TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
-
+            const SizedBox(width: 8),
             // Status Button
             _buildStatusButton(),
           ],
@@ -203,7 +287,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             _buildProfilePicture(),
             const SizedBox(width: 12),
             Text(
-              '@${widget.campaign['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
+              '@${campaignData['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -229,7 +313,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          _formatDate(widget.campaign['createdAt'] ?? ''),
+          _formatDate(campaignData['createdAt'] ?? ''),
           style: const TextStyle(
             color: AppTheme.textPrimaryColor,
             fontSize: 24,
@@ -256,7 +340,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                widget.campaign['promotionType'] ?? 'percentage',
+                campaignData['promotionType'] ?? 'percentage',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -330,15 +414,73 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          '${widget.campaign['completedOrders'] ?? 0}',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+        Builder(
+          builder: (context) {
+            final completedOrders = campaignData['totalCompletedOrders'] ?? 0;
+            print('🔍 === COMPLETED ORDERS ===');
+            print(
+                '🔍 Raw: ${campaignData['totalCompletedOrders']} | Processed: $completedOrders');
+            print('🔍 === END COMPLETED ORDERS ===');
+            return Text(
+              '$completedOrders',
+              style: const TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
         ),
       ],
+    );
+  }
+
+  Widget _buildViewOrdersButton() {
+    final status = campaignData['status']?.toString().toLowerCase() ?? '';
+
+    // Only show button for finished or ongoing campaigns
+    if (status != 'finished' && status != 'in progress') {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => OrdersScreen(campaign: widget.campaign),
+            ),
+          );
+        },
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.white, width: 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: AppTheme.transparentBackground,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              AppTranslations.getString(context, 'view_orders'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.shopping_bag_outlined,
+              color: Colors.white,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -354,20 +496,29 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          widget.campaign['total'] ?? '0 EUR',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+        Builder(
+          builder: (context) {
+            final totalAmount = campaignData['totalAmount'] ?? 0;
+            print('🔍 === TOTAL AMOUNT ===');
+            print(
+                '🔍 Raw: ${campaignData['totalAmount']} | Processed: $totalAmount');
+            print('🔍 === END TOTAL AMOUNT ===');
+            return Text(
+              '$totalAmount EUR',
+              style: const TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
         ),
       ],
     );
   }
 
   Widget _buildStatusButton() {
-    final status = widget.campaign['status']?.toString().toLowerCase() ?? '';
+    final status = campaignData['status']?.toString().toLowerCase() ?? '';
 
     if (status == 'finished') {
       return Container(
@@ -428,7 +579,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         ),
       );
     } else if (status == 'pending') {
-      final initiator = widget.campaign['initiator'] ?? 'salon';
+      final initiator = campaignData['initiator'] ?? 'salon';
       final statusText = initiator == 'influencer'
           ? AppTranslations.getString(context, 'waiting_for_salon')
           : AppTranslations.getString(context, 'waiting_for_influencer');
@@ -512,8 +663,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   }
 
   Widget _buildActionButtons() {
-    final status = widget.campaign['status']?.toString().toLowerCase() ?? '';
-    final initiator = widget.campaign['initiator'] ?? 'salon';
+    final status = campaignData['status']?.toString().toLowerCase() ?? '';
+    final initiator = campaignData['initiator'] ?? 'salon';
 
     if (status == 'finished') {
       // No buttons for finished campaigns
@@ -625,16 +776,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Text(
-                  'Delete Campaign',
-                  style: TextStyle(
+                  AppTranslations.getString(context, 'delete_campaign'),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(width: 8),
-                Icon(LucideIcons.xCircle, size: 24),
+                const SizedBox(width: 8),
+                const Icon(LucideIcons.xCircle, size: 24),
               ],
             ),
           ),
@@ -661,66 +812,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Text(
-                    'Finish campaign',
-                    style: TextStyle(
+                    AppTranslations.getString(context, 'finish_campaign'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Icon(Icons.check, size: 24),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Copy Link Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                // Copy the actual campaign link from API data
-                final campaignLink =
-                    widget.campaign['link'] ?? widget.campaign['url'] ?? '';
-                if (campaignLink.isNotEmpty) {
-                  Clipboard.setData(ClipboardData(text: campaignLink));
-                  TopNotificationService.showSuccess(
-                    context: context,
-                    message: 'Campaign link copied to clipboard!',
-                  );
-                } else {
-                  TopNotificationService.showError(
-                    context: context,
-                    message: 'Campaign link not available',
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Colors.white, width: 1),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text(
-                    'Copy link',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.link, size: 24),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.check, size: 24),
                 ],
               ),
             ),
@@ -739,17 +840,17 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            'Delete Campaign',
-            style: TextStyle(
+          title: Text(
+            AppTranslations.getString(context, 'delete_campaign'),
+            style: const TextStyle(
               color: AppTheme.textPrimaryColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          content: const Text(
-            'Are you sure you want to delete this campaign?',
-            style: TextStyle(
+          content: Text(
+            AppTranslations.getString(context, 'delete_campaign_confirm'),
+            style: const TextStyle(
               color: AppTheme.textSecondaryColor,
               fontSize: 16,
             ),
@@ -759,9 +860,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
               },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
+              child: Text(
+                AppTranslations.getString(context, 'cancel'),
+                style: const TextStyle(
                   color: AppTheme.textSecondaryColor,
                   fontSize: 16,
                 ),
@@ -790,9 +891,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                         DeleteCampaign(campaignId: widget.campaign['id']),
                       );
                 },
-                child: const Text(
-                  'Delete',
-                  style: TextStyle(
+                child: Text(
+                  AppTranslations.getString(
+                      context, 'delete_campaign_confirm_button'),
+                  style: const TextStyle(
                     color: Colors.red,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -928,6 +1030,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
 
         // Update the campaign status to 'in progress' locally
         widget.campaign['status'] = 'in progress';
+
+        // Also update _freshCampaignData if it exists
+        if (_freshCampaignData != null) {
+          _freshCampaignData!['status'] = 'in progress';
+        }
+
+        // Reload fresh campaign data from API to ensure everything is up to date
+        await _fetchFreshCampaignData();
 
         // Trigger a rebuild to show the new buttons
         if (mounted) {
@@ -1154,6 +1264,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             _buildShimmerCompletedOrdersSection(),
             const SizedBox(height: 24),
 
+            // View orders button shimmer (only for finished/ongoing campaigns)
+            _buildShimmerViewOrdersButton(),
+            const SizedBox(height: 24),
+
             // Total section shimmer
             _buildShimmerTotalSection(),
             const SizedBox(height: 20),
@@ -1344,6 +1458,17 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildShimmerViewOrdersButton() {
+    return Container(
+      height: 56,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(12),
+      ),
     );
   }
 

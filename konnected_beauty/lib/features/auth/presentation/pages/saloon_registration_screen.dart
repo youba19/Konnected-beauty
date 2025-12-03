@@ -102,7 +102,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     // Initialize controllers
     nameController = TextEditingController();
     emailController = TextEditingController();
-    phoneController = TextEditingController();
+    phoneController = TextEditingController(text: '+33');
     passwordController = TextEditingController();
     otpController = TextEditingController();
     saloonNameController = TextEditingController();
@@ -622,12 +622,16 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                AppTranslations.getString(context, 'salon_information'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  AppTranslations.getString(context, 'salon_information'),
+                  style: const TextStyle(
+                    color: AppTheme.textPrimaryColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
@@ -951,6 +955,29 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
 
                   // Check if we can proceed after validation
                   if (_canProceedToNextStep(state)) {
+                    // Auto-convert 06 or 07 to +33 before sending
+                    String phoneValue = phoneController.text.trim();
+                    if (phoneValue.startsWith('06') ||
+                        phoneValue.startsWith('07')) {
+                      // Take only the first 10 digits (remove the 0 and take 9 more digits)
+                      // This handles cases where user might have typed 11 digits by mistake
+                      String digits =
+                          phoneValue.substring(1); // Remove the leading 0
+                      if (digits.length > 9) {
+                        digits = digits.substring(
+                            0, 9); // Take only 9 digits after the 0
+                      }
+                      phoneValue = '+33$digits';
+                    }
+                    // Always update the state with the phone number (whether it's +33 or converted from 06/07)
+                    context
+                        .read<SaloonRegistrationBloc>()
+                        .add(UpdatePersonalInfo(
+                          name: nameController.text,
+                          email: emailController.text,
+                          phone: phoneValue,
+                          password: passwordController.text,
+                        ));
                     print('Calling submitSignup');
                     context.read<SaloonRegistrationBloc>().add(SubmitSignup());
                   } else {

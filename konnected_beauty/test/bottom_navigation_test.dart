@@ -5,7 +5,8 @@ import 'package:konnected_beauty/core/bloc/language/language_bloc.dart';
 import 'package:konnected_beauty/features/company/presentation/pages/salon_home_screen.dart';
 
 void main() {
-  testWidgets('Bottom navigation bar renders without overflow', (WidgetTester tester) async {
+  testWidgets('Bottom navigation bar renders without overflow',
+      (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: BlocProvider(
@@ -23,7 +24,9 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
 
     // Verify that the bottom navigation bar is rendered
-    expect(find.byType(BottomNavigationBar), findsNothing); // We use custom navigation
-    expect(find.byType(Row), findsWidgets); // Should find the custom navigation row
+    expect(find.byType(BottomNavigationBar),
+        findsNothing); // We use custom navigation
+    expect(find.byType(Row),
+        findsWidgets); // Should find the custom navigation row
   });
 }

@@ -3,7 +3,7 @@ import 'http_interceptor.dart';
 import '../storage/token_storage_service.dart';
 
 class InfluencerCampaignsService {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
 
   /// Fetch influencer campaigns
   static Future<Map<String, dynamic>> getInfluencerCampaigns({

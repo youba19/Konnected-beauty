@@ -124,6 +124,7 @@ class TokenStorageService {
   }
 
   /// Check if access token is expired
+  /// Returns true if token is expired or will expire within the next 5 minutes (buffer time)
   static Future<bool> isAccessTokenExpired() async {
     final accessToken = await getAccessToken();
     if (accessToken == null) {
@@ -147,15 +148,25 @@ class TokenStorageService {
           DateTime.fromMillisecondsSinceEpoch(payloadMap['exp'] * 1000);
       final now = DateTime.now();
 
+      // Add a 5-minute buffer to avoid edge cases with clock synchronization
+      // Consider token expired if it expires within the next 5 minutes
+      final bufferTime = const Duration(minutes: 5);
+      final expiresAtWithBuffer = expiresAt.subtract(bufferTime);
+
       print('🔍 Token expiry check:');
       print('   📅 Expires at: $expiresAt');
+      print('   📅 Expires at (with buffer): $expiresAtWithBuffer');
       print('   🕐 Current time: $now');
-      print('   ⏰ Is expired: ${now.isAfter(expiresAt)}');
+      print('   ⏰ Is expired: ${now.isAfter(expiresAtWithBuffer)}');
 
-      return now.isAfter(expiresAt);
+      return now.isAfter(expiresAtWithBuffer);
     } catch (e) {
       print('❌ Error checking token expiry: $e');
-      return true;
+      // Don't automatically consider token expired on parsing error
+      // This prevents unnecessary logouts due to parsing issues
+      print(
+          '⚠️ Token parsing error, but not considering it expired to avoid logout');
+      return false;
     }
   }
 

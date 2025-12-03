@@ -32,11 +32,43 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_phone');
     }
-    // Generic international phone number validation (E.164 format)
-    // Starts with +, followed by country code (1-3 digits), then up to 12 digits
-    if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(value.trim())) {
+
+    final phone = value.trim();
+
+    // Accept numbers starting with 06 or 07 (will be converted to +33 on submit)
+    if (phone.startsWith('06') || phone.startsWith('07')) {
+      // Allow incomplete numbers during typing, but validate format when complete
+      if (phone.length < 10) {
+        return null; // Still typing, allow it
+      }
+      // Validate that it's a valid French phone number format (10 or 11 digits)
+      if ((phone.length == 10 || phone.length == 11) &&
+          RegExp(r'^0[67]\d{8,9}$').hasMatch(phone)) {
+        return null; // Valid, will be converted to +33 on submit
+      }
       return AppTranslations.getString(context, 'please_enter_valid_phone');
     }
+
+    // Allow numbers starting with 0 (user might be typing 06 or 07)
+    if (phone.startsWith('0')) {
+      return null; // Still typing, allow it
+    }
+
+    // Must start with +33 (France country code)
+    if (!phone.startsWith('+33')) {
+      // Allow incomplete numbers during typing
+      if (phone.isEmpty || phone.startsWith('+')) {
+        return null; // Still typing, allow it
+      }
+      return AppTranslations.getString(context, 'please_enter_valid_phone');
+    }
+
+    // Generic international phone number validation (E.164 format)
+    // Starts with +, followed by country code (1-3 digits), then up to 12 digits
+    if (!RegExp(r'^\+[1-9]\d{1,14}$').hasMatch(phone)) {
+      return AppTranslations.getString(context, 'please_enter_valid_phone');
+    }
+
     return null;
   }
 

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
@@ -19,6 +21,8 @@ import 'service_details_screen.dart';
 import 'edit_service_screen.dart';
 import 'service_filter_screen.dart';
 import 'influencers_screen.dart';
+import 'qr_scanner_screen.dart';
+import '../../../../widgets/common/motivational_banner.dart';
 
 class SalonHomeScreen extends StatefulWidget {
   final bool showDeleteSuccess;
@@ -261,15 +265,21 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: Column(
-            children: [
-              // Content based on selected tab
-              Expanded(
-                child: selectedIndex == 3
-                    ? const InfluencersScreen()
-                    : _buildServicesContent(),
-              ),
-            ],
+          child: GestureDetector(
+            onTap: () {
+              // Close keyboard when tapping outside text fields
+              FocusScope.of(context).unfocus();
+            },
+            child: Column(
+              children: [
+                // Content based on selected tab
+                Expanded(
+                  child: selectedIndex == 3
+                      ? const InfluencersScreen()
+                      : _buildServicesContent(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -368,19 +378,85 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       }
     }, child: BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
-        return Column(
-          children: [
-            // Success Banner (if needed)
-            if (_showDeleteSuccess) _buildDeleteSuccessBanner(),
+        return RefreshIndicator(
+          onRefresh: () async {
+            _resetScrollAndLoadingState();
+            context.read<SalonServicesBloc>().add(RefreshSalonServices());
+          },
+          color: AppTheme.textPrimaryColor,
+          backgroundColor: AppTheme.transparentBackground,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              // Check if user has scrolled to the bottom
+              final isNearBottom = scrollInfo.metrics.pixels >=
+                  scrollInfo.metrics.maxScrollExtent - 200;
+              final isAtBottom = scrollInfo.metrics.pixels >=
+                  scrollInfo.metrics.maxScrollExtent;
+              final isNotScrollable = scrollInfo.metrics.maxScrollExtent <= 0;
 
-            // Header Section
-            _buildHeader(),
+              if (isNearBottom || isAtBottom || isNotScrollable) {
+                final currentState = context.read<SalonServicesBloc>().state;
+                if (currentState is SalonServicesLoaded) {
+                  if (currentState.hasMoreData && !_isLoadingMore) {
+                    _isLoadingMore = true;
+                    context.read<SalonServicesBloc>().add(
+                          LoadMoreSalonServices(
+                            page: currentState.currentPage + 1,
+                            searchQuery: currentState.currentSearch,
+                            minPrice: currentState.currentMinPrice,
+                            maxPrice: currentState.currentMaxPrice,
+                          ),
+                        );
+                  }
+                }
+              }
+              return false;
+            },
+            child: CustomScrollView(
+              controller: _listController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // Success Banner (if needed)
+                if (_showDeleteSuccess)
+                  SliverToBoxAdapter(
+                    child: _buildDeleteSuccessBanner(),
+                  ),
 
-            // Main Content
-            Expanded(
-              child: _buildMainContent(),
+                // Header Section
+                SliverToBoxAdapter(
+                  child: _buildHeader(),
+                ),
+
+                // Motivational Banner
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: MotivationalBanner(
+                      text: AppTranslations.getString(
+                          context, 'offers_attractive_message'),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 16),
+                ),
+
+                // Create Service Button
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: _buildCreateServiceButton(),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 16),
+                ),
+
+                // Services List
+                _buildServiceCardsSliver(),
+              ],
             ),
-          ],
+          ),
         );
       },
     ));
@@ -538,101 +614,182 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     );
   }
 
-  Widget _buildMainContent() {
-    return Column(
-      children: [
-        // Fixed Create Service Button - outside RefreshIndicator
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: _buildCreateServiceButton(),
-        ),
-        const SizedBox(height: 16),
-        // Debug info - fixed outside refreshable area
-
-        const SizedBox(height: 8),
-        // Refreshable List Content
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              // Reset scroll position and loading state before refresh
-              _resetScrollAndLoadingState();
-              context.read<SalonServicesBloc>().add(RefreshSalonServices());
-            },
-            color: AppTheme.textPrimaryColor,
-            backgroundColor: AppTheme.transparentBackground,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (ScrollNotification scrollInfo) {
-                // Debug scroll information
-                print('📜 === SCROLL INFO ===');
-                print('📜 Pixels: ${scrollInfo.metrics.pixels}');
-                print(
-                    '📜 Max Scroll Extent: ${scrollInfo.metrics.maxScrollExtent}');
-                print(
-                    '📜 At Bottom: ${scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent}');
-                print(
-                    '📜 Difference: ${scrollInfo.metrics.maxScrollExtent - scrollInfo.metrics.pixels}');
-
-                // Check if user has scrolled to the bottom (with more tolerance)
-                final isNearBottom = scrollInfo.metrics.pixels >=
-                    scrollInfo.metrics.maxScrollExtent -
-                        200; // Reduced tolerance for better detection
-                print('📜 Is Near Bottom: $isNearBottom');
-                print('📜 Tolerance: 200 pixels from bottom');
-
-                // Also check if we're at the very bottom
-                final isAtBottom = scrollInfo.metrics.pixels >=
-                    scrollInfo.metrics.maxScrollExtent;
-                print('📜 Is At Bottom: $isAtBottom');
-
-                // Check if list is not scrollable (all items fit on screen)
-                final isNotScrollable = scrollInfo.metrics.maxScrollExtent <= 0;
-                print('📜 Is Not Scrollable: $isNotScrollable');
-
-                if (isNearBottom || isAtBottom || isNotScrollable) {
-                  // Add some tolerance
-                  // Get current state to check if we can load more
-                  final currentState = context.read<SalonServicesBloc>().state;
-                  print('📜 Current State Type: ${currentState.runtimeType}');
-
-                  if (currentState is SalonServicesLoaded) {
-                    print('📜 Has More Data: ${currentState.hasMoreData}');
-                    print('📜 Current Page: ${currentState.currentPage}');
-                    print('📜 Services Count: ${currentState.services.length}');
-
-                    // Check if we can load more and not already loading
-                    if (currentState.hasMoreData && !_isLoadingMore) {
-                      print('📄 === LOADING MORE SERVICES ===');
-                      print('📄 Current Page: ${currentState.currentPage}');
-                      print('📄 Has More Data: ${currentState.hasMoreData}');
-
-                      // Set loading flag to prevent duplicate requests
-                      _isLoadingMore = true;
-
-                      // Load next page with current filters from state
-                      context.read<SalonServicesBloc>().add(
-                            LoadMoreSalonServices(
-                              page: currentState.currentPage + 1,
-                              searchQuery: currentState.currentSearch,
-                              minPrice: currentState.currentMinPrice,
-                              maxPrice: currentState.currentMaxPrice,
-                            ),
-                          );
-                    } else {
-                      print(
-                          '📜 Cannot load more - hasMoreData: ${currentState.hasMoreData}, currentPage: ${currentState.currentPage}, isLoadingMore: $_isLoadingMore');
-                    }
-                  } else {
-                    print(
-                        '📜 State is not SalonServicesLoaded: ${currentState.runtimeType}');
-                  }
-                }
-                return false;
-              },
-              child: _buildServiceCards(),
+  Widget _buildServiceCardsSliver() {
+    return BlocBuilder<SalonServicesBloc, SalonServicesState>(
+      builder: (context, state) {
+        if (state is SalonServicesLoading) {
+          return SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index < 4 ? 16.0 : 0.0,
+                  ),
+                  child: Shimmer.fromColors(
+                    baseColor: Colors.grey[800]!,
+                    highlightColor: Colors.grey[600]!,
+                    child: _buildShimmerServiceCard(),
+                  ),
+                ),
+                childCount: 5,
+              ),
             ),
-          ),
-        ),
-      ],
+          );
+        } else if (state is SalonServicesLoaded) {
+          if (state.services.isEmpty) {
+            return SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.spa_outlined,
+                        size: 64,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        AppTranslations.getString(context, 'no_services_found'),
+                        style: const TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  // Show loading indicator or end message at the bottom
+                  if (index == state.services.length) {
+                    if (state.hasMoreData && _isLoadingMore) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            const CircularProgressIndicator(
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Loading page ${state.currentPage + 1}...',
+                              style: const TextStyle(
+                                color: AppTheme.textSecondaryColor,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${state.services.length} services loaded so far',
+                              style: const TextStyle(
+                                color: AppTheme.textSecondaryColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    // End-of-data message
+                    if (!state.hasMoreData) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.check_circle_outline,
+                              color: AppTheme.textSecondaryColor,
+                              size: 32,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'All services loaded',
+                              style: TextStyle(
+                                color: AppTheme.textSecondaryColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${state.services.length} total services',
+                              style: const TextStyle(
+                                color: AppTheme.textSecondaryColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }
+
+                  // Service card
+                  if (index < state.services.length) {
+                    final service =
+                        state.services[index] as Map<String, dynamic>;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: _buildServiceCard(
+                        title: service['name'] ?? 'Service',
+                        price: '${service['price'] ?? 0} €',
+                        description: service['description'] ??
+                            'No description available',
+                        serviceId: service['id']?.toString(),
+                      ),
+                    );
+                  }
+
+                  return const SizedBox.shrink();
+                },
+                childCount: state.services.length + 1,
+              ),
+            ),
+          );
+        } else if (state is SalonServicesError) {
+          return SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.error ?? state.message,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        } else {
+          return const SliverToBoxAdapter(
+            child: SizedBox.shrink(),
+          );
+        }
+      },
     );
   }
 
@@ -1243,16 +1400,20 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             size: 22,
           ),
           const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? AppTheme.textPrimaryColor
-                  : AppTheme.navBartextColor,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? AppTheme.textPrimaryColor
+                    : AppTheme.navBartextColor,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -1263,29 +1424,104 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     return Container(
       margin: const EdgeInsets.only(
           bottom: 0), // Position exactly at top of nav bar
-      child: FloatingActionButton(
-        heroTag: 'salon_home_fab',
-        onPressed: () {
-          _scanQRCode();
-        },
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppTheme.textPrimaryColor,
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppTheme.textPrimaryColor.withOpacity(0.15),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppTheme.textPrimaryColor.withOpacity(0.4),
-              width: 1.5,
+      child: _buildLiquidGlassButton(),
+    );
+  }
+
+  Widget _buildLiquidGlassButton() {
+    return GestureDetector(
+      onTap: () {
+        _scanQRCode();
+      },
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.15),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1.2,
+              ),
+              boxShadow: [
+                // Outer glow for depth
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 0),
+                ),
+                // Drop shadow for depth
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 15,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-          ),
-          child: const Icon(
-            Icons.qr_code_scanner,
-            size: 32,
+            child: Stack(
+              children: [
+                // Liquid glass highlight - main
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.3, -0.3),
+                        radius: 1.0,
+                        colors: [
+                          Colors.white.withOpacity(0.6),
+                          Colors.white.withOpacity(0.2),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // Secondary liquid highlight
+                Positioned(
+                  top: 15,
+                  left: 15,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.4),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Main content
+                const Center(
+                  child: Icon(
+                    Icons.qr_code_scanner,
+                    size: 32,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1385,11 +1621,92 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     );
   }
 
-  void _scanQRCode() {
-    // TODO: Implement QR code scanning functionality
-    TopNotificationService.showInfo(
+  Future<void> _scanQRCode() async {
+    // Check camera permission before opening QR scanner
+    final status = await Permission.camera.status;
+
+    if (status == PermissionStatus.granted) {
+      // Permission granted, open QR scanner
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const QRScannerScreen(),
+          ),
+        );
+      }
+    } else if (status == PermissionStatus.denied) {
+      // Request permission
+      final requestResult = await Permission.camera.request();
+      if (requestResult == PermissionStatus.granted && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const QRScannerScreen(),
+          ),
+        );
+      } else if (requestResult == PermissionStatus.permanentlyDenied &&
+          mounted) {
+        _showPermissionSettingsDialog();
+      } else if (mounted) {
+        TopNotificationService.showError(
+          context: context,
+          message: 'Camera permission is required to scan QR codes',
+        );
+      }
+    } else if (status == PermissionStatus.permanentlyDenied) {
+      // Show settings dialog
+      if (mounted) {
+        _showPermissionSettingsDialog();
+      }
+    }
+  }
+
+  void _showPermissionSettingsDialog() {
+    showDialog(
       context: context,
-      message: AppTranslations.getString(context, 'qr_scanning_coming_soon'),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.scaffoldBackground,
+          title: Text(
+            'Camera Permission Required',
+            style: const TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Camera access is required to scan QR codes. Please enable it in your device settings.',
+            style: const TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 16,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                openAppSettings();
+              },
+              child: Text(
+                'Open Settings',
+                style: const TextStyle(
+                  color: AppTheme.greenColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

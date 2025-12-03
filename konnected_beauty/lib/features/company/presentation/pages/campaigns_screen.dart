@@ -12,7 +12,9 @@ import '../../../../core/bloc/campaigns/campaigns_state.dart';
 import 'campaign_details_screen.dart';
 
 class CampaignsScreen extends StatefulWidget {
-  const CampaignsScreen({super.key});
+  final VoidCallback? onNavigateToInfluencers;
+
+  const CampaignsScreen({super.key, this.onNavigateToInfluencers});
 
   @override
   State<CampaignsScreen> createState() => _CampaignsScreenState();
@@ -36,9 +38,6 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
     // Add search listener with debounce (same as influencers)
     searchController.addListener(() => _onSearchChanged(searchController.text));
-
-    // Add scroll listener for pagination (same as influencers)
-    _scrollController.addListener(_onScroll);
 
     // Load initial campaigns with all statuses
     _currentStatus = 'all';
@@ -74,32 +73,6 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         print('🔍 Current Search: "$_currentSearch"');
       }
     });
-  }
-
-  void _onScroll() {
-    // Check if we can load more data on any scroll movement (same logic as services)
-    if (_scrollController.hasClients) {
-      final position = _scrollController.position;
-      final currentState = context.read<CampaignsBloc>().state;
-
-      if (currentState is CampaignsLoaded &&
-          currentState.hasMore &&
-          !_isLoadingMore) {
-        // If we're near bottom or list is not scrollable, load more
-        final isNearBottom = position.pixels >= position.maxScrollExtent - 100;
-        final isNotScrollable = position.maxScrollExtent <= 0;
-
-        if (isNearBottom || isNotScrollable) {
-          _isLoadingMore = true;
-          context.read<CampaignsBloc>().add(LoadMoreCampaigns(
-                page: currentState.currentPage + 1,
-                search: currentState.currentSearch,
-                status: currentState.currentStatus ??
-                    (_currentStatus == 'all' ? null : _currentStatus),
-              ));
-        }
-      }
-    }
   }
 
   void _showFilterScreen() {
@@ -322,6 +295,21 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
   void _goToInfluencers() {
     print('Navigate to influencers screen');
+
+    if (widget.onNavigateToInfluencers != null) {
+      // Use the callback to navigate to influencers
+      widget.onNavigateToInfluencers!();
+    } else {
+      print('No callback provided, showing fallback message');
+      // Fallback: Show a message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              AppTranslations.getString(context, 'go_to_influencers_message')),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   List<Map<String, dynamic>> _filterCampaigns(
@@ -373,53 +361,116 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               ),
             ),
             child: SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: BlocListener<CampaignsBloc, CampaignsState>(
-                      listener: (context, state) {
-                        if (state is CampaignsLoaded) {
-                          // Reset loading flag when load more completes
-                          _isLoadingMore = false;
-                        } else if (state is CampaignsError) {
-                          // Reset loading flag on error
-                          _isLoadingMore = false;
-                        }
-                      },
-                      child: BlocBuilder<CampaignsBloc, CampaignsState>(
-                        builder: (context, state) {
-                          if (state is CampaignsLoading) {
-                            // Show shimmer loading for initial load
-                            return _buildShimmerList();
-                          } else if (state is CampaignsError) {
-                            return _buildErrorState(state);
-                          } else if (state is CampaignsLoaded) {
-                            final filteredCampaigns = _filterCampaigns(
-                                state.campaigns.cast<Map<String, dynamic>>());
-                            if (filteredCampaigns.isEmpty) {
-                              return _buildNoCampaignsState();
-                            } else {
-                              return _buildCampaignsList(
-                                  state, filteredCampaigns);
+              child: GestureDetector(
+                onTap: () {
+                  // Close keyboard when tapping outside text fields
+                  FocusScope.of(context).unfocus();
+                },
+                child: BlocListener<CampaignsBloc, CampaignsState>(
+                  listener: (context, state) {
+                    if (state is CampaignsLoaded) {
+                      // Reset loading flag when load more completes
+                      _isLoadingMore = false;
+                    } else if (state is CampaignsError) {
+                      // Reset loading flag on error
+                      _isLoadingMore = false;
+                    }
+                  },
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      context.read<CampaignsBloc>().add(RefreshCampaigns(
+                            status:
+                                _currentStatus == 'all' ? null : _currentStatus,
+                            limit: 10,
+                          ));
+                    },
+                    color: AppTheme.textPrimaryColor,
+                    backgroundColor: AppTheme.transparentBackground,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (ScrollNotification scrollInfo) {
+                        // Check if user has scrolled to the bottom
+                        final isNearBottom = scrollInfo.metrics.pixels >=
+                            scrollInfo.metrics.maxScrollExtent - 200;
+                        final isAtBottom = scrollInfo.metrics.pixels >=
+                            scrollInfo.metrics.maxScrollExtent;
+                        final isNotScrollable =
+                            scrollInfo.metrics.maxScrollExtent <= 0;
+
+                        if (isNearBottom || isAtBottom || isNotScrollable) {
+                          final currentState =
+                              context.read<CampaignsBloc>().state;
+                          if (currentState is CampaignsLoaded) {
+                            if (currentState.hasMore && !_isLoadingMore) {
+                              _isLoadingMore = true;
+                              context
+                                  .read<CampaignsBloc>()
+                                  .add(LoadMoreCampaigns(
+                                    page: currentState.currentPage + 1,
+                                    search: currentState.currentSearch,
+                                    status: currentState.currentStatus ??
+                                        (_currentStatus == 'all'
+                                            ? null
+                                            : _currentStatus),
+                                  ));
                             }
-                          } else if (state is CampaignsLoadingMore) {
-                            final filteredCampaigns = _filterCampaigns(
-                                state.campaigns.cast<Map<String, dynamic>>());
-                            if (filteredCampaigns.isEmpty) {
-                              return _buildNoCampaignsState();
-                            } else {
-                              return _buildCampaignsListWithLoading(
-                                  state, filteredCampaigns);
-                            }
-                          } else {
-                            return _buildInitialState();
                           }
-                        },
+                        }
+                        return false;
+                      },
+                      child: CustomScrollView(
+                        controller: _scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          // Header
+                          SliverToBoxAdapter(
+                            child: _buildHeader(),
+                          ),
+
+                          // Content based on state
+                          BlocBuilder<CampaignsBloc, CampaignsState>(
+                            builder: (context, state) {
+                              if (state is CampaignsLoading) {
+                                return _buildShimmerSliver();
+                              } else if (state is CampaignsError) {
+                                return SliverToBoxAdapter(
+                                  child: _buildErrorState(state),
+                                );
+                              } else if (state is CampaignsLoaded) {
+                                final filteredCampaigns = _filterCampaigns(state
+                                    .campaigns
+                                    .cast<Map<String, dynamic>>());
+                                if (filteredCampaigns.isEmpty) {
+                                  return SliverToBoxAdapter(
+                                    child: _buildNoCampaignsState(),
+                                  );
+                                } else {
+                                  return _buildCampaignsListSliver(
+                                      state, filteredCampaigns);
+                                }
+                              } else if (state is CampaignsLoadingMore) {
+                                final filteredCampaigns = _filterCampaigns(state
+                                    .campaigns
+                                    .cast<Map<String, dynamic>>());
+                                if (filteredCampaigns.isEmpty) {
+                                  return SliverToBoxAdapter(
+                                    child: _buildNoCampaignsState(),
+                                  );
+                                } else {
+                                  return _buildCampaignsListWithLoadingSliver(
+                                      state, filteredCampaigns);
+                                }
+                              } else {
+                                return SliverToBoxAdapter(
+                                  child: _buildInitialState(),
+                                );
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -518,10 +569,6 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildLoadingState() {
-    return _buildShimmerList();
-  }
-
   Widget _buildErrorState(CampaignsError state) {
     // Check if it's a 403 status code
     final isAccountNotActive = state.statusCode == 403;
@@ -537,7 +584,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                   ? Icons.account_circle_outlined
                   : Icons.wifi_off,
               size: 64,
-              color: isAccountNotActive ? Colors.red : Colors.orange,
+              color: isAccountNotActive ? Colors.green : Colors.orange,
             ),
             const SizedBox(height: 16),
             Text(
@@ -557,7 +604,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                   ? AppTranslations.getString(context, 'account_not_active')
                   : 'Please check your internet connection and try again.',
               style: TextStyle(
-                color: isAccountNotActive ? Colors.red : Colors.orange,
+                color: isAccountNotActive ? Colors.green : Colors.orange,
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -605,13 +652,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildCampaignsList(
+  Widget _buildCampaignsListSliver(
       CampaignsLoaded state, List<Map<String, dynamic>> filteredCampaigns) {
     int totalClicks = state.campaigns.fold<int>(
         0, (sum, campaign) => sum + (campaign['clicks'] as int? ?? 0));
 
-    return Column(
-      children: [
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        // Summary Cards
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -635,67 +683,55 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              context.read<CampaignsBloc>().add(RefreshCampaigns(
-                    status: _currentStatus == 'all' ? null : _currentStatus,
-                    limit: 10, // Normal page size like influencers
-                  ));
-            },
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: filteredCampaigns.length + (state.hasMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == filteredCampaigns.length) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        if (state.hasMore) ...[
-                          // Loading indicator removed for better UX
-                        ] else ...[
-                          Text(
-                            'No more campaigns available',
-                            style: TextStyle(
-                              color: AppTheme.textSecondaryColor,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        // Pagination disabled - all campaigns loaded at once
-                        Text(
-                          'All campaigns loaded (${filteredCampaigns.length}/${state.total})',
-                          style: TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildCampaignCard(filteredCampaigns[index]),
-                );
-              },
+        // Campaigns List
+        ...filteredCampaigns.asMap().entries.map((entry) {
+          final index = entry.key;
+          final campaign = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: index < filteredCampaigns.length - 1 ? 12 : 16,
+            ),
+            child: _buildCampaignCard(campaign),
+          );
+        }).toList(),
+        // End message
+        if (!state.hasMore)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Text(
+                  'No more campaigns available',
+                  style: TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'All campaigns loaded (${filteredCampaigns.length}/${state.total})',
+                  style: TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
-        )
-      ],
+      ]),
     );
   }
 
-  Widget _buildCampaignsListWithLoading(CampaignsLoadingMore state,
+  Widget _buildCampaignsListWithLoadingSliver(CampaignsLoadingMore state,
       List<Map<String, dynamic>> filteredCampaigns) {
     int totalClicks = state.campaigns.fold<int>(
         0, (sum, campaign) => sum + (campaign['clicks'] as int? ?? 0));
 
-    return Column(
-      children: [
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        // Summary Cards
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -719,38 +755,29 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              context.read<CampaignsBloc>().add(RefreshCampaigns(
-                    status: _currentStatus == 'all' ? null : _currentStatus,
-                    limit: 10, // Normal page size like influencers
-                  ));
-            },
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount:
-                  filteredCampaigns.length + 1, // +1 for loading indicator
-              itemBuilder: (context, index) {
-                if (index == filteredCampaigns.length) {
-                  // Show loading indicator at the bottom
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: AppTheme.accentColor,
-                      ),
-                    ),
-                  );
-                }
-                final campaign = filteredCampaigns[index];
-                return _buildCampaignCard(campaign);
-              },
+        // Campaigns List
+        ...filteredCampaigns.asMap().entries.map((entry) {
+          final index = entry.key;
+          final campaign = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: index < filteredCampaigns.length - 1 ? 12 : 16,
+            ),
+            child: _buildCampaignCard(campaign),
+          );
+        }).toList(),
+        // Loading indicator at the bottom
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: AppTheme.accentColor,
             ),
           ),
         ),
-      ],
+      ]),
     );
   }
 
@@ -992,15 +1019,17 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         children: [
           const Icon(Icons.campaign, color: Colors.white, size: 60),
           const SizedBox(height: 20),
-          const Text("There are no campaign yet!",
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            AppTranslations.getString(context, 'no_campaigns_yet'),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text("Go to Influencer and invite them for campaigns",
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-              textAlign: TextAlign.center),
+          Text(
+            AppTranslations.getString(context, 'go_to_influencers_message'),
+            style: const TextStyle(color: Colors.grey, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _goToInfluencers,
@@ -1013,12 +1042,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text("Go to Influencer",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                SizedBox(width: 8),
-                Icon(Icons.people, size: 20)
+              children: [
+                Text(
+                  AppTranslations.getString(context, 'go_to_influencers'),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.people, size: 20)
               ],
             ),
           )
@@ -1027,14 +1058,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildShimmerList() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
-      child: Column(
-        children: [
-          // Shimmer summary cards
-          Padding(
+  Widget _buildShimmerSliver() {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        // Shimmer summary cards
+        Shimmer.fromColors(
+          baseColor: Colors.grey[800]!,
+          highlightColor: Colors.grey[600]!,
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
@@ -1048,19 +1079,24 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          // Shimmer campaign cards
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 5, // Show 5 shimmer items
-              itemBuilder: (context, index) {
-                return _buildShimmerCard();
-              },
+        ),
+        const SizedBox(height: 8),
+        // Shimmer campaign cards
+        ...List.generate(5, (index) {
+          return Shimmer.fromColors(
+            baseColor: Colors.grey[800]!,
+            highlightColor: Colors.grey[600]!,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                bottom: index < 4 ? 12 : 16,
+              ),
+              child: _buildShimmerCard(),
             ),
-          ),
-        ],
-      ),
+          );
+        }),
+      ]),
     );
   }
 

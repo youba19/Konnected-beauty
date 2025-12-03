@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/bloc/app_bloc_observer.dart';
+import 'core/services/firebase_notification_service.dart';
 import 'core/bloc/language/language_bloc.dart';
 import 'core/bloc/welcome/welcome_bloc.dart';
 import 'core/bloc/saloon_registration/saloon_registration_bloc.dart';
@@ -32,9 +37,53 @@ import 'features/auth/presentation/pages/welcome_screen.dart';
 import 'features/company/presentation/pages/salon_main_wrapper.dart';
 import 'features/influencer/presentation/pages/influencer_home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Bloc.observer = AppBlocObserver();
+
+  // Initialize Firebase asynchronously (non-blocking)
+  // This prevents crashes during app startup
+  Future.microtask(() async {
+    try {
+      // Initialize Firebase
+      // On Android, if values.xml is not generated, initialize manually
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          await Firebase.initializeApp();
+          print('✅ Firebase initialized successfully');
+        } catch (e) {
+          // If initialization fails, try with manual options
+          print(
+              '⚠️ Firebase auto-init failed, trying manual initialization...');
+          await Firebase.initializeApp(
+            options: const FirebaseOptions(
+              apiKey: 'AIzaSyDZ8AJrJLRe528MeKc2x2YLp3bWZOK5de4',
+              appId: '1:712681738234:android:666b0d5c00ec6a537bde43',
+              messagingSenderId: '712681738234',
+              projectId: 'konected-beauty',
+              storageBucket: 'konected-beauty.firebasestorage.app',
+            ),
+          );
+          print('✅ Firebase initialized manually');
+        }
+      } else {
+        await Firebase.initializeApp();
+        print('✅ Firebase initialized successfully');
+      }
+
+      // Set up background message handler
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+      // Initialize Firebase Notification Service (non-blocking)
+      FirebaseNotificationService().initialize().catchError((error) {
+        print('⚠️ Firebase Notification Service initialization error: $error');
+      });
+    } catch (e, stackTrace) {
+      print('❌ Firebase initialization error: $e');
+      print('❌ Stack trace: $stackTrace');
+      print('⚠️ App will continue without Firebase features');
+    }
+  });
 
   // Debug: Print font loading
   print('🎨 === MAIN DEBUG ===');

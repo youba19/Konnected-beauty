@@ -169,95 +169,93 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  _buildHeader(),
+              child: GestureDetector(
+                onTap: () {
+                  // Close keyboard when tapping outside text fields
+                  FocusScope.of(context).unfocus();
+                },
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      _buildHeader(),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text(
-                      AppTranslations.getString(context, 'create_new_service'),
-                      style: AppTheme.headingStyle,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  // Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Information Banner
-                          _buildInformationBanner(),
+                      const SizedBox(height: 16),
 
-                          const SizedBox(height: 32),
+                      // Title
+                      Text(
+                        AppTranslations.getString(
+                            context, 'create_new_service'),
+                        style: AppTheme.headingStyle,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
 
-                          // Service Name Field
-                          CustomTextField(
-                            label: AppTranslations.getString(
-                                context, 'service_name'),
-                            placeholder: AppTranslations.getString(
-                                context, 'enter_service_name'),
-                            controller: serviceNameController,
-                            keyboardType: TextInputType.text,
-                            formFieldKey: serviceNameFormKey,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'service_name_required');
-                              }
-                              return null;
-                            },
-                            autovalidateMode: true,
-                            isError:
-                                serviceNameFormKey.currentState?.hasError ??
-                                    false,
-                            errorMessage:
-                                serviceNameFormKey.currentState?.hasError ==
-                                        true
-                                    ? AppTranslations.getString(
-                                        context, 'service_name_required')
-                                    : null,
-                          ),
+                      const SizedBox(height: 24),
 
-                          const SizedBox(height: 20),
+                      // Information Banner
+                      _buildInformationBanner(),
 
-                          // Service Price Field
-                          CustomTextField(
-                            label: AppTranslations.getString(
-                                context, 'service_price'),
-                            placeholder: AppTranslations.getString(
-                                context, 'enter_service_price'),
-                            controller: servicePriceController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.]')),
-                            ],
-                            formFieldKey: servicePriceFormKey,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'service_price_required');
-                              }
-                              if (int.tryParse(value) == null) {
-                                return AppTranslations.getString(
-                                    context, 'service_price_invalid');
-                              }
-                              return null;
-                            },
-                            autovalidateMode: true,
-                            isError:
-                                servicePriceFormKey.currentState?.hasError ??
-                                    false,
-                            errorMessage: servicePriceFormKey
-                                        .currentState?.hasError ==
-                                    true
+                      const SizedBox(height: 32),
+
+                      // Service Name Field
+                      CustomTextField(
+                        label:
+                            AppTranslations.getString(context, 'service_name'),
+                        placeholder: AppTranslations.getString(
+                            context, 'enter_service_name'),
+                        controller: serviceNameController,
+                        keyboardType: TextInputType.text,
+                        formFieldKey: serviceNameFormKey,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppTranslations.getString(
+                                context, 'service_name_required');
+                          }
+                          return null;
+                        },
+                        autovalidateMode: true,
+                        isError:
+                            serviceNameFormKey.currentState?.hasError ?? false,
+                        errorMessage:
+                            serviceNameFormKey.currentState?.hasError == true
+                                ? AppTranslations.getString(
+                                    context, 'service_name_required')
+                                : null,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Service Price Field
+                      CustomTextField(
+                        label:
+                            AppTranslations.getString(context, 'service_price'),
+                        placeholder: AppTranslations.getString(
+                            context, 'enter_service_price'),
+                        controller: servicePriceController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        ],
+                        formFieldKey: servicePriceFormKey,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppTranslations.getString(
+                                context, 'service_price_required');
+                          }
+                          if (int.tryParse(value) == null) {
+                            return AppTranslations.getString(
+                                context, 'service_price_invalid');
+                          }
+                          return null;
+                        },
+                        autovalidateMode: true,
+                        isError:
+                            servicePriceFormKey.currentState?.hasError ?? false,
+                        errorMessage:
+                            servicePriceFormKey.currentState?.hasError == true
                                 ? (int.tryParse(servicePriceController.text) ==
                                         null
                                     ? AppTranslations.getString(
@@ -265,65 +263,63 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                                     : AppTranslations.getString(
                                         context, 'service_price_required'))
                                 : null,
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Service Description Field
-                          CustomTextField(
-                            label: AppTranslations.getString(
-                                context, 'service_description'),
-                            placeholder: AppTranslations.getString(
-                                context, 'describe_service'),
-                            controller: serviceDescriptionController,
-                            keyboardType: TextInputType.multiline,
-                            maxLines: 5,
-                            formFieldKey: serviceDescriptionFormKey,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'service_description_required');
-                              }
-                              if (value.length < 10) {
-                                return AppTranslations.getString(
-                                    context, 'service_description_too_short');
-                              }
-                              return null;
-                            },
-                            autovalidateMode: true,
-                            isError: serviceDescriptionFormKey
-                                    .currentState?.hasError ??
-                                false,
-                            errorMessage: serviceDescriptionFormKey
-                                        .currentState?.hasError ==
-                                    true
-                                ? (serviceDescriptionController.text.length < 10
-                                    ? AppTranslations.getString(context,
-                                        'service_description_too_short')
-                                    : AppTranslations.getString(context,
-                                        'service_description_required'))
-                                : null,
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          // Create Service Button
-                          BlocBuilder<SalonServicesBloc, SalonServicesState>(
-                            builder: (context, state) {
-                              return CustomButton(
-                                text: AppTranslations.getString(
-                                    context, 'create_new_service'),
-                                onPressed: _createService,
-                                isLoading: state is SalonServiceCreating,
-                                leadingIcon: LucideIcons.plus,
-                              );
-                            },
-                          ),
-                        ],
                       ),
-                    ),
+
+                      const SizedBox(height: 20),
+
+                      // Service Description Field
+                      CustomTextField(
+                        label: AppTranslations.getString(
+                            context, 'service_description'),
+                        placeholder: AppTranslations.getString(
+                            context, 'describe_service'),
+                        controller: serviceDescriptionController,
+                        keyboardType: TextInputType.multiline,
+                        maxLines: 5,
+                        formFieldKey: serviceDescriptionFormKey,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppTranslations.getString(
+                                context, 'service_description_required');
+                          }
+                          if (value.length < 10) {
+                            return AppTranslations.getString(
+                                context, 'service_description_too_short');
+                          }
+                          return null;
+                        },
+                        autovalidateMode: true,
+                        isError:
+                            serviceDescriptionFormKey.currentState?.hasError ??
+                                false,
+                        errorMessage: serviceDescriptionFormKey
+                                    .currentState?.hasError ==
+                                true
+                            ? (serviceDescriptionController.text.length < 10
+                                ? AppTranslations.getString(
+                                    context, 'service_description_too_short')
+                                : AppTranslations.getString(
+                                    context, 'service_description_required'))
+                            : null,
+                      ),
+
+                      const SizedBox(height: 40),
+
+                      // Create Service Button
+                      BlocBuilder<SalonServicesBloc, SalonServicesState>(
+                        builder: (context, state) {
+                          return CustomButton(
+                            text: AppTranslations.getString(
+                                context, 'create_new_service'),
+                            onPressed: _createService,
+                            isLoading: state is SalonServiceCreating,
+                            leadingIcon: LucideIcons.plus,
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -331,21 +327,18 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(
-              LucideIcons.arrowLeft,
-              color: AppTheme.textPrimaryColor,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(
+            LucideIcons.arrowLeft,
+            color: AppTheme.textPrimaryColor,
           ),
-        ],
-      ),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
     );
   }
 
@@ -361,6 +354,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -375,18 +369,39 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: const TextSpan(
-                style: TextStyle(
-                  color: AppTheme.accentColor,
-                  fontSize: 14,
-                  height: 1.4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppTranslations.getString(
+                      context, 'create_only_services_you_want_to_promote'),
+                  style: const TextStyle(
+                    color: AppTheme.accentColor,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
                 ),
-                children: [
-                  TextSpan(text: 'Create only services '),
-                  TextSpan(text: 'you would like to promote'),
-                ],
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  AppTranslations.getString(
+                      context, 'discounts_applied_with_ambassadors'),
+                  style: const TextStyle(
+                    color: AppTheme.accentColor,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppTranslations.getString(
+                      context, 'packs_formulas_shared_more'),
+                  style: const TextStyle(
+                    color: AppTheme.accentColor,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

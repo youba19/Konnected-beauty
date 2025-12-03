@@ -4,7 +4,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:konnected_beauty/features/company/presentation/pages/salon_security_screen.dart';
 import 'package:konnected_beauty/features/company/presentation/pages/salon_information_screen.dart';
 import 'package:konnected_beauty/features/company/presentation/pages/salon_payment_information_screen.dart';
-import 'package:konnected_beauty/features/company/presentation/pages/notifications_screen.dart';
+import 'package:konnected_beauty/features/company/presentation/pages/language_screen.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
@@ -251,14 +251,14 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                               ),
                               const SizedBox(height: 12),
                               _buildSettingsOption(
-                                icon: LucideIcons.bell,
+                                icon: LucideIcons.languages,
                                 title: AppTranslations.getString(
-                                    context, 'notifications'),
+                                    context, 'language'),
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          const NotificationsScreen(),
+                                          const LanguageScreen(),
                                     ),
                                   );
                                 },
@@ -319,187 +319,201 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: AppTheme.scaffoldBackground,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.65,
             ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: BlocProvider(
-                  create: (_) => SalonReportBloc(),
-                  child: BlocConsumer<SalonReportBloc, SalonReportState>(
-                    listener: (context, state) {
-                      if (state is SalonReportSuccess) {
-                        Navigator.of(context).pop();
-                        _reportController.clear();
-                        TopNotificationService.showSuccess(
-                          context: this.context,
-                          message: AppTranslations.getString(
-                              this.context, 'report_submitted_successfully'),
-                        );
-                      } else if (state is SalonReportError) {
-                        TopNotificationService.showError(
-                          context: this.context,
-                          message: state.message,
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      final bool isLoading = state is SalonReportLoading;
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppTranslations.getString(context, 'report'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppTranslations.getString(
-                                context, 'report_subtitle'),
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            AppTranslations.getString(context, 'report'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppTheme.scaffoldBackground,
-                              borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: const Color(0xFF4A4A4A)),
-                            ),
-                            child: TextField(
-                              controller: _reportController,
-                              maxLines: 6,
-                              maxLength: 255,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: AppTranslations.getString(
-                                    context, 'describe_your_problem'),
-                                hintStyle: TextStyle(
-                                  color: Colors.white,
-                                ),
-                                counterText: '',
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.scaffoldBackground,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 24.0,
+                    top: 24.0,
+                    right: 24.0,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+                  ),
+                  child: BlocProvider(
+                    create: (_) => SalonReportBloc(),
+                    child: BlocConsumer<SalonReportBloc, SalonReportState>(
+                      listener: (context, state) {
+                        if (state is SalonReportSuccess) {
+                          Navigator.of(context).pop();
+                          _reportController.clear();
+                          TopNotificationService.showSuccess(
+                            context: this.context,
+                            message: AppTranslations.getString(
+                                this.context, 'report_submitted_successfully'),
+                          );
+                        } else if (state is SalonReportError) {
+                          TopNotificationService.showError(
+                            context: this.context,
+                            message: state.message,
+                          );
+                        }
+                      },
+                      builder: (context, state) {
+                        final bool isLoading = state is SalonReportLoading;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppTranslations.getString(context, 'report'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.scaffoldBackground,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: const Color(0xFF4A4A4A),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      AppTranslations.getString(
-                                          context, 'cancel'),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
+                            const SizedBox(height: 6),
+                            Text(
+                              AppTranslations.getString(
+                                  context, 'report_subtitle'),
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              AppTranslations.getString(context, 'report'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.scaffoldBackground,
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: const Color(0xFF4A4A4A)),
+                              ),
+                              child: TextField(
+                                controller: _reportController,
+                                maxLines: 6,
+                                maxLength: 100,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: AppTranslations.getString(
+                                      context, 'describe_your_problem'),
+                                  hintStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.5),
+                                  ),
+                                  counterStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.6),
+                                    fontSize: 12,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: TextButton(
-                                    onPressed: isLoading
-                                        ? null
-                                        : () {
-                                            final text =
-                                                _reportController.text.trim();
-                                            if (text.isEmpty) {
-                                              TopNotificationService.showInfo(
-                                                context: this.context,
-                                                message:
-                                                    AppTranslations.getString(
-                                                        this.context,
-                                                        'no_comment'),
-                                              );
-                                              return;
-                                            }
-                                            context
-                                                .read<SalonReportBloc>()
-                                                .add(SubmitSalonReport(text));
-                                          },
-                                    style: TextButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 16),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.scaffoldBackground,
                                         borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: const Color(0xFF4A4A4A),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        AppTranslations.getString(
+                                            context, 'cancel'),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
                                       ),
                                     ),
-                                    child: isLoading
-                                        ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.black,
-                                            ),
-                                          )
-                                        : Text(
-                                            AppTranslations.getString(
-                                                this.context, 'submit'),
-                                            style: const TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Container(
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: TextButton(
+                                      onPressed: isLoading
+                                          ? null
+                                          : () {
+                                              final text =
+                                                  _reportController.text.trim();
+                                              if (text.isEmpty) {
+                                                TopNotificationService.showInfo(
+                                                  context: this.context,
+                                                  message:
+                                                      AppTranslations.getString(
+                                                          this.context,
+                                                          'no_comment'),
+                                                );
+                                                return;
+                                              }
+                                              context
+                                                  .read<SalonReportBloc>()
+                                                  .add(SubmitSalonReport(text));
+                                            },
+                                      style: TextButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: isLoading
+                                          ? const SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.black,
+                                              ),
+                                            )
+                                          : Text(
+                                              AppTranslations.getString(
+                                                  this.context, 'submit'),
+                                              style: const TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -637,7 +651,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                 children: [
                   // Confirmation message
                   Text(
-                    'Are you sure you want to logout?',
+                    AppTranslations.getString(context, 'are_you_sure_logout'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -666,9 +680,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                                 color: const Color(0xFF4A4A4A),
                               ),
                             ),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(
+                            child: Text(
+                              AppTranslations.getString(context, 'cancel'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -700,19 +714,24 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(
                                   Icons.logout,
                                   color: Colors.red,
-                                  size: 20,
+                                  size: 18,
                                 ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Yes, logout',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    AppTranslations.getString(
+                                        context, 'yes_logout'),
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],

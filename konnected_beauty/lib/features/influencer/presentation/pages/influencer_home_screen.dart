@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:konnected_beauty/core/theme/app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/bloc/influencers/influencer_profile_bloc.dart';
 
 import '../../../../core/services/storage/token_storage_service.dart';
+import '../../../../core/services/api/influencers_service.dart';
+import '../../../../core/services/api/influencer_wallet_service.dart';
 
 import '../../../../features/auth/presentation/pages/welcome_screen.dart';
 import 'personal_information_screen.dart';
@@ -14,14 +17,18 @@ import 'social_information_screen.dart';
 import 'payment_information_screen.dart';
 import 'security_screen.dart';
 import 'campaigns_screen.dart';
-import 'influencer_campaign_detail_screen.dart';
+import 'campaign_details_screen.dart';
 import 'saloons_screen.dart';
+import 'wallet_screen.dart';
+import 'influencer_language_screen.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
+import '../../../../core/bloc/delete_campaign/delete_campaign_bloc.dart';
 import '../../../../core/bloc/influencer_account_deletion/influencer_account_deletion_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/common/account_deletion_dialog.dart';
+import '../../../../widgets/common/motivational_banner.dart';
 
 class InfluencerHomeScreen extends StatefulWidget {
   const InfluencerHomeScreen({super.key});
@@ -34,11 +41,100 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   int _selectedIndex = 0;
   final TextEditingController _reportController = TextEditingController();
 
+  // Stats data
+  Map<String, dynamic> _stats = {};
+  String _statsErrorMessage = '';
+  bool _isLoadingStats = true;
+
+  // Campaigns data
+  List<dynamic> _campaigns = [];
+  String _campaignsErrorMessage = '';
+  bool _isLoadingCampaigns = true;
+
   @override
   void initState() {
     super.initState();
     // Load profile data using BLoC
     context.read<InfluencerProfileBloc>().add(LoadInfluencerProfile());
+    // Load stats data
+    _loadStats();
+    // Load campaigns data
+    _loadCampaigns();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      print('📊 === LOADING INFLUENCER HOME STATS ===');
+
+      final statsResult = await InfluencerWalletService.getHomeStats();
+
+      if (mounted) {
+        if (statsResult['success'] == true) {
+          _stats = statsResult['data'] as Map<String, dynamic>;
+          _statsErrorMessage = '';
+          print('📊 Home stats loaded successfully: $_stats');
+        } else {
+          _statsErrorMessage = statsResult['message'] ?? 'Failed to load stats';
+          print('❌ Failed to load home stats: ${statsResult['message']}');
+        }
+
+        setState(() {
+          _isLoadingStats = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading home stats: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+          _statsErrorMessage = 'Error loading stats: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadCampaigns() async {
+    try {
+      print('📋 === LOADING INFLUENCER CAMPAIGNS FOR HOME ===');
+
+      final result = await InfluencersService.getInfluencerCampaigns(
+        page: 1,
+        limit: 10,
+        status: null, // Get all campaigns for filtering
+      );
+
+      if (mounted) {
+        if (result['success'] == true) {
+          _campaigns = List<dynamic>.from(result['data'] ?? []);
+          _campaignsErrorMessage = '';
+          print(
+              '📋 Campaigns loaded successfully: ${_campaigns.length} campaigns');
+        } else {
+          // Check if it's a 403 error (account not active)
+          final statusCode = result['statusCode'] ?? 0;
+          if (statusCode == 403) {
+            _campaignsErrorMessage =
+                AppTranslations.getString(context, 'account_not_active');
+          } else {
+            _campaignsErrorMessage =
+                result['message'] ?? 'Failed to load campaigns';
+          }
+          print('❌ Failed to load campaigns: ${result['message']}');
+        }
+
+        setState(() {
+          _isLoadingCampaigns = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading campaigns: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingCampaigns = false;
+          _campaignsErrorMessage = 'Error loading campaigns: ${e.toString()}';
+        });
+      }
+    }
   }
 
   @override
@@ -51,6 +147,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // TOP GREEN GLOW
@@ -106,185 +203,213 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: AppTheme.scaffoldBackground,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.65,
             ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: BlocProvider(
-                  create: (_) => InfluencerReportBloc(),
-                  child:
-                      BlocConsumer<InfluencerReportBloc, InfluencerReportState>(
-                    listener: (context, state) {
-                      if (state is InfluencerReportSuccess) {
-                        Navigator.of(context).pop();
-                        _reportController.clear();
-                        TopNotificationService.showSuccess(
-                          context: this.context,
-                          message: AppTranslations.getString(
-                              this.context, 'report_submitted_successfully'),
-                        );
-                      } else if (state is InfluencerReportError) {
-                        TopNotificationService.showError(
-                          context: this.context,
-                          message: state.message,
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      final bool isLoading = state is InfluencerReportLoading;
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppTranslations.getString(context, 'report'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppTranslations.getString(
-                                context, 'report_subtitle'),
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            AppTranslations.getString(context, 'report'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppTheme.scaffoldBackground,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.accentColor),
-                            ),
-                            child: TextField(
-                              controller: _reportController,
-                              maxLines: 6,
-                              maxLength: 255,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: AppTranslations.getString(
-                                    context, 'describe_your_problem'),
-                                hintStyle: const TextStyle(color: Colors.white),
-                                counterText: '',
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.scaffoldBackground,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: GestureDetector(
+                  onTap: () {
+                    // Close keyboard when tapping outside text fields
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      left: 24.0,
+                      top: 24.0,
+                      right: 24.0,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+                    ),
+                    child: BlocProvider(
+                      create: (_) => InfluencerReportBloc(),
+                      child: BlocConsumer<InfluencerReportBloc,
+                          InfluencerReportState>(
+                        listener: (context, state) {
+                          if (state is InfluencerReportSuccess) {
+                            Navigator.of(context).pop();
+                            _reportController.clear();
+                            TopNotificationService.showSuccess(
+                              context: this.context,
+                              message: AppTranslations.getString(this.context,
+                                  'report_submitted_successfully'),
+                            );
+                          } else if (state is InfluencerReportError) {
+                            TopNotificationService.showError(
+                              context: this.context,
+                              message: state.message,
+                            );
+                          }
+                        },
+                        builder: (context, state) {
+                          final bool isLoading =
+                              state is InfluencerReportLoading;
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: isLoading
-                                      ? null
-                                      : () => Navigator.of(context).pop(),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.scaffoldBackground,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: AppTheme.accentColor),
+                              Text(
+                                AppTranslations.getString(context, 'report'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                AppTranslations.getString(
+                                    context, 'report_subtitle'),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                AppTranslations.getString(context, 'report'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.scaffoldBackground,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: AppTheme.accentColor),
+                                ),
+                                child: TextField(
+                                  controller: _reportController,
+                                  maxLines: 6,
+                                  maxLength: 100,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    hintText: AppTranslations.getString(
+                                        context, 'describe_your_problem'),
+                                    hintStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
                                     ),
-                                    child: Text(
-                                      AppTranslations.getString(
-                                          context, 'cancel'),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
+                                    counterStyle: TextStyle(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 12,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: isLoading
+                                          ? null
+                                          : () => Navigator.of(context).pop(),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.scaffoldBackground,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: AppTheme.accentColor),
+                                        ),
+                                        child: Text(
+                                          AppTranslations.getString(
+                                              context, 'cancel'),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  child: TextButton(
-                                    onPressed: isLoading
-                                        ? null
-                                        : () {
-                                            final text =
-                                                _reportController.text.trim();
-                                            if (text.isEmpty) {
-                                              TopNotificationService.showInfo(
-                                                context: this.context,
-                                                message:
-                                                    AppTranslations.getString(
-                                                        this.context,
-                                                        'no_comment'),
-                                              );
-                                              return;
-                                            }
-                                            context
-                                                .read<InfluencerReportBloc>()
-                                                .add(SubmitInfluencerReport(
-                                                    text));
-                                          },
-                                    style: TextButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Container(
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
-                                    ),
-                                    child: isLoading
-                                        ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.black,
-                                            ),
-                                          )
-                                        : Text(
-                                            AppTranslations.getString(
-                                                this.context, 'submit'),
-                                            style: const TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                      child: TextButton(
+                                        onPressed: isLoading
+                                            ? null
+                                            : () {
+                                                final text = _reportController
+                                                    .text
+                                                    .trim();
+                                                if (text.isEmpty) {
+                                                  TopNotificationService
+                                                      .showInfo(
+                                                    context: this.context,
+                                                    message: AppTranslations
+                                                        .getString(this.context,
+                                                            'no_comment'),
+                                                  );
+                                                  return;
+                                                }
+                                                context
+                                                    .read<
+                                                        InfluencerReportBloc>()
+                                                    .add(SubmitInfluencerReport(
+                                                        text));
+                                              },
+                                        style: TextButton.styleFrom(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
+                                        ),
+                                        child: isLoading
+                                            ? const SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.black,
+                                                ),
+                                              )
+                                            : Text(
+                                                AppTranslations.getString(
+                                                    this.context, 'submit'),
+                                                style: const TextStyle(
+                                                  color: Colors.black,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ],
-                          ),
-                        ],
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -313,19 +438,33 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   Widget _buildHomeContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 90), // Add padding for navbar
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 20),
-          _buildDashboardCards(),
-          const SizedBox(height: 24),
-          _buildOngoingCampaign(),
-          const SizedBox(height: 20),
-          _buildReceivedInvitations(),
-        ],
+    return RefreshIndicator(
+      onRefresh: _refreshHomeData,
+      color: const Color(0xFF22C55E),
+      backgroundColor: const Color(0xFF1F1F1F),
+      child: SingleChildScrollView(
+        physics:
+            const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't fill screen
+        padding: const EdgeInsets.only(bottom: 90), // Add padding for navbar
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 20),
+            _buildDashboardCards(),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: MotivationalBanner(
+                text: AppTranslations.getString(context, 'share_more_win_more'),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildOngoingCampaign(),
+            const SizedBox(height: 20),
+            _buildReceivedInvitations(),
+          ],
+        ),
       ),
     );
   }
@@ -339,13 +478,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   Widget _buildWalletContent() {
-    return const Center(
-      child: Text(
-        'Wallet Screen',
-        style: TextStyle(
-            color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-      ),
-    );
+    return const WalletScreen();
   }
 
   Widget _buildProfileContent() {
@@ -453,7 +586,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           const SizedBox(width: 12),
           BlocBuilder<InfluencerProfileBloc, InfluencerProfileState>(
             builder: (context, state) {
-              String displayName = 'Loading...';
+              String displayName =
+                  AppTranslations.getString(context, 'loading');
 
               if (state is InfluencerProfileLoaded ||
                   state is InfluencerProfileUpdated) {
@@ -466,9 +600,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Good morning,",
-                    style: TextStyle(
+                  Text(
+                    AppTranslations.getString(context, 'good_morning'),
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
                     ),
@@ -486,8 +620,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             },
           ),
           const Spacer(),
-          const Icon(Icons.notifications_outlined,
-              color: Colors.white, size: 26),
+          // Notification icon hidden as requested
+          // const Icon(Icons.notifications_outlined,
+          //     color: Colors.white, size: 26),
         ],
       ),
     );
@@ -526,8 +661,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 }
 
                 return Container(
-                  width: 42,
-                  height: 42,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
@@ -544,8 +679,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                       : ClipOval(
                           child: Image.network(
                             profilePicture,
-                            width: 42,
-                            height: 42,
+                            width: 72,
+                            height: 72,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               print('❌ Error loading profile image: $error');
@@ -576,7 +711,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           Center(
             child: BlocBuilder<InfluencerProfileBloc, InfluencerProfileState>(
               builder: (context, state) {
-                String displayName = 'Loading...';
+                String displayName =
+                    AppTranslations.getString(context, 'loading');
 
                 if (state is InfluencerProfileLoaded ||
                     state is InfluencerProfileUpdated) {
@@ -585,7 +721,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                       : state as InfluencerProfileLoaded;
                   displayName = profileData.name.isNotEmpty
                       ? profileData.name
-                      : 'Unknown User';
+                      : AppTranslations.getString(context, 'unknown_user');
                 }
 
                 return Text(
@@ -606,7 +742,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           Center(
             child: BlocBuilder<InfluencerProfileBloc, InfluencerProfileState>(
               builder: (context, state) {
-                String username = 'Loading...';
+                String username = AppTranslations.getString(context, 'loading');
 
                 if (state is InfluencerProfileLoaded ||
                     state is InfluencerProfileUpdated) {
@@ -652,7 +788,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         children: [
           _buildProfileOption(
             icon: LucideIcons.personStanding,
-            title: 'Personal Information',
+            title: AppTranslations.getString(context, 'personal_information'),
             onTap: () {
               Navigator.push(
                 context,
@@ -662,10 +798,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           _buildProfileOption(
             icon: Icons.alternate_email,
-            title: 'Social Information',
+            title: AppTranslations.getString(context, 'social_information'),
             onTap: () {
               Navigator.push(
                 context,
@@ -675,10 +811,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           _buildProfileOption(
             icon: LucideIcons.wallet,
-            title: 'Payment Information',
+            title: AppTranslations.getString(context, 'payment_information'),
             onTap: () {
               Navigator.push(
                 context,
@@ -688,10 +824,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           _buildProfileOption(
             icon: Icons.shield_outlined,
-            title: 'Security',
+            title: AppTranslations.getString(context, 'security'),
             onTap: () {
               Navigator.push(
                 context,
@@ -701,23 +837,39 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           _buildProfileOption(
             icon: LucideIcons.messageSquare,
-            title: 'Report',
+            title: AppTranslations.getString(context, 'report'),
             onTap: () {
               _showReportBottomSheet(context);
             },
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           _buildProfileOption(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
+            icon: LucideIcons.languages,
+            title: AppTranslations.getString(context, 'language'),
             onTap: () {
-              // Handle notifications
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InfluencerLanguageScreen(),
+                ),
+              );
             },
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
+
+          // Notification button hidden as requested
+          // const SizedBox(height: 7),
+          // _buildProfileOption(
+          //   icon: Icons.notifications_outlined,
+          //   title: AppTranslations.getString(context, 'notifications'),
+          //   onTap: () {
+          //     // Handle notifications
+          //   },
+          // ),
+          // const SizedBox(height: 7),
           _buildProfileOption(
             icon: Icons.delete_forever,
             title: AppTranslations.getString(context, 'delete_account'),
@@ -726,10 +878,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             },
             isDestructive: true,
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
           _buildProfileOption(
             icon: Icons.logout,
-            title: 'Logout',
+            title: AppTranslations.getString(context, 'logout'),
             onTap: () async {
               // Store context locally to avoid async gap issues
               final currentContext = context;
@@ -757,6 +909,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: AppTheme.secondaryColor,
@@ -804,15 +957,33 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _buildStatCard("12k", "Total Revenue", Icons.settings),
+          _buildStatCard(
+            _isLoadingStats
+                ? AppTranslations.getString(context, 'loading')
+                : _statsErrorMessage.isNotEmpty || _stats.isEmpty
+                    ? "--"
+                    : "€ ${(_stats['totalRevenue']?['totalRevenue'] ?? 0.0).toStringAsFixed(0)}",
+            AppTranslations.getString(context, 'total_revenue'),
+            Icons.euro,
+          ),
           const SizedBox(width: 12),
-          _buildStatCard("1,200", "Total Orders", Icons.groups_2_outlined),
+          _buildStatCard(
+            _isLoadingStats
+                ? AppTranslations.getString(context, 'loading')
+                : _statsErrorMessage.isNotEmpty || _stats.isEmpty
+                    ? "--"
+                    : "${_stats['totalOrders']?['totalOrders'] ?? 0}",
+            AppTranslations.getString(context, 'total_orders'),
+            Icons.groups_2_outlined,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildStatCard(String value, String title, IconData icon) {
+    final isLoading = value == AppTranslations.getString(context, 'loading');
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -820,226 +991,187 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+        child: isLoading
+            ? _buildShimmerStatCard()
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color:
+                                value == "Error" ? Colors.red : Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(icon,
+                          color: value == "Error" ? Colors.red : Colors.black87,
+                          size: 22),
+                    ],
                   ),
-                ),
-                Icon(icon, color: Colors.black87, size: 22),
-              ],
-            ),
-            const SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-            // Green curved chart look (simple gradient block to match mock)
-            Container(
-              height: 56,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF22C55E).withOpacity(0.6),
-                    const Color(0xFF22C55E).withOpacity(0.22),
-                    const Color(0xFF22C55E).withOpacity(0.06),
-                  ],
+                  // Real chart using stats API data
+                  Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: CustomPaint(
+                      painter: _HomeChartPainter(
+                        dailyData: title ==
+                                AppTranslations.getString(
+                                    context, 'total_revenue')
+                            ? (_stats['totalRevenue']?['dailyRevenue'] ?? [])
+                            : (_stats['totalOrders']?['dailyOrders'] ?? []),
+                        isRevenue: title ==
+                            AppTranslations.getString(context, 'total_revenue'),
+                      ),
+                      size: const Size(double.infinity, 56),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerStatCard() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Value shimmer
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 80,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-                color: Colors.black87,
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(11),
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Chart shimmer
+          Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Title shimmer
+          Container(
+            width: 100,
+            height: 15,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   /// ONGOING CAMPAIGN
   Widget _buildOngoingCampaign() {
-    // Mock campaign data - replace with actual data from BLoC
-    final mockCampaign = {
-      'id': '2',
-      'saloonName': 'Beauty Studio',
-      'createdAt': '15/07/2025',
-      'status': 'on going',
-      'promotionType': 'Fixed Amount',
-      'promotionValue': '50 EUR',
-      'message': 'Great collaboration opportunity!',
-      'clicks': 1250,
-      'completedOrders': 35,
-      'total': '1,750 EUR',
-    };
+    if (_isLoadingCampaigns) {
+      return _buildShimmerCampaignCard();
+    }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Ongoing campaign",
-            style: TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      InfluencerCampaignDetailScreen(campaign: mockCampaign),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppTheme.secondaryColor,
-                borderRadius: BorderRadius.circular(18),
-                border:
-                    Border.all(color: AppTheme.borderColor.withOpacity(0.12)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        (mockCampaign['saloonName'] as String?) ??
-                            "Saloon name",
-                        style: TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        (mockCampaign['promotionValue'] as String?) ?? "20%",
-                        style: TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    (mockCampaign['createdAt'] as String?) ??
-                        "20/08/2025 12:00",
-                    style: TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "${mockCampaign['completedOrders']} Orders",
-                    style: TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    if (_campaignsErrorMessage.isNotEmpty) {
+      return _buildErrorCard(_campaignsErrorMessage);
+    }
+
+    final ongoingCampaign = _getLastOngoingCampaign();
+
+    if (ongoingCampaign == null) {
+      return _buildEmptyCard(
+          AppTranslations.getString(context, 'no_ongoing_campaigns'));
+    }
+
+    return _buildCampaignCard(
+      campaign: ongoingCampaign,
+      title: AppTranslations.getString(context, 'ongoing_campaign'),
+      icon: LucideIcons.playCircle,
+      color: const Color(0xFF22C55E),
     );
   }
 
   /// RECEIVED INVITATIONS
   Widget _buildReceivedInvitations() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Received invitations",
-            style: TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppTheme.secondaryColor,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.borderColor.withOpacity(0.12)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      "Saloon name",
-                      style: TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      "20%",
-                      style: TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "20/08/2025 12:00",
-                  style: TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "Salut Perdo! Accepter svp!",
-                  style: TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    if (_isLoadingCampaigns) {
+      return _buildShimmerCampaignCard();
+    }
+
+    // Don't show error for account not active in received invitations
+    // since it's already shown in ongoing campaigns section
+    if (_campaignsErrorMessage.isNotEmpty) {
+      final isAccountNotActive =
+          _campaignsErrorMessage.toLowerCase().contains('account not active') ||
+              _campaignsErrorMessage.toLowerCase().contains('compte non actif');
+      if (isAccountNotActive) {
+        return const SizedBox
+            .shrink(); // Hide this section for account not active
+      }
+      return _buildErrorCard(_campaignsErrorMessage);
+    }
+
+    final invitation = _getLastReceivedInvitation();
+
+    if (invitation == null) {
+      return _buildEmptyCard(
+          AppTranslations.getString(context, 'no_pending_invitations'));
+    }
+
+    return _buildCampaignCard(
+      campaign: invitation,
+      title: AppTranslations.getString(context, 'received_invitation'),
+      icon: LucideIcons.mail,
+      color: const Color(0xFF3B82F6),
     );
   }
 
@@ -1094,13 +1226,27 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
             // NAV ITEMS ROW
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _navItem(0, LucideIcons.clipboardList, "Home"),
-                _navItem(1, LucideIcons.store, "Saloons"),
-                _navItem(2, LucideIcons.ticket, "Campaign"),
-                _navItem(3, LucideIcons.wallet, "Wallet"),
-                _navItem(4, LucideIcons.user, "Profile"),
+                Expanded(
+                  child: _navItem(0, LucideIcons.clipboardList,
+                      AppTranslations.getString(context, 'home')),
+                ),
+                Expanded(
+                  child: _navItem(1, LucideIcons.store,
+                      AppTranslations.getString(context, 'saloons')),
+                ),
+                Expanded(
+                  child: _navItem(2, LucideIcons.ticket,
+                      AppTranslations.getString(context, 'campaign')),
+                ),
+                Expanded(
+                  child: _navItem(3, LucideIcons.wallet,
+                      AppTranslations.getString(context, 'wallet')),
+                ),
+                Expanded(
+                  child: _navItem(4, LucideIcons.user,
+                      AppTranslations.getString(context, 'profile')),
+                ),
               ],
             ),
           ],
@@ -1117,6 +1263,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             icon,
@@ -1126,14 +1274,19 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             size: 24,
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? AppTheme.textPrimaryColor
-                  : AppTheme.navBartextColor,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          Flexible(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected
+                    ? AppTheme.textPrimaryColor
+                    : AppTheme.navBartextColor,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -1163,9 +1316,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Confirmation message
-                  const Text(
-                    'Are you sure you want to logout?',
-                    style: TextStyle(
+                  Text(
+                    AppTranslations.getString(context, 'are_you_sure_logout'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
@@ -1193,9 +1346,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(
+                            child: Text(
+                              AppTranslations.getString(context, 'cancel'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -1221,18 +1374,19 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.logout,
                                   color: Colors.red,
                                   size: 20,
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
-                                  'Yes, logout',
-                                  style: TextStyle(
+                                  AppTranslations.getString(
+                                      context, 'yes_logout'),
+                                  style: const TextStyle(
                                     color: Colors.red,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
@@ -1303,7 +1457,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Logout failed: ${e.toString()}'),
+            content: Text(
+                '${AppTranslations.getString(context, 'logout_failed')}: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1319,5 +1474,682 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         child: const AccountDeletionDialog(userType: 'influencer'),
       ),
     );
+  }
+
+  /// Get the last ongoing campaign
+  Map<String, dynamic>? _getLastOngoingCampaign() {
+    if (_campaigns.isEmpty) return null;
+
+    // Filter for ongoing campaigns (status: 'in progress') - same logic as campaigns screen
+    final ongoingCampaigns = _campaigns.where((campaign) {
+      final status = campaign['status']?.toString().toLowerCase();
+      return status == 'in progress';
+    }).toList();
+
+    if (ongoingCampaigns.isEmpty) return null;
+
+    // Sort by creation date (newest first) and return the first one
+    ongoingCampaigns.sort((a, b) {
+      final dateA = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime(1970);
+      final dateB = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime(1970);
+      return dateB.compareTo(dateA);
+    });
+
+    return ongoingCampaigns.first;
+  }
+
+  /// Get the last received invitation
+  Map<String, dynamic>? _getLastReceivedInvitation() {
+    if (_campaigns.isEmpty) return null;
+
+    // Filter for received invitations (initiator: 'salon' && status: 'pending') - same logic as campaigns screen
+    final receivedInvitations = _campaigns.where((campaign) {
+      final status = campaign['status']?.toString().toLowerCase();
+      final initiator = campaign['initiator']?.toString().toLowerCase();
+      return initiator == 'salon' && status == 'pending';
+    }).toList();
+
+    if (receivedInvitations.isEmpty) return null;
+
+    // Sort by creation date (newest first) and return the first one
+    receivedInvitations.sort((a, b) {
+      final dateA = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime(1970);
+      final dateB = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime(1970);
+      return dateB.compareTo(dateA);
+    });
+
+    return receivedInvitations.first;
+  }
+
+  /// Format date
+  String _formatDate(String? dateString) {
+    if (dateString == null)
+      return AppTranslations.getString(context, 'unknown');
+
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays} ${difference.inDays == 1 ? AppTranslations.getString(context, 'day_ago') : AppTranslations.getString(context, 'days_ago')}';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} ${difference.inHours == 1 ? AppTranslations.getString(context, 'hour_ago') : AppTranslations.getString(context, 'hours_ago')}';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} ${difference.inMinutes == 1 ? AppTranslations.getString(context, 'minute_ago') : AppTranslations.getString(context, 'minutes_ago')}';
+      } else {
+        return AppTranslations.getString(context, 'just_now');
+      }
+    } catch (e) {
+      return AppTranslations.getString(context, 'unknown');
+    }
+  }
+
+  /// Build campaign card
+  /// Get promotion icon based on promotionType
+  IconData _getPromotionIcon(Map<String, dynamic> campaign) {
+    final promotionType = campaign['promotionType']?.toString().toLowerCase();
+    if (promotionType == 'percentage') {
+      return LucideIcons.percent;
+    } else {
+      return LucideIcons.euro;
+    }
+  }
+
+  /// Get promotion text based on promotionType
+  String _getPromotionText(Map<String, dynamic> campaign) {
+    final promotionType = campaign['promotionType']?.toString().toLowerCase();
+    final promotionValue = campaign['promotion'] ?? '0';
+
+    if (promotionType == 'percentage') {
+      return '$promotionValue';
+    } else {
+      return '$promotionValue';
+    }
+  }
+
+  /// Get translated status text
+  String _getTranslatedStatus(String? status) {
+    if (status == null) return AppTranslations.getString(context, 'pending');
+
+    final statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case 'pending':
+        return AppTranslations.getString(context, 'pending');
+      case 'in progress':
+      case 'ongoing':
+        return AppTranslations.getString(context, 'on_going_status');
+      case 'accepted':
+        return AppTranslations.getString(context, 'accepted');
+      case 'rejected':
+        return AppTranslations.getString(context, 'rejected');
+      case 'finished':
+        return AppTranslations.getString(context, 'finished');
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  Widget _buildCampaignCard({
+    required Map<String, dynamic> campaign,
+    required String title,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BlocProvider(
+                    create: (context) => DeleteCampaignBloc(),
+                    child: CampaignDetailsScreen(
+                      campaign: campaign,
+                      onCampaignDeleted: () {
+                        // Refresh campaigns when a campaign is deleted
+                        // You can add refresh logic here if needed
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryColor,
+                borderRadius: BorderRadius.circular(18),
+                border:
+                    Border.all(color: AppTheme.borderColor.withOpacity(0.12)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, color: color, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          campaign['salon']?['salonInfo']?['name'] ??
+                              AppTranslations.getString(
+                                  context, 'campaign_title'),
+                          style: TextStyle(
+                            color: AppTheme.textPrimaryColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _getTranslatedStatus(campaign['status']?.toString()),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    campaign['invitationMessage'] ??
+                        AppTranslations.getString(
+                            context, 'no_description_available'),
+                    style: TextStyle(
+                      color: AppTheme.textSecondaryColor,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      // Show different icon based on promotionType
+                      Icon(_getPromotionIcon(campaign),
+                          size: 16, color: AppTheme.textSecondaryColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        _getPromotionText(campaign),
+                        style: TextStyle(
+                          color: AppTheme.textPrimaryColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _formatDate(campaign['createdAt']),
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build loading card
+  Widget _buildLoadingCard(String message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryColor,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build shimmer campaign card
+  Widget _buildShimmerCampaignCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title shimmer
+          Container(
+            width: 150,
+            height: 22,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Card shimmer
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header row shimmer
+                  Row(
+                    children: [
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 60,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Description shimmer
+                  Container(
+                    width: double.infinity,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Bottom row shimmer
+                  Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 80,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 60,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build error card
+  Widget _buildErrorCard(String message) {
+    // Check if it's an account not active error
+    final isAccountNotActive =
+        message.toLowerCase().contains('account not active') ||
+            message.toLowerCase().contains('compte non actif');
+
+    if (isAccountNotActive) {
+      return SizedBox(
+        height: 300, // Use more screen space
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.account_circle_outlined,
+                  size: 80, // Larger icon
+                  color: AppTheme.greenColor,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  AppTranslations.getString(context, 'account_not_active'),
+                  style: AppTheme.applyPoppins(const TextStyle(
+                    color: AppTheme.textPrimaryColor,
+                    fontSize: 20, // Larger text
+                    fontWeight: FontWeight.bold,
+                  )),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  AppTranslations.getString(context, 'account_not_active'),
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: AppTheme.greenColor,
+                    fontSize: 16, // Larger subtitle
+                  )),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.red, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.red,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build empty card
+  Widget _buildEmptyCard(String message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info, color: Colors.grey[600], size: 20),
+            const SizedBox(width: 12),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Refresh home data
+  Future<void> _refreshHomeData() async {
+    print('🔄 === REFRESHING HOME DATA ===');
+    try {
+      // Reload stats and campaigns data
+      await Future.wait([
+        _loadStats(),
+        _loadCampaigns(),
+      ]);
+      print('✅ Home data refreshed successfully');
+    } catch (e) {
+      print('❌ Error refreshing home data: $e');
+    }
+  }
+}
+
+class _HomeChartPainter extends CustomPainter {
+  final List<dynamic> dailyData;
+  final bool isRevenue;
+
+  _HomeChartPainter({
+    required this.dailyData,
+    required this.isRevenue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Process daily data from home stats API
+    List<double> values = [];
+    if (dailyData.isNotEmpty) {
+      for (var day in dailyData) {
+        if (day is Map<String, dynamic>) {
+          if (isRevenue) {
+            values.add((day['revenue'] ?? 0.0).toDouble());
+          } else {
+            // For orders, use the count field
+            values.add((day['count'] ?? 0.0).toDouble());
+          }
+        }
+      }
+    }
+
+    // If no data, create a flat line
+    if (values.isEmpty) {
+      values = List.filled(30, 0.0);
+    }
+
+    // Find max value for scaling
+    double maxValue =
+        values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 1.0;
+    if (maxValue == 0) maxValue = 1.0; // Avoid division by zero
+
+    // Create path based on actual data from stats API with smooth curves
+    final path = Path();
+    final linePath = Path();
+
+    // Check if we have real data (not all zeros)
+    final hasRealData = maxValue > 0;
+
+    if (!hasRealData) {
+      // If no real data, draw a flat line at the bottom
+      path.moveTo(0, size.height * 0.9);
+      path.lineTo(size.width, size.height * 0.9);
+      path.lineTo(size.width, size.height);
+      path.lineTo(0, size.height);
+      path.close();
+
+      linePath.moveTo(0, size.height * 0.9);
+      linePath.lineTo(size.width, size.height * 0.9);
+    } else {
+      // Calculate data points
+      List<Offset> dataPoints = [];
+      for (int i = 0; i < values.length; i++) {
+        double x = (i / (values.length - 1)) * size.width;
+        double normalizedValue = values[i] / maxValue;
+        double y = size.height -
+            (normalizedValue * size.height * 0.8) -
+            (size.height * 0.1);
+        dataPoints.add(Offset(x, y));
+      }
+
+      // Create smooth curves using cubic Bézier
+      if (dataPoints.isNotEmpty) {
+        path.moveTo(dataPoints[0].dx, dataPoints[0].dy);
+        linePath.moveTo(dataPoints[0].dx, dataPoints[0].dy);
+
+        for (int i = 1; i < dataPoints.length; i++) {
+          final current = dataPoints[i];
+          final previous = dataPoints[i - 1];
+
+          // Calculate control points for smooth curves
+          double tension = 0.3; // Controls curve smoothness
+          double controlPointOffset = (current.dx - previous.dx) * tension;
+
+          Offset controlPoint1, controlPoint2;
+
+          if (i == 1) {
+            // First curve segment
+            controlPoint1 = Offset(
+              previous.dx + controlPointOffset,
+              previous.dy,
+            );
+            controlPoint2 = Offset(
+              current.dx - controlPointOffset,
+              current.dy,
+            );
+          } else if (i == dataPoints.length - 1) {
+            // Last curve segment
+            controlPoint1 = Offset(
+              previous.dx + controlPointOffset,
+              previous.dy,
+            );
+            controlPoint2 = Offset(
+              current.dx - controlPointOffset,
+              current.dy,
+            );
+          } else {
+            // Middle curve segments
+            final next = dataPoints[i + 1];
+            final prev = dataPoints[i - 1];
+
+            controlPoint1 = Offset(
+              previous.dx + (current.dx - prev.dx) * tension,
+              previous.dy + (current.dy - prev.dy) * tension,
+            );
+            controlPoint2 = Offset(
+              current.dx - (next.dx - previous.dx) * tension,
+              current.dy - (next.dy - previous.dy) * tension,
+            );
+          }
+
+          path.cubicTo(controlPoint1.dx, controlPoint1.dy, controlPoint2.dx,
+              controlPoint2.dy, current.dx, current.dy);
+          linePath.cubicTo(controlPoint1.dx, controlPoint1.dy, controlPoint2.dx,
+              controlPoint2.dy, current.dx, current.dy);
+        }
+      }
+    }
+
+    // Close the path for fill
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    // Create gradient fill
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFF22C55E).withOpacity(0.6),
+          const Color(0xFF22C55E).withOpacity(0.22),
+          const Color(0xFF22C55E).withOpacity(0.06),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.fill;
+
+    final linePaint = Paint()
+      ..color = const Color(0xFF22C55E)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    // Draw fill
+    canvas.drawPath(path, fillPaint);
+
+    // Draw line
+    canvas.drawPath(linePath, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    if (oldDelegate is _HomeChartPainter) {
+      return oldDelegate.dailyData != dailyData ||
+          oldDelegate.isRevenue != isRevenue;
+    }
+    return true;
   }
 }

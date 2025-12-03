@@ -22,20 +22,22 @@ class SalonAccountDeletionBloc
       emit(SalonAccountDeletionError(message: 'Reason is required'));
       return;
     }
-    
+
     emit(SalonAccountDeletionLoading());
-    
+
     final result = await reportsService.requestSalonAccountDeletion(
       reason: trimmed,
     );
-    
+
     if (result['success'] == true) {
       emit(SalonAccountDeletionSuccess(
-        message: result['message'] ?? 'Account deletion request submitted successfully',
+        message: result['message'] ??
+            'Account deletion request submitted successfully',
       ));
     } else {
       emit(SalonAccountDeletionError(
-        message: result['message'] ?? 'Failed to submit account deletion request',
+        message:
+            result['message'] ?? 'Failed to submit account deletion request',
       ));
     }
   }

@@ -76,53 +76,59 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           ),
         ),
         child: SafeArea(
-          child: BlocConsumer<SalonPasswordBloc, SalonPasswordState>(
-            listener: (context, state) {
-              if (state is SalonPasswordChanged) {
-                TopNotificationService.showSuccess(
-                  context: context,
-                  message: state.message,
-                );
-
-                // Clear the form after successful password change
-                _currentPasswordController.clear();
-                _newPasswordController.clear();
-                _confirmPasswordController.clear();
-                setState(() {
-                  _showCurrentPassword = false;
-                  _showNewPassword = false;
-                  _showConfirmPassword = false;
-                });
-
-                // Navigate back to settings screen after successful password change
-                Navigator.of(context).pop();
-              } else if (state is SalonPasswordError) {
-                // Show only the clean error message (no API response details)
-                TopNotificationService.showError(
-                  context: context,
-                  message: state.error,
-                );
-              }
+          child: GestureDetector(
+            onTap: () {
+              // Close keyboard when tapping outside text fields
+              FocusScope.of(context).unfocus();
             },
-            builder: (context, state) {
-              return Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildPasswordSection(),
-                        ],
+            child: BlocConsumer<SalonPasswordBloc, SalonPasswordState>(
+              listener: (context, state) {
+                if (state is SalonPasswordChanged) {
+                  TopNotificationService.showSuccess(
+                    context: context,
+                    message: state.message,
+                  );
+
+                  // Clear the form after successful password change
+                  _currentPasswordController.clear();
+                  _newPasswordController.clear();
+                  _confirmPasswordController.clear();
+                  setState(() {
+                    _showCurrentPassword = false;
+                    _showNewPassword = false;
+                    _showConfirmPassword = false;
+                  });
+
+                  // Navigate back to settings screen after successful password change
+                  Navigator.of(context).pop();
+                } else if (state is SalonPasswordError) {
+                  // Show only the clean error message (no API response details)
+                  TopNotificationService.showError(
+                    context: context,
+                    message: state.error,
+                  );
+                }
+              },
+              builder: (context, state) {
+                return Column(
+                  children: [
+                    _buildHeader(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildPasswordSection(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

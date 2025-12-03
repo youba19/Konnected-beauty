@@ -30,6 +30,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   bool _controllersPopulated =
       false; // Track if controllers have been populated
   bool _zoneManuallyChanged = false; // Track if user manually changed the zone
+  bool _userIsEditing = false; // Track if user is currently editing any field
 
   List<String> _zones = [
     // Île-de-France
@@ -219,32 +220,88 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
   /// Populate controllers with profile data
   void _populateControllers(InfluencerProfileLoaded profile) {
-    // Only populate controllers if they haven't been populated yet
+    // Never populate controllers if user is currently editing
+    if (_userIsEditing) {
+      print(
+          '⚠️ User is currently editing, skipping controller population to preserve user input');
+      return;
+    }
+
+    // Don't populate if controllers are already populated and user might be editing
     if (_controllersPopulated) {
-      // Check if the profile data has changed significantly
+      // Check if any field has been modified by the user
       final currentName = _nameController.text.trim();
       final currentPseudo = _pseudoController.text.trim();
       final currentPhone = _phoneController.text.trim();
       final currentBio = _bioController.text.trim();
-      final currentZone = _selectedZone;
 
-      // Only update if the profile data is significantly different
+      // If any field differs from profile and is not empty, user has made changes
+      final userHasModifiedName =
+          currentName.isNotEmpty && currentName != profile.name;
+      final userHasModifiedPseudo =
+          currentPseudo.isNotEmpty && currentPseudo != profile.pseudo;
+      final userHasModifiedPhone = currentPhone.isNotEmpty &&
+          currentPhone != profile.phoneNumber &&
+          currentPhone != '+33';
+      final userHasModifiedBio =
+          currentBio.isNotEmpty && currentBio != profile.bio;
+
+      if (userHasModifiedName ||
+          userHasModifiedPseudo ||
+          userHasModifiedPhone ||
+          userHasModifiedBio) {
+        print(
+            '⚠️ User has modified fields, skipping controller population to preserve user input');
+        return;
+      }
+
+      // Only update if the profile data matches exactly (no user changes)
       if (currentName == profile.name &&
           currentPseudo == profile.pseudo &&
-          currentPhone == profile.phoneNumber &&
-          currentBio == profile.bio &&
-          currentZone == profile.zone) {
+          (currentPhone == profile.phoneNumber ||
+              (currentPhone == '+33' && profile.phoneNumber.isEmpty)) &&
+          currentBio == profile.bio) {
         // Profile data unchanged, skip controller update
         return;
       }
     }
 
-    // Update controllers with new profile data
-    _nameController.text = profile.name;
-    _pseudoController.text = profile.pseudo;
-    _emailController.text = profile.email;
-    _phoneController.text = profile.phoneNumber;
-    _bioController.text = profile.bio;
+    // Only populate controllers if they are empty or match the profile exactly
+    // This prevents overwriting user input
+    // Use value property to avoid triggering listeners unnecessarily
+    if (_nameController.text.isEmpty) {
+      _nameController.value = TextEditingValue(text: profile.name);
+    } else if (_nameController.text == profile.name) {
+      // Already matches, no need to update
+    }
+
+    if (_pseudoController.text.isEmpty) {
+      _pseudoController.value = TextEditingValue(text: profile.pseudo);
+    } else if (_pseudoController.text == profile.pseudo) {
+      // Already matches, no need to update
+    }
+
+    if (_emailController.text.isEmpty) {
+      _emailController.value = TextEditingValue(text: profile.email);
+    } else if (_emailController.text == profile.email) {
+      // Already matches, no need to update
+    }
+
+    // Set phone to +33 if empty, otherwise only update if it matches profile
+    final phoneValue =
+        profile.phoneNumber.isEmpty ? '+33' : profile.phoneNumber;
+    if (_phoneController.text.isEmpty) {
+      _phoneController.value = TextEditingValue(text: phoneValue);
+    } else if (_phoneController.text == phoneValue ||
+        (_phoneController.text == '+33' && profile.phoneNumber.isEmpty)) {
+      // Already matches, no need to update
+    }
+
+    if (_bioController.text.isEmpty) {
+      _bioController.value = TextEditingValue(text: profile.bio);
+    } else if (_bioController.text == profile.bio) {
+      // Already matches, no need to update
+    }
 
     // Update zone from API only if user hasn't manually changed it
     if (!_zoneManuallyChanged) {
@@ -292,7 +349,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
   /// Track user changes to form fields
   void _onFieldChanged() {
-    // Field change detected
+    // Mark that user is editing
+    _userIsEditing = true;
   }
 
   Future<void> _updateProfile() async {
@@ -323,6 +381,36 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         TopNotificationService.showError(
           context: context,
           message: 'Phone number is required',
+        );
+        return;
+      }
+
+      // Auto-convert 06 or 07 to +33 before sending
+      String finalPhoneNumber = phoneNumber;
+      if (phoneNumber.startsWith('06') || phoneNumber.startsWith('07')) {
+        // Validate that it's a valid French phone number format (10 or 11 digits)
+        if ((phoneNumber.length == 10 || phoneNumber.length == 11) &&
+            RegExp(r'^0[67]\d{8,9}$').hasMatch(phoneNumber)) {
+          // Take only the first 10 digits (remove the 0 and take 9 more digits)
+          // This handles cases where user might have typed 11 digits by mistake
+          String digits = phoneNumber.substring(1); // Remove the leading 0
+          if (digits.length > 9) {
+            digits = digits.substring(0, 9); // Take only 9 digits after the 0
+          }
+          finalPhoneNumber = '+33$digits';
+        } else {
+          TopNotificationService.showError(
+            context: context,
+            message:
+                AppTranslations.getString(context, 'please_enter_valid_phone'),
+          );
+          return;
+        }
+      } else if (!phoneNumber.startsWith('+33')) {
+        TopNotificationService.showError(
+          context: context,
+          message:
+              AppTranslations.getString(context, 'please_enter_valid_phone'),
         );
         return;
       }
@@ -374,7 +462,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
             UpdateInfluencerProfile(
               name: name,
               pseudo: pseudo,
-              phoneNumber: phoneNumber,
+              phoneNumber: finalPhoneNumber,
               bio: bio,
               zone: zone,
               profilePictureFile: _selectedImageFile,
@@ -935,207 +1023,227 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
           // MAIN CONTENT
           SafeArea(
-            child: BlocConsumer<InfluencerProfileBloc, InfluencerProfileState>(
-              listener: (context, state) {
-                if (state is InfluencerProfileUpdating) {
-                  // No notification needed during update
-                } else if (state is InfluencerProfileValidating) {
-                  // Show validation errors
-                  for (final error in state.validationErrors.entries) {
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
+              },
+              child:
+                  BlocConsumer<InfluencerProfileBloc, InfluencerProfileState>(
+                listener: (context, state) {
+                  if (state is InfluencerProfileUpdating) {
+                    // No notification needed during update
+                  } else if (state is InfluencerProfileValidating) {
+                    // Show validation errors
+                    for (final error in state.validationErrors.entries) {
+                      TopNotificationService.showError(
+                        context: context,
+                        message: '${error.key}: ${error.value}',
+                      );
+                    }
+                  } else if (state is InfluencerProfileUpdated) {
+                    // Show success message
+                    TopNotificationService.showSuccess(
+                      context: context,
+                      message: state.message,
+                    );
+
+                    // Reset the zone change flag since update was successful
+                    _zoneManuallyChanged = false;
+
+                    // Reset editing flag to allow future updates
+                    _userIsEditing = false;
+
+                    // Update controllers with the updated profile data
+                    _populateControllers(state.updatedProfile);
+
+                    // Navigate back to profile screen after successful update
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      Navigator.pop(context);
+                    });
+                  } else if (state is InfluencerProfileError) {
+                    // Show error message with details if available
+                    String errorMessage = state.error;
+                    if (state.details != null && state.details!.isNotEmpty) {
+                      errorMessage += '\nDetails: ${state.details}';
+                    }
                     TopNotificationService.showError(
                       context: context,
-                      message: '${error.key}: ${error.value}',
+                      message: errorMessage,
                     );
                   }
-                } else if (state is InfluencerProfileUpdated) {
-                  // Show success message
-                  TopNotificationService.showSuccess(
-                    context: context,
-                    message: state.message,
-                  );
+                },
+                builder: (context, state) {
+                  if (state is InfluencerProfileLoading ||
+                      state is InfluencerProfileUpdating) {
+                    return _buildShimmerContent();
+                  } else if (state is InfluencerProfileError) {
+                    return SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 0, vertical: 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // HEADER - Now scrollable
+                          _buildHeader(),
+                          const SizedBox(height: 24),
 
-                  // Reset the zone change flag since update was successful
-                  _zoneManuallyChanged = false;
+                          // Error content
+                          _buildErrorWidget(state.error, state.details),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    );
+                  } else if (state is InfluencerProfileLoaded ||
+                      state is InfluencerProfileValidating) {
+                    // Use the appropriate profile data
+                    final profileData = state is InfluencerProfileValidating
+                        ? state.currentProfile
+                        : state as InfluencerProfileLoaded;
 
-                  // Navigate back to profile screen after successful update
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    Navigator.pop(context);
-                  });
-                } else if (state is InfluencerProfileError) {
-                  // Show error message with details if available
-                  String errorMessage = state.error;
-                  if (state.details != null && state.details!.isNotEmpty) {
-                    errorMessage += '\nDetails: ${state.details}';
+                    // Populate controllers when profile is loaded (only once, and only if user is not editing)
+                    if (!_controllersPopulated && !_userIsEditing) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && !_userIsEditing) {
+                          _populateControllers(profileData);
+                        }
+                      });
+                    }
+
+                    return SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // HEADER - Now scrollable
+                          _buildHeader(),
+                          const SizedBox(height: 24),
+
+                          // Profile Picture
+                          _buildProfilePictureField(profileData.profilePicture),
+                          const SizedBox(height: 24),
+
+                          // Name
+                          CustomTextField(
+                            label: AppTranslations.getString(context, 'name') ??
+                                'Name',
+                            placeholder: AppTranslations.getString(
+                                    context, 'enter_name') ??
+                                'Enter your name',
+                            controller: _nameController,
+                            onChanged: (value) => _onFieldChanged(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Pseudo
+                          CustomTextField(
+                            label:
+                                AppTranslations.getString(context, 'pseudo') ??
+                                    'Pseudo',
+                            placeholder: AppTranslations.getString(
+                                    context, 'enter_pseudo') ??
+                                'Enter your pseudo',
+                            controller: _pseudoController,
+                            onChanged: (value) => _onFieldChanged(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Email (Read-only)
+                          CustomTextField(
+                            label:
+                                AppTranslations.getString(context, 'email') ??
+                                    'Email',
+                            placeholder: AppTranslations.getString(
+                                    context, 'enter_email') ??
+                                'Enter your email',
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            enabled: false, // Make it read-only
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Phone
+                          CustomTextField(
+                            label:
+                                AppTranslations.getString(context, 'phone') ??
+                                    'Phone',
+                            placeholder: AppTranslations.getString(
+                                    context, 'enter_phone') ??
+                                'Enter your phone',
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            onChanged: (value) => _onFieldChanged(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Bio
+                          CustomTextField(
+                            label: AppTranslations.getString(context, 'bio') ??
+                                'Bio',
+                            placeholder: AppTranslations.getString(
+                                    context, 'enter_bio') ??
+                                'Enter your bio',
+                            controller: _bioController,
+                            maxLines: 3,
+                            onChanged: (value) => _onFieldChanged(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Zone
+                          _buildZoneField(),
+                          const SizedBox(height: 32),
+
+                          // Edit Button
+                          _buildEditButton(),
+                          const SizedBox(height: 20),
+
+                          // Extra padding at bottom for better scrolling
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    );
+                  } else if (state is InfluencerProfileUpdated) {
+                    // Show loading while navigating back
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: Color(0xFF22C55E),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Profile updated successfully!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Navigating back...',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    // This should never happen, but provide a fallback
+                    return const Center(
+                      child: Text(
+                        'Loading...',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
                   }
-                  TopNotificationService.showError(
-                    context: context,
-                    message: errorMessage,
-                  );
-                }
-              },
-              builder: (context, state) {
-                if (state is InfluencerProfileLoading ||
-                    state is InfluencerProfileUpdating) {
-                  return _buildShimmerContent();
-                } else if (state is InfluencerProfileError) {
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER - Now scrollable
-                        _buildHeader(),
-                        const SizedBox(height: 24),
-
-                        // Error content
-                        _buildErrorWidget(state.error, state.details),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  );
-                } else if (state is InfluencerProfileLoaded ||
-                    state is InfluencerProfileValidating) {
-                  // Use the appropriate profile data
-                  final profileData = state is InfluencerProfileValidating
-                      ? state.currentProfile
-                      : state as InfluencerProfileLoaded;
-
-                  // Populate controllers when profile is loaded
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _populateControllers(profileData);
-                  });
-
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // HEADER - Now scrollable
-                        _buildHeader(),
-                        const SizedBox(height: 24),
-
-                        // Profile Picture
-                        _buildProfilePictureField(profileData.profilePicture),
-                        const SizedBox(height: 24),
-
-                        // Name
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'name') ??
-                              'Name',
-                          placeholder: AppTranslations.getString(
-                                  context, 'enter_name') ??
-                              'Enter your name',
-                          controller: _nameController,
-                          onChanged: (value) => _onFieldChanged(),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Pseudo
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'pseudo') ??
-                              'Pseudo',
-                          placeholder: AppTranslations.getString(
-                                  context, 'enter_pseudo') ??
-                              'Enter your pseudo',
-                          controller: _pseudoController,
-                          onChanged: (value) => _onFieldChanged(),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Email (Read-only)
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'email') ??
-                              'Email',
-                          placeholder: AppTranslations.getString(
-                                  context, 'enter_email') ??
-                              'Enter your email',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          enabled: false, // Make it read-only
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Phone
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'phone') ??
-                              'Phone',
-                          placeholder: AppTranslations.getString(
-                                  context, 'enter_phone') ??
-                              'Enter your phone',
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          onChanged: (value) => _onFieldChanged(),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Bio
-                        CustomTextField(
-                          label: AppTranslations.getString(context, 'bio') ??
-                              'Bio',
-                          placeholder:
-                              AppTranslations.getString(context, 'enter_bio') ??
-                                  'Enter your bio',
-                          controller: _bioController,
-                          maxLines: 3,
-                          onChanged: (value) => _onFieldChanged(),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Zone
-                        _buildZoneField(),
-                        const SizedBox(height: 32),
-
-                        // Edit Button
-                        _buildEditButton(),
-                        const SizedBox(height: 20),
-
-                        // Extra padding at bottom for better scrolling
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  );
-                } else if (state is InfluencerProfileUpdated) {
-                  // Show loading while navigating back
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          color: Color(0xFF22C55E),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Profile updated successfully!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Navigating back...',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  // This should never happen, but provide a fallback
-                  return const Center(
-                    child: Text(
-                      'Loading...',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  );
-                }
-              },
+                },
+              ),
             ),
           ),
         ],

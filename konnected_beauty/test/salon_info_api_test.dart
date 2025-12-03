@@ -9,10 +9,10 @@ void main() {
     test('Salon add-info API should work correctly', () async {
       const baseUrl = 'http://srv950342.hstgr.cloud:3000';
       const addInfoEndpoint = '/salon/add-info';
-      
+
       // First, let's try to login to get a token
       print('\n🔐 === LOGIN TO GET TOKEN ===');
-      
+
       final loginResponse = await http.post(
         Uri.parse('$baseUrl/salon-auth/login'),
         headers: {
@@ -23,12 +23,12 @@ void main() {
           'password': 'Youba123@',
         }),
       );
-      
+
       print('📡 Login Response Status: ${loginResponse.statusCode}');
       print('📄 Login Response Body: "${loginResponse.body}"');
-      
+
       String? accessToken;
-      
+
       if (loginResponse.statusCode == 200 && loginResponse.body.isNotEmpty) {
         try {
           final loginData = jsonDecode(loginResponse.body);
@@ -40,30 +40,30 @@ void main() {
       } else {
         print('❌ Login failed, will test without token');
       }
-      
+
       // Now test the salon add-info API
       print('\n🏢 === TESTING SALON ADD-INFO API ===');
-      
+
       final requestBody = {
         "name": "Dev salon",
         "address": "Bab Ezzouar",
         "domain": "development"
       };
-      
+
       print('🔗 URL: $baseUrl$addInfoEndpoint');
       print('📦 Request Body: ${jsonEncode(requestBody)}');
-      
+
       final headers = {
         'Content-Type': 'application/json',
       };
-      
+
       if (accessToken != null) {
         headers['Authorization'] = 'Bearer $accessToken';
         print('🔑 Using Bearer token');
       } else {
         print('⚠️ No Bearer token available');
       }
-      
+
       try {
         final response = await http.post(
           Uri.parse('$baseUrl$addInfoEndpoint'),
@@ -101,7 +101,7 @@ void main() {
       } catch (e) {
         print('💥 Exception: $e');
       }
-      
+
       print('🏢 === END TEST ===\n');
     });
   });

@@ -6,7 +6,7 @@ import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
 
 class InfluencerAuthService {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
 
   /// Helper method to format message (handle both string and list cases)
   static String formatMessage(dynamic message) {

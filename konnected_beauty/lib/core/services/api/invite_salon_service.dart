@@ -3,7 +3,7 @@ import 'http_interceptor.dart';
 import '../storage/token_storage_service.dart';
 
 class InviteSalonService {
-  static const String baseUrl = 'http://srv950342.hstgr.cloud:3000';
+  static const String baseUrl = 'https://server.konectedbeauty.com';
 
   /// Invite salon for campaign
   static Future<Map<String, dynamic>> inviteSalon({
