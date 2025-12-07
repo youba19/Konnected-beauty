@@ -147,26 +147,31 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: Colors.black, // Deep black background as in image
+      backgroundColor: AppTheme.getScaffoldBackground(
+          brightness), // Deep black background as in image
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -247,13 +252,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               // Title
               Text(
                 AppTranslations.getString(context, 'campaigns'),
-                style: const TextStyle(
-                  color: Colors.white, // White text
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness), // White text
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Search Bar
               Container(
@@ -263,20 +269,28 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                       .transparentBackground, // Dark grey background as in image
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: AppTheme.borderColor), // Light grey border
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.getBorderColor(
+                              Theme.of(context).brightness)
+                          : AppTheme
+                              .lightTextPrimaryColor), // Black border in light mode
                 ),
                 child: TextField(
                   controller: _searchController,
                   onChanged: _onSearchChanged,
-                  style: const TextStyle(color: Colors.white), // White text
+                  style: TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness)), // White text
                   decoration: InputDecoration(
                     hintText: AppTranslations.getString(
                         context, 'search_placeholder'),
-                    hintStyle: const TextStyle(
-                        color: Color(0xFF9CA3AF)), // Light grey hint
-                    suffixIcon: const Icon(
+                    hintStyle: TextStyle(
+                        color: AppTheme.getTextTertiaryColor(
+                            Theme.of(context).brightness)), // Light grey hint
+                    suffixIcon: Icon(
                       Icons.search,
-                      color: Color(0xFF9CA3AF), // Light grey icon
+                      color: AppTheme.getTextTertiaryColor(
+                          Theme.of(context).brightness), // Light grey icon
                     ),
                     border: InputBorder.none,
 
@@ -341,7 +355,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           padding: const EdgeInsets.symmetric(
               horizontal: 16.0), // Add horizontal padding to ListView
           itemCount: filters.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 12),
+          separatorBuilder: (context, index) => SizedBox(width: 12),
           itemBuilder: (context, index) {
             final filter = filters[index];
             final isSelected = _selectedFilter == filter['key'];
@@ -354,10 +368,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppTheme.greenColor // Green for selected
-                      : const Color(0xFF2A2A2A), // Dark grey for unselected
+                      : AppTheme.getCardBackground(Theme.of(context)
+                          .brightness), // Dark grey for unselected
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: const Color(0xFF404040)), // Light grey border
+                      color: AppTheme.getBorderColorGray(
+                          Theme.of(context).brightness)), // Light grey border
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -366,19 +382,21 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                       filter['label'] as String,
                       style: TextStyle(
                         color: isSelected
-                            ? AppTheme.secondaryColor // Green for selected
-                            : AppTheme
-                                .textPrimaryColor, // White text for all states
+                            ? AppTheme.getSecondaryColor(Theme.of(context)
+                                .brightness) // Green for selected
+                            : AppTheme.getTextPrimaryColor(Theme.of(context)
+                                .brightness), // Black in light mode, white in dark mode
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     // Show icon only when NOT selected
                     if (!isSelected) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Icon(
                         filter['icon'] as IconData, // Each tab has its own icon
-                        color: Colors.white,
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         size: 16,
                       ),
                     ],
@@ -450,8 +468,9 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               padding: const EdgeInsets.only(bottom: 12, top: 8),
               child: Text(
                 groupKey,
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 18,
                   fontWeight: FontWeight.normal,
                 ),
@@ -566,7 +585,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             padding: EdgeInsets.all(16),
             child: Center(
               child: CircularProgressIndicator(
-                color: AppTheme.accentColor,
+                color: AppTheme.greenPrimary,
                 strokeWidth: 2,
               ),
             ),
@@ -584,8 +603,9 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               padding: const EdgeInsets.only(bottom: 12, top: 8),
               child: Text(
                 groupKey,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -638,9 +658,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A), // Dark grey background as in image
+          color: AppTheme.getCardBackground(
+              Theme.of(context).brightness), // Dark grey background as in image
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderColor), // Light grey border
+          border: Border.all(
+              color: AppTheme.getBorderColor(
+                  Theme.of(context).brightness)), // Light grey border
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,13 +671,16 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             // Salon name
             Text(
               salonName,
-              style: const TextStyle(
-                color: Colors.white, // White text
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
 
             // Date and promotion row
             Row(
@@ -663,45 +689,57 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 // Date and time
                 Text(
                   dateTime,
-                  style: const TextStyle(
-                    color: Color(0xFF9CA3AF), // Light grey text
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextTertiaryColor(
+                            Theme.of(context).brightness),
                     fontSize: 14,
                   ),
                 ),
                 // Promotion (end of row)
                 Text(
                   promotionText,
-                  style: const TextStyle(
-                    color: Colors.white, // White text
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
 
             // Message
             if (message.isNotEmpty) ...[
               Text(
                 message,
-                style: const TextStyle(
-                  color: Color(0xFF9CA3AF), // Light grey text
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextTertiaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 14,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               if (message.length > 50) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 GestureDetector(
                   onTap: () {
                     // TODO: Show full message
                   },
                   child: Text(
                     AppTranslations.getString(context, 'see_more'),
-                    style: const TextStyle(
-                      color: Color(0xFF9CA3AF), // Light grey text
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextSecondaryColor
+                          : AppTheme.getTextTertiaryColor(
+                              Theme.of(context).brightness),
                       fontSize: 12,
                       decoration: TextDecoration.underline,
                     ),
@@ -711,8 +749,11 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             ] else ...[
               Text(
                 AppTranslations.getString(context, 'no_message'),
-                style: const TextStyle(
-                  color: Color(0xFF9CA3AF), // Light grey text
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextSecondaryColor
+                      : AppTheme.getTextTertiaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 14,
                 ),
               ),
@@ -752,12 +793,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const SizedBox(height: 100),
-          const CircularProgressIndicator(
-            color: AppTheme.accentColor,
+          SizedBox(height: 100),
+          CircularProgressIndicator(
+            color: AppTheme.greenPrimary,
             strokeWidth: 2,
           ),
-          const SizedBox(height: 100),
+          SizedBox(height: 100),
         ],
       ),
     );
@@ -772,7 +813,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const SizedBox(height: 60),
+          SizedBox(height: 60),
           Icon(
             isAccountNotActive
                 ? Icons.account_circle_outlined
@@ -780,32 +821,32 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             color: AppTheme.greenColor,
             size: 64,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             isAccountNotActive
                 ? AppTranslations.getString(context, 'account_not_active')
                 : AppTranslations.getString(context, 'error_loading_campaigns'),
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             )),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             isAccountNotActive
                 ? AppTranslations.getString(context, 'account_not_active')
                 : state.message,
             style: AppTheme.applyPoppins(TextStyle(
-              color: Colors.green,
+              color: AppTheme.statusGreen,
               fontSize: 14,
             )),
             textAlign: TextAlign.center,
           ),
           // Only show retry button if it's not a 403 error
           if (!isAccountNotActive) ...[
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
                 context
@@ -814,18 +855,19 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.greenColor,
-                foregroundColor: AppTheme.textPrimaryColor,
+                foregroundColor:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               ),
               child: Text(
                 AppTranslations.getString(context, 'retry'),
-                style: AppTheme.applyPoppins(const TextStyle(
+                style: AppTheme.applyPoppins(TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 )),
               ),
             ),
           ],
-          const SizedBox(height: 100),
+          SizedBox(height: 100),
         ],
       ),
     );
@@ -837,32 +879,33 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const SizedBox(height: 60),
+          SizedBox(height: 60),
           Icon(
             Icons.campaign_outlined,
-            color: AppTheme.textSecondaryColor,
+            color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
             size: 64,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             AppTranslations.getString(context, 'no_campaigns_found'),
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             )),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             AppTranslations.getString(context, 'campaigns_will_appear_here'),
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 14,
             )),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 100),
+          SizedBox(height: 100),
         ],
       ),
     );
@@ -874,12 +917,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          const SizedBox(height: 100),
-          const CircularProgressIndicator(
+          SizedBox(height: 100),
+          CircularProgressIndicator(
             color: AppTheme.accentColor,
             strokeWidth: 2,
           ),
-          const SizedBox(height: 100),
+          SizedBox(height: 100),
         ],
       ),
     );

@@ -127,17 +127,22 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [
-            Color(0xFF3B3B3B),
-            Color(0xFF1F1E1E),
-          ],
-        ),
-      ),
+      decoration: brightness == Brightness.dark
+          ? const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Color(0xFF3B3B3B),
+                  Color(0xFF1F1E1E),
+                ],
+              ),
+            )
+          : BoxDecoration(
+              color: AppTheme.getScaffoldBackground(brightness),
+            ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Builder(

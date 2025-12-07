@@ -45,26 +45,29 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
                   // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -98,9 +101,10 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
               onTap: () => Navigator.of(context).pop(),
               child: Container(
                 padding: const EdgeInsets.all(8),
-                child: const Icon(
+                child: Icon(
                   Icons.arrow_back,
-                  color: AppTheme.textPrimaryColor,
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   size: 24,
                 ),
               ),
@@ -122,19 +126,20 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
         children: [
           Icon(
             Icons.error_outline,
-            color: AppTheme.textSecondaryColor,
+            color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
             size: 64,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             message,
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 16,
             )),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
               context.read<SalonDetailsBloc>().add(LoadSalonDetails(
@@ -146,11 +151,12 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentColor,
-              foregroundColor: AppTheme.textPrimaryColor,
+              foregroundColor:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             ),
             child: Text(
               'Retry',
-              style: AppTheme.applyPoppins(const TextStyle(
+              style: AppTheme.applyPoppins(TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               )),
@@ -187,31 +193,37 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                 // Salon Name
                 Text(
                   name,
-                  style: AppTheme.applyPoppins(const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   )),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 // Description
                 Text(
                   "$description",
-                  style: AppTheme.applyPoppins(const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     fontSize: 16,
                   )),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
                 // Services Section
                 _buildServicesSection(services),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
                 // Invite for Campaign Button
                 _buildInviteButton(),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
 
                 // Reviews Section
                 _buildReviewsSection(averageRating, totalRatings),
@@ -243,7 +255,8 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
               child: Center(
                 child: Icon(
                   Icons.image,
-                  color: AppTheme.textSecondaryColor,
+                  color: AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
                   size: 48,
                 ),
               ),
@@ -281,7 +294,8 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                           child: Center(
                             child: Icon(
                               Icons.image,
-                              color: AppTheme.textSecondaryColor,
+                              color: AppTheme.getTextSecondaryColor(
+                                  Theme.of(context).brightness),
                               size: 48,
                             ),
                           ),
@@ -293,7 +307,8 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                       child: Center(
                         child: Icon(
                           Icons.image,
-                          color: AppTheme.textSecondaryColor,
+                          color: AppTheme.getTextSecondaryColor(
+                              Theme.of(context).brightness),
                           size: 48,
                         ),
                       ),
@@ -312,8 +327,11 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
         if (services.isEmpty)
           Text(
             AppTranslations.getString(context, 'no_services_available'),
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextSecondaryColor
+                  : AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
               fontSize: 14,
             )),
           )
@@ -324,19 +342,24 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
             children: services.map((service) {
               final serviceName = service['name'] ??
                   AppTranslations.getString(context, 'service_name_default');
+              final brightness = Theme.of(context).brightness;
               return Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.border2,
+                  color: brightness == Brightness.light
+                      ? AppTheme.lightBannerBackground
+                      : AppTheme.border2,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   serviceName,
-                  style: AppTheme.applyPoppins(const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(brightness),
                     fontSize: 14,
                   )),
                 ),
@@ -367,6 +390,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
         builder: (context, state) {
           final isLoading = state is InviteSalonLoading;
 
+          final brightness = Theme.of(context).brightness;
           return SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -376,8 +400,12 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                       _showInviteDialog();
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.textPrimaryColor,
-                foregroundColor: AppTheme.primaryColor,
+                backgroundColor: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.accentColor,
+                foregroundColor: brightness == Brightness.light
+                    ? AppTheme.accentColor
+                    : AppTheme.lightTextPrimaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -387,27 +415,35 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (isLoading)
-                    const SizedBox(
+                    SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppTheme.primaryColor,
+                        color: brightness == Brightness.light
+                            ? AppTheme.accentColor
+                            : AppTheme.lightTextPrimaryColor,
                       ),
                     )
                   else
                     Text(
                       AppTranslations.getString(context, 'invite_for_campaign'),
-                      style: AppTheme.applyPoppins(const TextStyle(
+                      style: AppTheme.applyPoppins(TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        color: brightness == Brightness.light
+                            ? AppTheme.accentColor
+                            : AppTheme.lightTextPrimaryColor,
                       )),
                     ),
                   if (!isLoading) ...[
-                    const SizedBox(width: 15),
-                    const Icon(
+                    SizedBox(width: 15),
+                    Icon(
                       LucideIcons.ticket,
                       size: 20,
+                      color: brightness == Brightness.light
+                          ? AppTheme.accentColor
+                          : AppTheme.lightTextPrimaryColor,
                     ),
                   ],
                 ],
@@ -425,18 +461,23 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
       children: [
         Text(
           AppTranslations.getString(context, 'reviews'),
-          style: AppTheme.applyPoppins(const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: AppTheme.applyPoppins(TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           )),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (totalRatings == 0)
           Text(
             AppTranslations.getString(context, 'no_reviews_yet'),
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextSecondaryColor
+                  : AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
               fontSize: 14,
             )),
           )
@@ -446,7 +487,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
               // Mock review data - replace with real data when available
               _buildReviewItem(
                   'Influencer name', '4s ago', 'Very pro, i liked his work 💪'),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _buildReviewItem('Another Influencer', '2h ago',
                   'Great service and professional staff!'),
             ],
@@ -457,12 +498,19 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
 
   Widget _buildReviewItem(
       String influencerName, String timeAgo, String reviewText) {
+    final brightness = Theme.of(context).brightness;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
+        color: brightness == Brightness.light
+            ? AppTheme.lightCardBackground
+            : AppTheme.getSecondaryColor(brightness),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border2),
+        border: Border.all(
+          color: brightness == Brightness.light
+              ? AppTheme.lightCardBorderColor
+              : AppTheme.border2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,26 +520,34 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
             children: [
               Text(
                 influencerName,
-                style: AppTheme.applyPoppins(const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: AppTheme.applyPoppins(TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 )),
               ),
               Text(
                 timeAgo,
-                style: AppTheme.applyPoppins(const TextStyle(
-                  color: AppTheme.textSecondaryColor,
+                style: AppTheme.applyPoppins(TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextSecondaryColor
+                      : AppTheme.getTextSecondaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 12,
                 )),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             reviewText,
-            style: AppTheme.applyPoppins(const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: AppTheme.applyPoppins(TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 14,
             )),
           ),
@@ -512,11 +568,15 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
       pageBuilder: (context, _, __) {
         return Center(
           child: Material(
-            color: AppTheme.primaryColor,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightCardBackground
+                : AppTheme.primaryColor,
             child: Container(
               width: MediaQuery.of(context).size.width * 0.95,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightCardBackground
+                    : AppTheme.primaryColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               padding: const EdgeInsets.all(24),
@@ -530,33 +590,45 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                       Text(
                         AppTranslations.getString(
                             context, 'salon_invite_title'),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         AppTranslations.getString(
                             context, 'salon_invite_instructions'),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       // Followers promotion value
                       Text(
                         AppTranslations.getString(
                             context, 'followers_promotion_value'),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       TextFormField(
                         controller: followersPromotionController,
                         keyboardType: TextInputType.number,
@@ -565,39 +637,70 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                         ],
                         decoration: InputDecoration(
                           hintText: '00',
-                          hintStyle: const TextStyle(color: Colors.white70),
+                          hintStyle: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextSecondaryColor
+                                    : AppTheme.textWhite70,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
+                            borderSide: BorderSide(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
+                                width: 1),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
+                            borderSide: BorderSide(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
+                                width: 1),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide:
-                                const BorderSide(color: Colors.white, width: 1),
+                            borderSide: BorderSide(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
+                                width: 1),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
-                          suffixIcon: const Padding(
+                          suffixIcon: Padding(
                             padding: EdgeInsets.only(right: 16),
-                            child: Center(
-                              widthFactor: 1.0,
-                              child: Text(
-                                '%',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                            child: Builder(
+                              builder: (context) => Center(
+                                widthFactor: 1.0,
+                                child: Text(
+                                  '%',
+                                  style: TextStyle(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? AppTheme.lightTextPrimaryColor
+                                        : AppTheme.getTextPrimaryColor(
+                                            Theme.of(context).brightness),
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness)),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return AppTranslations.getString(
@@ -617,67 +720,91 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       // Your Commission
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.check_circle,
-                            color: Colors.white,
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                             size: 20,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
                             AppTranslations.getString(
                                 context, 'your_commission'),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const Spacer(),
-                          const Text(
+                          Spacer(),
+                          Text(
                             '8%',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       // Commission Kbeauty
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.check_circle,
-                            color: Colors.white,
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                             size: 20,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
                             AppTranslations.getString(
                                 context, 'commission_kbeauty'),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const Spacer(),
-                          const Text(
+                          Spacer(),
+                          Text(
                             '3%',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                       // Create Campaign & Invite Button
                       SizedBox(
                         width: double.infinity,
@@ -710,20 +837,30 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                                   Navigator.of(context).pop();
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getScaffoldBackground(
+                                        Theme.of(context).brightness),
+                            foregroundColor:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? Colors.white
+                                    : AppTheme.lightTextPrimaryColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: isLoading
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.black),
+                                        Theme.of(context).brightness ==
+                                                Brightness.light
+                                            ? Colors.white
+                                            : AppTheme.lightTextPrimaryColor),
                                   ),
                                 )
                               : Row(
@@ -734,7 +871,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                                       child: Text(
                                         AppTranslations.getString(
                                             context, 'create_campaign_invite'),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -742,16 +879,20 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    const SizedBox(width: 6),
-                                    const Icon(
+                                    SizedBox(width: 6),
+                                    Icon(
                                       LucideIcons.tag,
                                       size: 18,
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.light
+                                          ? Colors.white
+                                          : AppTheme.lightTextPrimaryColor,
                                     ),
                                   ],
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       // Cancel Button
                       SizedBox(
                         width: double.infinity,
@@ -759,11 +900,22 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                         child: ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightCardBackground
+                                    : AppTheme.transparentBackground,
+                            foregroundColor:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                             shape: RoundedRectangleBorder(
-                              side: const BorderSide(
-                                color: Colors.white,
+                              side: BorderSide(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                                 width: 1,
                               ),
                               borderRadius: BorderRadius.circular(16),
@@ -771,7 +923,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                           ),
                           child: Text(
                             AppTranslations.getString(context, 'cancel'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -792,8 +944,9 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
 
   Widget _buildShimmerContent() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -809,21 +962,21 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                 children: [
                   // Salon Name Shimmer
                   _buildShimmerText(width: 200, height: 28),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
 
                   // Description Shimmer
                   _buildShimmerText(width: double.infinity, height: 16),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _buildShimmerText(width: 250, height: 16),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Services Section Shimmer
                   _buildShimmerServicesSection(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Invite Button Shimmer
                   _buildShimmerButton(),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Reviews Section Shimmer
                   _buildShimmerReviewsSection(),
@@ -848,7 +1001,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
             width: 129,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[700],
+              color: AppTheme.shimmerBaseMediumDark,
               borderRadius: BorderRadius.circular(12),
             ),
           );
@@ -863,7 +1016,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
       children: [
         // Services title shimmer
         _buildShimmerText(width: 100, height: 20),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         // Services chips shimmer
         Wrap(
           spacing: 8,
@@ -873,7 +1026,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
               width: 80 + (index * 20).toDouble(),
               height: 32,
               decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: AppTheme.shimmerBaseMediumDark,
                 borderRadius: BorderRadius.circular(20),
               ),
             );
@@ -888,7 +1041,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
       width: double.infinity,
       height: 48,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(12),
       ),
     );
@@ -900,10 +1053,10 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
       children: [
         // Reviews title shimmer
         _buildShimmerText(width: 100, height: 24),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         // Review items shimmer
         _buildShimmerReviewItem(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildShimmerReviewItem(),
       ],
     );
@@ -913,7 +1066,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -926,9 +1079,9 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
               _buildShimmerText(width: 40, height: 12),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildShimmerText(width: double.infinity, height: 14),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           _buildShimmerText(width: 200, height: 14),
         ],
       ),
@@ -940,7 +1093,7 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(4),
       ),
     );

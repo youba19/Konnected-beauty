@@ -12,6 +12,7 @@ import 'influencer_language_screen.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 
 class InfluencerProfileScreen extends StatefulWidget {
@@ -101,26 +102,30 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -90,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -142,9 +147,9 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildProfileHeader(),
-                        const SizedBox(height: 32),
+                        SizedBox(height: 32),
                         _buildProfileOptions(),
-                        const SizedBox(height: 20), // Add some bottom padding
+                        SizedBox(height: 20), // Add some bottom padding
                       ],
                     ),
                   ),
@@ -184,13 +189,20 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                color: _profilePicture.isEmpty ? const Color(0xFF2C2C2C) : null,
+                border: Border.all(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
+                    width: 2),
+                color: _profilePicture.isEmpty
+                    ? AppTheme.getPlaceholderBackground(
+                        Theme.of(context).brightness)
+                    : null,
               ),
               child: _profilePicture.isEmpty || !_isValidUrl(_profilePicture)
-                  ? const Icon(
+                  ? Icon(
                       Icons.person,
-                      color: Colors.white,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       size: 50,
                     )
                   : ClipOval(
@@ -204,13 +216,15 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                           return Container(
                             width: 42,
                             height: 42,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2C2C2C),
+                            decoration: BoxDecoration(
+                              color: AppTheme.getPlaceholderBackground(
+                                  Theme.of(context).brightness),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.person,
-                              color: Colors.white,
+                              color: AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                               size: 50,
                             ),
                           );
@@ -220,13 +234,13 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Display Name
           Center(
             child: _isProfileLoading
-                ? const CircularProgressIndicator(
-                    color: Color(0xFF22C55E),
+                ? CircularProgressIndicator(
+                    color: AppTheme.greenPrimary,
                     strokeWidth: 2,
                   )
                 : _profileError != null
@@ -235,65 +249,73 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                           Text(
                             'Error loading profile',
                             style: AppTheme.headingStyle.copyWith(
-                              color: Colors.red,
+                              color: AppTheme.statusRed,
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           ElevatedButton(
                             onPressed: _fetchProfileData,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF22C55E),
-                              foregroundColor: Colors.white,
+                              backgroundColor: AppTheme.greenPrimary,
+                              foregroundColor: AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                             ),
-                            child: const Text('Retry'),
+                            child: Text('Retry'),
                           ),
                         ],
                       )
                     : Text(
                         _displayName,
                         style: AppTheme.headingStyle.copyWith(
-                          color: Colors.white,
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Username Handle
           Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
+                color: AppTheme.getPlaceholderBackground(
+                    Theme.of(context).brightness),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(
+                    color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness)
+                        .withOpacity(0.1)),
               ),
               child: Text(
                 "@${_profileName}",
                 style: AppTheme.subtitleStyle.copyWith(
-                    color: Colors.white,
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 16,
                     fontWeight: FontWeight.bold),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Refresh Profile Button
           if (!_isProfileLoading)
             Center(
               child: ElevatedButton.icon(
                 onPressed: _fetchProfileData,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Refresh Profile'),
+                icon: Icon(Icons.refresh, size: 18),
+                label: Text('Refresh Profile'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.greenPrimary,
+                  foregroundColor: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   shape: RoundedRectangleBorder(
@@ -320,7 +342,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               // Navigate to personal information
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildProfileOption(
             icon: Icons.alternate_email,
             title: AppTranslations.getString(context, 'social_information'),
@@ -333,7 +355,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildProfileOption(
             icon: Icons.shield_outlined,
             title: AppTranslations.getString(context, 'security'),
@@ -345,8 +367,8 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Security Test'),
-                  content: const Text(
+                  title: Text('Security Test'),
+                  content: Text(
                       'Security button is working! Click OK to navigate to Security screen.'),
                   actions: [
                     TextButton(
@@ -368,14 +390,14 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                           print('🔒 Error details: ${e.toString()}');
                         }
                       },
-                      child: const Text('OK'),
+                      child: Text('OK'),
                     ),
                   ],
                 ),
               );
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildProfileOption(
             icon: Icons.language,
             title: AppTranslations.getString(context, 'language'),
@@ -388,7 +410,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               );
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildProfileOption(
             icon: Icons.report_problem_outlined,
             title: AppTranslations.getString(context, 'report'),
@@ -396,7 +418,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               _showReportBottomSheet(context);
             },
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildProfileOption(
             icon: Icons.logout,
             title: AppTranslations.getString(context, 'logout'),
@@ -434,30 +456,40 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2C2C2C),
+          color:
+              AppTheme.getPlaceholderBackground(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                  .withOpacity(0.1)),
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: isLogout ? Colors.red : Colors.white,
+              color: isLogout
+                  ? AppTheme.statusRed
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 24,
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
                 style: AppTheme.subtitleStyle.copyWith(
-                    color: isLogout ? Colors.red : Colors.white,
+                    color: isLogout
+                        ? AppTheme.statusRed
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     fontSize: 16,
                     fontWeight: FontWeight.bold),
               ),
             ),
             Icon(
               Icons.arrow_forward_ios,
-              color: isLogout ? Colors.red : Colors.white,
+              color: isLogout
+                  ? AppTheme.statusRed
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 16,
             ),
           ],
@@ -470,7 +502,8 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
     final TextEditingController _reportController = TextEditingController();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor:
+          AppTheme.getScaffoldBackground(Theme.of(context).brightness),
       isScrollControlled: true,
       builder: (BuildContext context) {
         return Padding(
@@ -482,8 +515,9 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
               maxHeight: MediaQuery.of(context).size.height * 0.65,
             ),
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF121212),
+              decoration: BoxDecoration(
+                color: AppTheme.getScaffoldBackground(
+                    Theme.of(context).brightness),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
@@ -532,51 +566,63 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                             children: [
                               Text(
                                 AppTranslations.getString(context, 'report'),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                                   fontSize: 22,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              SizedBox(height: 6),
                               Text(
                                 AppTranslations.getString(
                                     context, 'report_subtitle'),
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: AppTheme.getTextPrimaryColor(
+                                          Theme.of(context).brightness)
+                                      .withOpacity(0.8),
                                   fontSize: 14,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Text(
                                 AppTranslations.getString(context, 'report'),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1F1F1F),
+                                  color: AppTheme.getScaffoldBackground(
+                                      Theme.of(context).brightness),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                      color: const Color(0xFF2A2A2A)),
+                                      color: AppTheme.getCardBackground(
+                                          Theme.of(context).brightness)),
                                 ),
                                 child: TextField(
                                   controller: _reportController,
                                   maxLines: 6,
                                   maxLength: 100,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                      color: AppTheme.getTextPrimaryColor(
+                                          Theme.of(context).brightness)),
                                   decoration: InputDecoration(
                                     hintText: AppTranslations.getString(
                                         context, 'describe_your_problem'),
                                     hintStyle: TextStyle(
-                                      color: Colors.white.withOpacity(0.5),
+                                      color: AppTheme.getTextPrimaryColor(
+                                              Theme.of(context).brightness)
+                                          .withOpacity(0.5),
                                     ),
                                     counterStyle: TextStyle(
-                                      color: Colors.white.withOpacity(0.6),
+                                      color: AppTheme.getTextPrimaryColor(
+                                              Theme.of(context).brightness)
+                                          .withOpacity(0.6),
                                       fontSize: 12,
                                     ),
                                     border: InputBorder.none,
@@ -587,7 +633,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Row(
                                 children: [
                                   Expanded(
@@ -599,17 +645,21 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 16),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF121212),
+                                          color: AppTheme.getScaffoldBackground(
+                                              Theme.of(context).brightness),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                           border: Border.all(
-                                              color: const Color(0xFF2A2A2A)),
+                                              color: AppTheme.getCardBackground(
+                                                  Theme.of(context)
+                                                      .brightness)),
                                         ),
                                         child: Text(
                                           AppTranslations.getString(
                                               context, 'cancel'),
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: AppTheme.getTextPrimaryColor(
+                                                Theme.of(context).brightness),
                                             fontSize: 16,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -618,12 +668,13 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  SizedBox(width: 16),
                                   Expanded(
                                     child: Container(
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: AppTheme.getTextPrimaryColor(
+                                            Theme.of(context).brightness),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: TextButton(
@@ -656,20 +707,22 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                                           ),
                                         ),
                                         child: isLoading
-                                            ? const SizedBox(
+                                            ? SizedBox(
                                                 height: 20,
                                                 width: 20,
                                                 child:
                                                     CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  color: Colors.black,
+                                                  color: AppTheme
+                                                      .lightTextPrimaryColor,
                                                 ),
                                               )
                                             : Text(
                                                 AppTranslations.getString(
                                                     this.context, 'submit'),
-                                                style: const TextStyle(
-                                                  color: Colors.black,
+                                                style: TextStyle(
+                                                  color: AppTheme
+                                                      .lightTextPrimaryColor,
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -702,9 +755,12 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
     return Container(
       padding: const EdgeInsets.only(top: 8, bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF121212),
+        color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
+          top: BorderSide(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                  .withOpacity(0.08),
+              width: 1),
         ),
       ),
       child: SizedBox(
@@ -731,8 +787,10 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                         gradient: RadialGradient(
                           radius: 0.6,
                           colors: [
-                            const Color(0xFF22C55E).withOpacity(0.6),
-                            Colors.transparent,
+                            AppTheme.greenPrimary.withOpacity(0.6),
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.transparentBackground
+                                : AppTheme.textWhite54,
                           ],
                           stops: const [0.0, 1.0],
                         ),
@@ -788,19 +846,19 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
           Icon(
             icon,
             color: isSelected
-                ? AppTheme.textPrimaryColor
-                : AppTheme.navBartextColor,
+                ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
             size: 24,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Flexible(
             child: Text(
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isSelected
-                    ? AppTheme.textPrimaryColor
-                    : AppTheme.navBartextColor,
+                    ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                    : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -818,12 +876,15 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
     print('🔴 === SHOWING LOGOUT CONFIRMATION BOTTOM SHEET ===');
     return showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.transparentBackground
+          : AppTheme.textWhite54,
       isScrollControlled: true,
       builder: (BuildContext context) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF2C2C2C),
+          decoration: BoxDecoration(
+            color:
+                AppTheme.getPlaceholderBackground(Theme.of(context).brightness),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -838,14 +899,15 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                   // Confirmation message
                   Text(
                     'Are you sure you want to logout?',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Buttons row
                   Row(
@@ -855,8 +917,14 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border.all(color: Colors.white, width: 1),
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.transparentBackground
+                                    : AppTheme.textWhite54,
+                            border: Border.all(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
+                                width: 1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
@@ -868,8 +936,9 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                             ),
                             child: Text(
                               AppTranslations.getString(context, 'cancel'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -877,14 +946,14 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
 
                       // Logout button
                       Expanded(
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: AppTheme.statusRed,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
@@ -897,16 +966,18 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.logout,
-                                  color: Colors.white,
+                                  color: AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                                   size: 20,
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(
                                   'Yes, logout',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -918,7 +989,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                 ],
               ),
             ),
@@ -937,9 +1008,9 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
         context: context,
         barrierDismissible: false,
         builder: (BuildContext dialogContext) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF22C55E),
+              color: AppTheme.greenPrimary,
             ),
           );
         },
@@ -978,7 +1049,7 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Logout failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.statusRed,
           ),
         );
       }

@@ -26,6 +26,7 @@ import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
 import '../../../../core/bloc/delete_campaign/delete_campaign_bloc.dart';
 import '../../../../core/bloc/influencer_account_deletion/influencer_account_deletion_bloc.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/common/account_deletion_dialog.dart';
 import '../../../../widgets/common/motivational_banner.dart';
@@ -145,27 +146,30 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
                   // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -194,11 +198,13 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   void _showReportBottomSheet(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppTheme.scaffoldBackground,
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       isScrollControlled: true,
       builder: (BuildContext context) {
+        final modalBrightness = Theme.of(context).brightness;
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -208,8 +214,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               maxHeight: MediaQuery.of(context).size.height * 0.65,
             ),
             child: Container(
-              decoration: const BoxDecoration(
-                color: AppTheme.scaffoldBackground,
+              decoration: BoxDecoration(
+                color: AppTheme.getScaffoldBackground(modalBrightness),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
@@ -258,51 +264,75 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                             children: [
                               Text(
                                 AppTranslations.getString(context, 'report'),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color:
+                                      AppTheme.getTextPrimaryColor(brightness),
                                   fontSize: 22,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              SizedBox(height: 6),
                               Text(
                                 AppTranslations.getString(
                                     context, 'report_subtitle'),
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: AppTheme.getTextPrimaryColor(
+                                          Theme.of(context).brightness)
+                                      .withOpacity(0.8),
                                   fontSize: 14,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Text(
                                 AppTranslations.getString(context, 'report'),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color:
+                                      AppTheme.getTextPrimaryColor(brightness),
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: AppTheme.scaffoldBackground,
+                                  color: modalBrightness == Brightness.light
+                                      ? AppTheme.lightCardBackground
+                                      : AppTheme.getScaffoldBackground(
+                                          Theme.of(context).brightness),
                                   borderRadius: BorderRadius.circular(12),
-                                  border:
-                                      Border.all(color: AppTheme.accentColor),
+                                  border: Border.all(
+                                    color: modalBrightness == Brightness.light
+                                        ? AppTheme.lightTextPrimaryColor
+                                        : AppTheme.accentColor,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: TextField(
                                   controller: _reportController,
                                   maxLines: 6,
                                   maxLength: 100,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                    color: modalBrightness == Brightness.light
+                                        ? AppTheme.lightTextPrimaryColor
+                                        : AppTheme.getTextPrimaryColor(
+                                            Theme.of(context).brightness),
+                                  ),
                                   decoration: InputDecoration(
                                     hintText: AppTranslations.getString(
                                         context, 'describe_your_problem'),
                                     hintStyle: TextStyle(
-                                      color: Colors.white.withOpacity(0.5),
+                                      color: modalBrightness == Brightness.light
+                                          ? AppTheme.lightTextSecondaryColor
+                                          : AppTheme.getTextPrimaryColor(
+                                                  Theme.of(context).brightness)
+                                              .withOpacity(0.5),
                                     ),
                                     counterStyle: TextStyle(
-                                      color: Colors.white.withOpacity(0.6),
+                                      color: modalBrightness == Brightness.light
+                                          ? AppTheme.lightTextSecondaryColor
+                                          : AppTheme.getTextPrimaryColor(
+                                                  Theme.of(context).brightness)
+                                              .withOpacity(0.6),
                                       fontSize: 12,
                                     ),
                                     border: InputBorder.none,
@@ -313,7 +343,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16),
                               Row(
                                 children: [
                                   Expanded(
@@ -325,17 +355,30 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 16),
                                         decoration: BoxDecoration(
-                                          color: AppTheme.scaffoldBackground,
+                                          color: modalBrightness ==
+                                                  Brightness.light
+                                              ? AppTheme.lightCardBackground
+                                              : AppTheme.getScaffoldBackground(
+                                                  Theme.of(context).brightness),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                           border: Border.all(
-                                              color: AppTheme.accentColor),
+                                            color: modalBrightness ==
+                                                    Brightness.light
+                                                ? AppTheme.lightTextPrimaryColor
+                                                : AppTheme.accentColor,
+                                            width: 1,
+                                          ),
                                         ),
                                         child: Text(
                                           AppTranslations.getString(
                                               context, 'cancel'),
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: modalBrightness ==
+                                                    Brightness.light
+                                                ? AppTheme.lightTextPrimaryColor
+                                                : AppTheme.getTextPrimaryColor(
+                                                    brightness),
                                             fontSize: 16,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -344,12 +387,16 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  SizedBox(width: 16),
                                   Expanded(
                                     child: Container(
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color:
+                                            modalBrightness == Brightness.light
+                                                ? AppTheme.lightTextPrimaryColor
+                                                : AppTheme.getTextPrimaryColor(
+                                                    brightness),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: TextButton(
@@ -382,20 +429,30 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                                           ),
                                         ),
                                         child: isLoading
-                                            ? const SizedBox(
+                                            ? SizedBox(
                                                 height: 20,
                                                 width: 20,
                                                 child:
                                                     CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  color: Colors.black,
+                                                  color: modalBrightness ==
+                                                          Brightness.light
+                                                      ? AppTheme
+                                                          .lightCardBackground
+                                                      : AppTheme
+                                                          .lightTextPrimaryColor,
                                                 ),
                                               )
                                             : Text(
                                                 AppTranslations.getString(
                                                     this.context, 'submit'),
-                                                style: const TextStyle(
-                                                  color: Colors.black,
+                                                style: TextStyle(
+                                                  color: modalBrightness ==
+                                                          Brightness.light
+                                                      ? AppTheme
+                                                          .lightCardBackground
+                                                      : AppTheme
+                                                          .lightTextPrimaryColor,
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
                                                 ),
@@ -440,8 +497,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   Widget _buildHomeContent() {
     return RefreshIndicator(
       onRefresh: _refreshHomeData,
-      color: const Color(0xFF22C55E),
-      backgroundColor: const Color(0xFF1F1F1F),
+      color: AppTheme.greenPrimary,
+      backgroundColor:
+          AppTheme.getScaffoldBackground(Theme.of(context).brightness),
       child: SingleChildScrollView(
         physics:
             const AlwaysScrollableScrollPhysics(), // Enable pull-to-refresh even when content doesn't fill screen
@@ -450,18 +508,18 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildDashboardCards(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: MotivationalBanner(
                 text: AppTranslations.getString(context, 'share_more_win_more'),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _buildOngoingCampaign(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildReceivedInvitations(),
           ],
         ),
@@ -488,7 +546,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildProfileHeader(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _buildProfileOptions(),
         ],
       ),
@@ -508,13 +566,14 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   return Container(
                     width: 42,
                     height: 42,
-                    decoration: const BoxDecoration(
-                      color: Colors.grey,
+                    decoration: BoxDecoration(
+                      color: AppTheme.borderColorLight,
                       shape: BoxShape.circle,
                     ),
-                    child: const Center(
+                    child: Center(
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         strokeWidth: 2,
                       ),
                     ),
@@ -533,13 +592,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                       ? Container(
                           width: 42,
                           height: 42,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF2C2C2C),
+                          decoration: BoxDecoration(
+                            color: AppTheme.getPlaceholderBackground(
+                                Theme.of(context).brightness),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.person,
-                            color: Colors.white,
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                             size: 24,
                           ),
                         )
@@ -552,13 +613,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                             return Container(
                               width: 42,
                               height: 42,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF2C2C2C),
+                              decoration: BoxDecoration(
+                                color: AppTheme.getPlaceholderBackground(
+                                    Theme.of(context).brightness),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.person,
-                                color: Colors.white,
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
                                 size: 24,
                               ),
                             );
@@ -570,20 +633,22 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 return Container(
                   width: 42,
                   height: 42,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2C2C2C),
+                  decoration: BoxDecoration(
+                    color: AppTheme.getPlaceholderBackground(
+                        Theme.of(context).brightness),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.person,
-                    color: Colors.white,
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     size: 24,
                   ),
                 );
               },
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           BlocBuilder<InfluencerProfileBloc, InfluencerProfileState>(
             builder: (context, state) {
               String displayName =
@@ -602,15 +667,18 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 children: [
                   Text(
                     AppTranslations.getString(context, 'good_morning'),
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.textWhite70
+                          : AppTheme.lightTextSecondaryColor,
                       fontSize: 14,
                     ),
                   ),
                   Text(
                     displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
@@ -619,10 +687,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const Spacer(),
+          Spacer(),
           // Notification icon hidden as requested
-          // const Icon(Icons.notifications_outlined,
-          //     color: Colors.white, size: 26),
+          // Icon(Icons.notifications_outlined,
+          //     color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness), size: 26),
         ],
       ),
     );
@@ -665,15 +733,20 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(
+                        color: AppTheme.getBorderColor(
+                            Theme.of(context).brightness),
+                        width: 2),
                     color: !_isValidProfilePictureUrl(profilePicture)
-                        ? const Color(0xFF2C2C2C)
+                        ? AppTheme.getPlaceholderBackground(
+                            Theme.of(context).brightness)
                         : null,
                   ),
                   child: !_isValidProfilePictureUrl(profilePicture)
-                      ? const Icon(
+                      ? Icon(
                           Icons.person,
-                          color: Colors.white,
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           size: 30,
                         )
                       : ClipOval(
@@ -687,13 +760,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                               return Container(
                                 width: 42,
                                 height: 42,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF2C2C2C),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.getPlaceholderBackground(
+                                      Theme.of(context).brightness),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.person,
-                                  color: Colors.white,
+                                  color: AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                                   size: 30,
                                 ),
                               );
@@ -705,7 +780,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Display Name
           Center(
@@ -727,7 +802,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 return Text(
                   displayName,
                   style: AppTheme.headingStyle.copyWith(
-                    color: AppTheme.textPrimaryColor,
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                   ),
@@ -736,7 +812,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Username Handle
           Center(
@@ -758,15 +834,19 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.secondaryColor,
+                    color: AppTheme.getSecondaryColor(
+                        Theme.of(context).brightness),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: AppTheme.borderColor.withOpacity(0.1)),
+                        color: AppTheme.getBorderColor(
+                                Theme.of(context).brightness)
+                            .withOpacity(0.1)),
                   ),
                   child: Text(
                     "@$username",
                     style: AppTheme.subtitleStyle.copyWith(
-                      color: AppTheme.textPrimaryColor,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -786,6 +866,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
+          _buildThemeOption(),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: LucideIcons.personStanding,
             title: AppTranslations.getString(context, 'personal_information'),
@@ -798,7 +880,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: Icons.alternate_email,
             title: AppTranslations.getString(context, 'social_information'),
@@ -811,7 +893,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: LucideIcons.wallet,
             title: AppTranslations.getString(context, 'payment_information'),
@@ -824,7 +906,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: Icons.shield_outlined,
             title: AppTranslations.getString(context, 'security'),
@@ -837,7 +919,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: LucideIcons.messageSquare,
             title: AppTranslations.getString(context, 'report'),
@@ -845,7 +927,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               _showReportBottomSheet(context);
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: LucideIcons.languages,
             title: AppTranslations.getString(context, 'language'),
@@ -858,10 +940,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               );
             },
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // Notification button hidden as requested
-          // const SizedBox(height: 7),
+          // SizedBox(height: 7),
           // _buildProfileOption(
           //   icon: Icons.notifications_outlined,
           //   title: AppTranslations.getString(context, 'notifications'),
@@ -869,7 +951,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           //     // Handle notifications
           //   },
           // ),
-          // const SizedBox(height: 7),
+          // SizedBox(height: 7),
           _buildProfileOption(
             icon: Icons.delete_forever,
             title: AppTranslations.getString(context, 'delete_account'),
@@ -878,7 +960,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             },
             isDestructive: true,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _buildProfileOption(
             icon: Icons.logout,
             title: AppTranslations.getString(context, 'logout'),
@@ -899,6 +981,87 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     );
   }
 
+  Widget _buildThemeOption() {
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final isDarkMode = themeState.brightness == Brightness.dark;
+        final brightness = Theme.of(context).brightness;
+        return GestureDetector(
+          onTap: () {
+            final newBrightness =
+                isDarkMode ? Brightness.light : Brightness.dark;
+            context.read<ThemeBloc>().add(ChangeTheme(newBrightness));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: brightness == Brightness.light
+                  ? AppTheme.lightCardBackground
+                  : AppTheme.getSecondaryColor(brightness),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: brightness == Brightness.light
+                      ? AppTheme.lightCardBorderColor
+                      : AppTheme.getBorderColor(brightness).withOpacity(0.1)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                  color: brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(brightness),
+                  size: 24,
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppTranslations.getString(context, 'appearance'),
+                        style: AppTheme.subtitleStyle.copyWith(
+                          color: brightness == Brightness.light
+                              ? AppTheme.lightTextPrimaryColor
+                              : AppTheme.getTextPrimaryColor(brightness),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 1),
+                      Text(
+                        isDarkMode
+                            ? AppTranslations.getString(context, 'dark_mode')
+                            : AppTranslations.getString(context, 'light_mode'),
+                        style: TextStyle(
+                          color: brightness == Brightness.light
+                              ? AppTheme.lightTextSecondaryColor
+                              : AppTheme.getTextSecondaryColor(brightness),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: !isDarkMode,
+                  onChanged: (value) {
+                    final newBrightness =
+                        value ? Brightness.light : Brightness.dark;
+                    context.read<ThemeBloc>().add(ChangeTheme(newBrightness));
+                  },
+                  activeColor: AppTheme.greenPrimary,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildProfileOption({
     required IconData icon,
     required String title,
@@ -912,9 +1075,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.secondaryColor,
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppTheme.lightBannerBackground
+              : AppTheme.getSecondaryColor(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderColor.withOpacity(0.1)),
+          border: Border.all(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightCardBorderColor
+                  : AppTheme.getBorderColor(Theme.of(context).brightness)
+                      .withOpacity(0.1)),
         ),
         child: Row(
           children: [
@@ -922,17 +1091,23 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               icon,
               color: (isLogout || isDestructive)
                   ? AppTheme.errorColor
-                  : AppTheme.textPrimaryColor,
+                  : Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
               size: 24,
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
                 style: AppTheme.subtitleStyle.copyWith(
                   color: (isLogout || isDestructive)
                       ? AppTheme.errorColor
-                      : AppTheme.textPrimaryColor,
+                      : Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -942,7 +1117,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
               Icons.arrow_forward_ios,
               color: (isLogout || isDestructive)
                   ? AppTheme.errorColor
-                  : AppTheme.textPrimaryColor,
+                  : Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
               size: 16,
             ),
           ],
@@ -966,7 +1144,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             AppTranslations.getString(context, 'total_revenue'),
             Icons.euro,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           _buildStatCard(
             _isLoadingStats
                 ? AppTranslations.getString(context, 'loading')
@@ -983,13 +1161,25 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
   Widget _buildStatCard(String value, String title, IconData icon) {
     final isLoading = value == AppTranslations.getString(context, 'loading');
+    final brightness = Theme.of(context).brightness;
+    // In dark mode: white background with black text (original design)
+    // In light mode: white background with black text
+    final backgroundColor = brightness == Brightness.dark
+        ? AppTheme.getTextPrimaryColor(brightness) // White in dark mode
+        : AppTheme.getCardBackground(brightness); // White in light mode
+    final textColor = brightness == Brightness.dark
+        ? AppTheme.textBlack87 // Black text in dark mode
+        : AppTheme.getTextPrimaryColor(brightness); // Black text in light mode
 
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(18),
+          border: brightness == Brightness.light
+              ? Border.all(color: AppTheme.lightCardBorderColor)
+              : null,
         ),
         child: isLoading
             ? _buildShimmerStatCard()
@@ -1005,19 +1195,21 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color:
-                                value == "Error" ? Colors.red : Colors.black87,
+                            color: value == "Error"
+                                ? AppTheme.statusRed
+                                : textColor,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Icon(icon,
-                          color: value == "Error" ? Colors.red : Colors.black87,
+                          color:
+                              value == "Error" ? AppTheme.statusRed : textColor,
                           size: 22),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
 
                   // Real chart using stats API data
                   Container(
@@ -1039,16 +1231,16 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                        color: Colors.black87,
+                        color: textColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -1062,8 +1254,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
   Widget _buildShimmerStatCard() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1075,7 +1268,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 width: 80,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -1083,31 +1279,38 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   borderRadius: BorderRadius.circular(11),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // Chart shimmer
           Container(
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               borderRadius: BorderRadius.circular(12),
             ),
           ),
 
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // Title shimmer
           Container(
             width: 100,
             height: 15,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -1137,7 +1340,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       campaign: ongoingCampaign,
       title: AppTranslations.getString(context, 'ongoing_campaign'),
       icon: LucideIcons.playCircle,
-      color: const Color(0xFF22C55E),
+      color: AppTheme.greenPrimary,
     );
   }
 
@@ -1171,7 +1374,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       campaign: invitation,
       title: AppTranslations.getString(context, 'received_invitation'),
       icon: LucideIcons.mail,
-      color: const Color(0xFF3B82F6),
+      color: AppTheme.statusBlue,
     );
   }
 
@@ -1183,9 +1386,12 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     return Container(
       padding: const EdgeInsets.only(top: 8, bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF121212),
+        color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
+          top: BorderSide(
+              color: AppTheme.getBorderColor(Theme.of(context).brightness)
+                  .withOpacity(0.08),
+              width: 1),
         ),
       ),
       child: SizedBox(
@@ -1212,8 +1418,10 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                         gradient: RadialGradient(
                           radius: 0.6,
                           colors: [
-                            const Color(0xFF22C55E).withOpacity(0.6),
-                            Colors.transparent,
+                            AppTheme.greenPrimary.withOpacity(0.6),
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.transparentBackground
+                                : AppTheme.textWhite54,
                           ],
                           stops: const [0.0, 1.0],
                         ),
@@ -1269,19 +1477,19 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           Icon(
             icon,
             color: isSelected
-                ? AppTheme.textPrimaryColor
-                : AppTheme.navBartextColor,
+                ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
             size: 24,
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Flexible(
             child: Text(
               label,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isSelected
-                    ? AppTheme.textPrimaryColor
-                    : AppTheme.navBartextColor,
+                    ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                    : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -1298,12 +1506,13 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   Future<bool?> _showLogoutConfirmation(BuildContext context) {
     return showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: Color(0xFF1F1E1E),
+      backgroundColor:
+          AppTheme.getScaffoldBackground(Theme.of(context).brightness),
       isScrollControlled: true,
       builder: (BuildContext context) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1F1E1E),
+          decoration: BoxDecoration(
+            color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -1318,14 +1527,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   // Confirmation message
                   Text(
                     AppTranslations.getString(context, 'are_you_sure_logout'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
 
                   // Buttons row
                   Row(
@@ -1335,8 +1545,17 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border.all(color: Colors.white, width: 1),
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightCardBackground
+                                    : AppTheme.transparentBackground,
+                            border: Border.all(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getBorderColor(
+                                        Theme.of(context).brightness),
+                                width: 1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
@@ -1348,8 +1567,12 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                             ),
                             child: Text(
                               AppTranslations.getString(context, 'cancel'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1357,14 +1580,14 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
 
                       // Logout button
                       Expanded(
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.errorColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
@@ -1377,17 +1600,17 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.logout,
-                                  color: Colors.red,
+                                  color: Colors.white,
                                   size: 20,
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(
                                   AppTranslations.getString(
                                       context, 'yes_logout'),
-                                  style: const TextStyle(
-                                    color: Colors.red,
+                                  style: TextStyle(
+                                    color: Colors.white,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1399,7 +1622,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                 ],
               ),
             ),
@@ -1417,9 +1640,9 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         context: context,
         barrierDismissible: false,
         builder: (BuildContext dialogContext) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
-              color: Color(0xFF22C55E),
+              color: AppTheme.greenPrimary,
             ),
           );
         },
@@ -1459,7 +1682,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           SnackBar(
             content: Text(
                 '${AppTranslations.getString(context, 'logout_failed')}: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.statusRed,
           ),
         );
       }
@@ -1604,12 +1827,12 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
           Text(
             title,
             style: TextStyle(
-              color: AppTheme.textPrimaryColor,
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 22,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -1631,10 +1854,15 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: AppTheme.secondaryColor,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                    : AppTheme.lightCardBackground,
                 borderRadius: BorderRadius.circular(18),
-                border:
-                    Border.all(color: AppTheme.borderColor.withOpacity(0.12)),
+                border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.getBorderColor(Theme.of(context).brightness)
+                            .withOpacity(0.12)
+                        : AppTheme.lightCardBorderColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1642,20 +1870,21 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   Row(
                     children: [
                       Icon(icon, color: color, size: 20),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           campaign['salon']?['salonInfo']?['name'] ??
                               AppTranslations.getString(
                                   context, 'campaign_title'),
                           style: TextStyle(
-                            color: AppTheme.textPrimaryColor,
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
@@ -1674,38 +1903,43 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     campaign['invitationMessage'] ??
                         AppTranslations.getString(
                             context, 'no_description_available'),
                     style: TextStyle(
-                      color: AppTheme.textSecondaryColor,
+                      color: AppTheme.getTextSecondaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 14,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Row(
                     children: [
                       // Show different icon based on promotionType
                       Icon(_getPromotionIcon(campaign),
-                          size: 16, color: AppTheme.textSecondaryColor),
-                      const SizedBox(width: 4),
+                          size: 16,
+                          color: AppTheme.getTextSecondaryColor(
+                              Theme.of(context).brightness)),
+                      SizedBox(width: 4),
                       Text(
                         _getPromotionText(campaign),
                         style: TextStyle(
-                          color: AppTheme.textPrimaryColor,
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Text(
                         _formatDate(campaign['createdAt']),
                         style: TextStyle(
-                          color: AppTheme.textSecondaryColor,
+                          color: AppTheme.getTextSecondaryColor(
+                              Theme.of(context).brightness),
                           fontSize: 12,
                         ),
                       ),
@@ -1727,28 +1961,36 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppTheme.secondaryColor,
+          color: AppTheme.getSecondaryColor(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
+          baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+          highlightColor:
+              AppTheme.getShimmerHighlight(Theme.of(context).brightness),
           child: Row(
             children: [
               Container(
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Container(
                   height: 16,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.getSecondaryColor(
+                            Theme.of(context).brightness)
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -1768,23 +2010,34 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Title shimmer
-          Container(
-            width: 150,
-            height: 22,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(4),
+          Shimmer.fromColors(
+            baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+            highlightColor:
+                AppTheme.getShimmerHighlight(Theme.of(context).brightness),
+            child: Container(
+              width: 150,
+              height: 22,
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           // Card shimmer
           Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
+            baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+            highlightColor:
+                AppTheme.getShimmerHighlight(Theme.of(context).brightness),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.getSecondaryColor(Theme.of(context).brightness)
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Column(
@@ -1797,42 +2050,56 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                         width: 20,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.getSecondaryColor(
+                                  Theme.of(context).brightness)
+                              : AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Container(
                           height: 18,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.getSecondaryColor(
+                                        Theme.of(context).brightness)
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
                         width: 60,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.getSecondaryColor(
+                                  Theme.of(context).brightness)
+                              : AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   // Description shimmer
                   Container(
                     width: double.infinity,
                     height: 14,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   // Bottom row shimmer
                   Row(
                     children: [
@@ -1840,25 +2107,31 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.getSecondaryColor(
+                                  Theme.of(context).brightness)
+                              : AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Container(
                         width: 80,
                         height: 16,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      const Spacer(),
+                      Spacer(),
                       Container(
                         width: 60,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -1894,16 +2167,17 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                   size: 80, // Larger icon
                   color: AppTheme.greenColor,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 Text(
                   AppTranslations.getString(context, 'account_not_active'),
-                  style: AppTheme.applyPoppins(const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 20, // Larger text
                     fontWeight: FontWeight.bold,
                   )),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   AppTranslations.getString(context, 'account_not_active'),
                   style: AppTheme.applyPoppins(TextStyle(
@@ -1924,19 +2198,19 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.1),
+          color: AppTheme.statusRed.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            const Icon(Icons.error, color: Colors.red, size: 20),
-            const SizedBox(width: 12),
+            Icon(Icons.error, color: AppTheme.statusRed, size: 20),
+            SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: Colors.red,
+                  color: AppTheme.statusRed,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 2,
@@ -1955,18 +2229,21 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
+          color: AppTheme.borderColorLight.withOpacity(0.1),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
           children: [
-            Icon(Icons.info, color: Colors.grey[600], size: 20),
-            const SizedBox(width: 12),
+            Icon(Icons.info, color: AppTheme.shimmerBaseMedium, size: 20),
+            SizedBox(width: 12),
             Text(
               message,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.getTextSecondaryColor(
+                        Theme.of(context).brightness)
+                    : Colors.grey[600],
               ),
             ),
           ],
@@ -2125,15 +2402,15 @@ class _HomeChartPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF22C55E).withOpacity(0.6),
-          const Color(0xFF22C55E).withOpacity(0.22),
-          const Color(0xFF22C55E).withOpacity(0.06),
+          AppTheme.greenPrimary.withOpacity(0.6),
+          AppTheme.greenPrimary.withOpacity(0.22),
+          AppTheme.greenPrimary.withOpacity(0.06),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF22C55E)
+      ..color = AppTheme.greenPrimary
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

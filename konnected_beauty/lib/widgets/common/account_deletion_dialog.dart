@@ -60,11 +60,14 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor,
+          color: brightness == Brightness.light
+              ? AppTheme.lightCardBackground
+              : AppTheme.primaryColor,
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.all(24),
@@ -84,8 +87,10 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
                 Expanded(
                   child: Text(
                     AppTranslations.getString(context, 'account_deletion'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -93,9 +98,11 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close,
-                    color: Colors.white,
+                    color: brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : Colors.white,
                   ),
                 ),
               ],
@@ -136,8 +143,10 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
             // Reason input
             Text(
               AppTranslations.getString(context, 'account_deletion_reason'),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -147,16 +156,49 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
               controller: _reasonController,
               maxLines: 4,
               maxLength: 500,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : Colors.white,
+              ),
               decoration: InputDecoration(
                 hintText: AppTranslations.getString(
                     context, 'account_deletion_placeholder'),
-                hintStyle: TextStyle(color: Colors.grey[400]),
+                hintStyle: TextStyle(
+                  color: brightness == Brightness.light
+                      ? AppTheme.lightTextSecondaryColor
+                      : Colors.grey[400],
+                ),
                 filled: true,
-                fillColor: Colors.grey[800],
+                fillColor: brightness == Brightness.light
+                    ? AppTheme.lightCardBackground
+                    : Colors.grey[800],
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : Colors.transparent,
+                    width: 1,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : Colors.transparent,
+                    width: 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : Colors.transparent,
+                    width: 1,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.all(12),
               ),
@@ -172,16 +214,28 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
                         ? null
                         : () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[700],
+                      backgroundColor: brightness == Brightness.light
+                          ? AppTheme.lightCardBackground
+                          : Colors.grey[700],
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: brightness == Brightness.light
+                              ? AppTheme.lightTextPrimaryColor
+                              : Colors.transparent,
+                          width: 1,
+                        ),
                       ),
                     ),
                     child: Text(
                       AppTranslations.getString(
                           context, 'account_deletion_cancel'),
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color: brightness == Brightness.light
+                            ? AppTheme.lightTextPrimaryColor
+                            : Colors.white,
+                      ),
                     ),
                   ),
                 ),

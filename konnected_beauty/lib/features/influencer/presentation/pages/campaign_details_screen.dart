@@ -173,24 +173,28 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             }
           },
           child: Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor:
+                AppTheme.getScaffoldBackground(Theme.of(context).brightness),
             body: Stack(
               children: [
                 // TOP GREEN GLOW
                 Positioned(
-                  top: -140,
+                  top: -120,
                   left: -60,
                   right: -60,
                   child: IgnorePointer(
                     child: Container(
-                      height: 300,
+                      height: 280,
                       decoration: BoxDecoration(
+                        // soft radial green halo like the screenshot
                         gradient: RadialGradient(
                           center: const Alignment(0, -0.6),
-                          radius: 0.9,
+                          radius: 0.8,
                           colors: [
-                            const Color(0xFF22C55E).withOpacity(0.55),
-                            Colors.transparent,
+                            AppTheme.greenPrimary.withOpacity(0.35),
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.transparentBackground
+                                : AppTheme.textWhite54,
                           ],
                           stops: const [0.0, 1.0],
                         ),
@@ -210,28 +214,28 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildCampaignInfo(salonName, status, initiator),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
                               if (status == 'in progress') ...[
                                 _buildCreatedAndStartedAt(date),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                               ] else ...[
                                 _buildCreatedAt(date),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                               ],
                               _buildPromotionDetails(
                                   promotionTypeText, promotionText),
-                              const SizedBox(height: 24),
+                              SizedBox(height: 24),
                               if (status == 'in progress') ...[
                                 _buildClicks(campaign['clicks'] ?? 0),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                                 _buildCompletedOrders(
                                     int.tryParse(_totalCompletedOrders) ?? 0),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                                 _buildTotal(int.tryParse(_totalAmount) ?? 0),
-                                const SizedBox(height: 24),
+                                SizedBox(height: 24),
                               ],
                               _buildMessage(message),
-                              const SizedBox(height: 40),
+                              SizedBox(height: 40),
                             ],
                           ),
                         ),
@@ -255,9 +259,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios,
-              color: AppTheme.accentColor,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.accentColor,
               size: 20,
             ),
           ),
@@ -270,14 +276,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               AppTranslations.getString(context, 'campaign_with'),
-              style: const TextStyle(
-                color: AppTheme.accentColor,
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.accentColor,
                 fontSize: 14,
               ),
             ),
@@ -286,8 +294,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         ),
         Text(
           salonName,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -298,6 +308,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   }
 
   Widget _buildStatusTag(String status, String initiator) {
+    final brightness = Theme.of(context).brightness;
     String statusText;
     IconData statusIcon;
 
@@ -327,8 +338,13 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: brightness == Brightness.light
+            ? AppTheme.lightCardBackground
+            : AppTheme.getTextPrimaryColor(brightness),
         borderRadius: BorderRadius.circular(8),
+        border: brightness == Brightness.light
+            ? Border.all(color: AppTheme.lightCardBorderColor, width: 1)
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -336,18 +352,22 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           Flexible(
             child: Text(
               statusText,
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.lightTextPrimaryColor,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Icon(
             statusIcon,
-            color: Colors.black,
+            color: brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.lightTextPrimaryColor,
             size: 12,
           ),
         ],
@@ -361,16 +381,20 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       children: [
         Text(
           AppTranslations.getString(context, 'created_at'),
-          style: const TextStyle(
-            color: AppTheme.accentColor,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.accentColor,
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           date,
-          style: const TextStyle(
-            color: AppTheme.accentColor,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.accentColor,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -395,16 +419,20 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       children: [
         Text(
           AppTranslations.getString(context, 'clicks'),
-          style: const TextStyle(
-            color: Color(0xFF9CA3AF),
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextSecondaryColor
+                : AppTheme.getTextTertiaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           '${_formatNumber(clicks)} ${AppTranslations.getString(context, 'clicks')}',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -419,16 +447,20 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       children: [
         Text(
           AppTranslations.getString(context, 'completed_orders'),
-          style: const TextStyle(
-            color: Color(0xFF9CA3AF),
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextSecondaryColor
+                : AppTheme.getTextTertiaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           _formatNumber(orders),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -443,16 +475,20 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       children: [
         Text(
           AppTranslations.getString(context, 'total'),
-          style: const TextStyle(
-            color: Color(0xFF9CA3AF),
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextSecondaryColor
+                : AppTheme.getTextTertiaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           '${_formatNumber(total)} EUR',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -470,16 +506,22 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             children: [
               Text(
                 AppTranslations.getString(context, 'promotion_type'),
-                style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextTertiaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 promotionType,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -488,23 +530,29 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 AppTranslations.getString(context, 'value'),
-                style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextTertiaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 promotionValue,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -523,18 +571,22 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       children: [
         Text(
           AppTranslations.getString(context, 'message'),
-          style: const TextStyle(
-            color: AppTheme.accentColor,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.accentColor,
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           message.isEmpty
               ? AppTranslations.getString(context, 'no_message')
               : message,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -576,15 +628,19 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (isLoading) ...[
-                            const SizedBox(
+                            SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                color: Colors.black,
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Brightness.light
+                                        : Brightness.dark),
                                 strokeWidth: 2,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                           ],
                           Flexible(
                             child: Text(
@@ -592,8 +648,12 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                                   ? 'Accepting...'
                                   : AppTranslations.getString(
                                       context, 'accept_campaign'),
-                              style: const TextStyle(
-                                color: Colors.black,
+                              style: TextStyle(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Brightness.light
+                                        : Brightness.dark),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -602,10 +662,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                             ),
                           ),
                           if (!isLoading) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
+                            SizedBox(width: 8),
+                            Icon(
                               LucideIcons.checkCheck,
-                              color: Colors.black,
+                              color: AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Brightness.light
+                                      : Brightness.dark),
                               size: 20,
                             ),
                           ],
@@ -613,7 +677,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   // Refuse Campaign Button
                   SizedBox(
                     width: double.infinity,
@@ -624,7 +688,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                           : () => _refuseCampaign(
                               context.read<CampaignActionsBloc>()),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white, width: 1),
+                        side: BorderSide(
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
+                            width: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -633,15 +700,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (isLoading) ...[
-                            const SizedBox(
+                            SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                color: Colors.white,
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
                                 strokeWidth: 2,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                           ],
                           Flexible(
                             child: Text(
@@ -649,8 +717,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                                   ? 'Rejecting...'
                                   : AppTranslations.getString(
                                       context, 'refuse_campaign'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -659,10 +728,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                             ),
                           ),
                           if (!isLoading) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
+                            SizedBox(width: 8),
+                            Icon(
                               Icons.close,
-                              color: Colors.white,
+                              color: AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                               size: 20,
                             ),
                           ],
@@ -678,8 +748,12 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                     child: OutlinedButton(
                       onPressed: _deleteCampaignRequest,
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                            color: AppTheme.accentColor, width: 1),
+                        side: BorderSide(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.accentColor,
+                            width: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -691,8 +765,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                             child: Text(
                               AppTranslations.getString(
                                   context, 'delete_campaign_request'),
-                              style: const TextStyle(
-                                color: AppTheme.accentColor,
+                              style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.accentColor,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -700,10 +777,13 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(
+                          SizedBox(width: 8),
+                          Icon(
                             LucideIcons.xCircle,
-                            color: AppTheme.accentColor,
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : AppTheme.accentColor,
                             size: 20,
                           ),
                         ],
@@ -720,7 +800,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                     child: OutlinedButton(
                       onPressed: _copyLink,
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white, width: 1),
+                        side: BorderSide(
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
+                            width: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -731,8 +814,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                           Flexible(
                             child: Text(
                               AppTranslations.getString(context, 'copy_link'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -740,10 +824,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(
+                          SizedBox(width: 8),
+                          Icon(
                             Icons.link,
-                            color: Colors.white,
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                             size: 20,
                           ),
                         ],
@@ -758,12 +843,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color: Colors.white.withOpacity(0.3), width: 1),
+                            color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness)
+                                .withOpacity(0.3),
+                            width: 1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           strokeWidth: 2,
                         ),
                       ),
@@ -777,14 +866,19 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         border: Border.all(
-                            color: Colors.white.withOpacity(0.3), width: 1),
+                            color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness)
+                                .withOpacity(0.3),
+                            width: 1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
                         child: Text(
                           'Campaign link not available',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness)
+                                .withOpacity(0.7),
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
@@ -850,22 +944,24 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
+          backgroundColor:
+              AppTheme.getSecondaryColor(Theme.of(context).brightness),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
             AppTranslations.getString(context, 'accept_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
             AppTranslations.getString(context, 'confirm_accept_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: TextStyle(
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
           ),
@@ -876,8 +972,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               },
               child: Text(
                 AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 16,
                 ),
               ),
@@ -889,7 +986,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               },
               child: Text(
                 AppTranslations.getString(context, 'confirm'),
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTheme.greenColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -907,22 +1004,24 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
+          backgroundColor:
+              AppTheme.getSecondaryColor(Theme.of(context).brightness),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
             AppTranslations.getString(context, 'refuse_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
             AppTranslations.getString(context, 'confirm_refuse_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: TextStyle(
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
           ),
@@ -933,8 +1032,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               },
               child: Text(
                 AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 16,
                 ),
               ),
@@ -946,8 +1046,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               },
               child: Text(
                 AppTranslations.getString(context, 'confirm'),
-                style: const TextStyle(
-                  color: Colors.red,
+                style: TextStyle(
+                  color: AppTheme.statusRed,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1019,15 +1119,17 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           child: BlocBuilder<DeleteCampaignBloc, DeleteCampaignState>(
             builder: (context, state) {
               return AlertDialog(
-                backgroundColor: const Color(0xFF2A2A2A),
+                backgroundColor:
+                    AppTheme.getCardBackground(Theme.of(context).brightness),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 title: Text(
                   AppTranslations.getString(
                       context, 'delete_campaign_confirmation_title'),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1035,8 +1137,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 content: Text(
                   AppTranslations.getString(
                       context, 'delete_campaign_confirmation_message'),
-                  style: const TextStyle(
-                    color: Color(0xFF9CA3AF),
+                  style: TextStyle(
+                    color: AppTheme.getTextTertiaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 14,
                   ),
                 ),
@@ -1046,8 +1149,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                     child: Text(
                       AppTranslations.getString(
                           context, 'delete_campaign_cancel_button'),
-                      style: const TextStyle(
-                        color: Color(0xFF9CA3AF),
+                      style: TextStyle(
+                        color: AppTheme.getTextTertiaryColor(
+                            Theme.of(context).brightness),
                         fontSize: 14,
                       ),
                     ),
@@ -1061,25 +1165,27 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                           },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.greenColor,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: state is DeleteCampaignLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness)),
                             ),
                           )
                         : Text(
                             AppTranslations.getString(
                                 context, 'delete_campaign_confirm_button'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),

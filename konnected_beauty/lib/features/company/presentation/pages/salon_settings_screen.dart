@@ -361,14 +361,17 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                       },
                       builder: (context, state) {
                         final bool isLoading = state is SalonReportLoading;
+                        final brightness = Theme.of(context).brightness;
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               AppTranslations.getString(context, 'report'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -378,15 +381,19 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                               AppTranslations.getString(
                                   context, 'report_subtitle'),
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
+                                color: brightness == Brightness.light
+                                    ? AppTheme.lightTextSecondaryColor
+                                    : Colors.white.withOpacity(0.8),
                                 fontSize: 14,
                               ),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               AppTranslations.getString(context, 'report'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: brightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -394,24 +401,38 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                             const SizedBox(height: 12),
                             Container(
                               decoration: BoxDecoration(
-                                color: AppTheme.scaffoldBackground,
+                                color: brightness == Brightness.light
+                                    ? AppTheme.lightCardBackground
+                                    : AppTheme.scaffoldBackground,
                                 borderRadius: BorderRadius.circular(12),
-                                border:
-                                    Border.all(color: const Color(0xFF4A4A4A)),
+                                border: Border.all(
+                                  color: brightness == Brightness.light
+                                      ? AppTheme.lightTextPrimaryColor
+                                      : const Color(0xFF4A4A4A),
+                                  width: 1,
+                                ),
                               ),
                               child: TextField(
                                 controller: _reportController,
                                 maxLines: 6,
                                 maxLength: 100,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                  color: brightness == Brightness.light
+                                      ? AppTheme.lightTextPrimaryColor
+                                      : Colors.white,
+                                ),
                                 decoration: InputDecoration(
                                   hintText: AppTranslations.getString(
                                       context, 'describe_your_problem'),
                                   hintStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.5),
+                                    color: brightness == Brightness.light
+                                        ? AppTheme.lightTextSecondaryColor
+                                        : Colors.white.withOpacity(0.5),
                                   ),
                                   counterStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
+                                    color: brightness == Brightness.light
+                                        ? AppTheme.lightTextSecondaryColor
+                                        : Colors.white.withOpacity(0.6),
                                     fontSize: 12,
                                   ),
                                   border: InputBorder.none,
@@ -434,17 +455,24 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 16),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.scaffoldBackground,
+                                        color: brightness == Brightness.light
+                                            ? AppTheme.lightCardBackground
+                                            : AppTheme.scaffoldBackground,
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: const Color(0xFF4A4A4A),
+                                          color: brightness == Brightness.light
+                                              ? AppTheme.lightTextPrimaryColor
+                                              : const Color(0xFF4A4A4A),
+                                          width: 1,
                                         ),
                                       ),
                                       child: Text(
                                         AppTranslations.getString(
                                             context, 'cancel'),
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: brightness == Brightness.light
+                                              ? AppTheme.lightTextPrimaryColor
+                                              : Colors.white,
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -458,7 +486,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                                   child: Container(
                                     height: 48,
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: brightness == Brightness.light
+                                          ? AppTheme.lightTextPrimaryColor
+                                          : Colors.white,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: TextButton(
@@ -488,19 +518,27 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                                         ),
                                       ),
                                       child: isLoading
-                                          ? const SizedBox(
+                                          ? SizedBox(
                                               height: 20,
                                               width: 20,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: Colors.black,
+                                                color: brightness ==
+                                                        Brightness.light
+                                                    ? AppTheme
+                                                        .lightCardBackground
+                                                    : Colors.black,
                                               ),
                                             )
                                           : Text(
                                               AppTranslations.getString(
                                                   this.context, 'submit'),
-                                              style: const TextStyle(
-                                                color: Colors.black,
+                                              style: TextStyle(
+                                                color: brightness ==
+                                                        Brightness.light
+                                                    ? AppTheme
+                                                        .lightCardBackground
+                                                    : Colors.black,
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -547,14 +585,26 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF363636),
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppTheme.lightBannerBackground
+              : const Color(0xFF363636),
           borderRadius: BorderRadius.circular(12),
+          border: Theme.of(context).brightness == Brightness.light
+              ? Border.all(
+                  color: AppTheme.lightCardBorderColor,
+                  width: 1,
+                )
+              : null,
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: isDestructive ? Colors.red : Colors.white,
+              color: isDestructive
+                  ? Colors.red
+                  : Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : Colors.white,
               size: 24,
             ),
             const SizedBox(width: 16),
@@ -562,7 +612,11 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
               child: Text(
                 title,
                 style: TextStyle(
-                  color: isDestructive ? Colors.red : Colors.white,
+                  color: isDestructive
+                      ? Colors.red
+                      : Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -570,7 +624,11 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
             ),
             Icon(
               LucideIcons.chevronRight,
-              color: isDestructive ? Colors.red : Colors.white,
+              color: isDestructive
+                  ? Colors.red
+                  : Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : Colors.white,
               size: 20,
             ),
           ],
@@ -580,6 +638,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return GestureDetector(
       onTap: () async {
         print('🔴 === SALON LOGOUT BUTTON TAPPED ===');
@@ -600,22 +659,30 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF363636),
+          color: brightness == Brightness.light
+              ? AppTheme.lightBannerBackground
+              : const Color(0xFF363636),
           borderRadius: BorderRadius.circular(12),
+          border: brightness == Brightness.light
+              ? Border.all(
+                  color: AppTheme.lightCardBorderColor,
+                  width: 1,
+                )
+              : null,
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               LucideIcons.logOut,
-              color: Colors.red,
+              color: AppTheme.errorColor,
               size: 24,
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 AppTranslations.getString(context, 'logout'),
-                style: const TextStyle(
-                  color: Colors.red,
+                style: TextStyle(
+                  color: AppTheme.errorColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -635,9 +702,12 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (BuildContext context) {
+        final modalBrightness = Theme.of(context).brightness;
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF2C2C2C),
+          decoration: BoxDecoration(
+            color: modalBrightness == Brightness.light
+                ? AppTheme.lightCardBackground
+                : const Color(0xFF2C2C2C),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -652,8 +722,10 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   // Confirmation message
                   Text(
                     AppTranslations.getString(context, 'are_you_sure_logout'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: modalBrightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
@@ -674,16 +746,23 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3A3A3A),
+                              color: modalBrightness == Brightness.light
+                                  ? AppTheme.lightCardBackground
+                                  : const Color(0xFF3A3A3A),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF4A4A4A),
+                                color: modalBrightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : const Color(0xFF4A4A4A),
+                                width: 1,
                               ),
                             ),
                             child: Text(
                               AppTranslations.getString(context, 'cancel'),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: modalBrightness == Brightness.light
+                                    ? AppTheme.lightTextPrimaryColor
+                                    : Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -699,7 +778,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.errorColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
@@ -716,9 +795,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.logout,
-                                  color: Colors.red,
+                                  color: Colors.white,
                                   size: 18,
                                 ),
                                 const SizedBox(width: 6),
@@ -726,8 +805,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                                   child: Text(
                                     AppTranslations.getString(
                                         context, 'yes_logout'),
-                                    style: const TextStyle(
-                                      color: Colors.red,
+                                    style: TextStyle(
+                                      color: Colors.white,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                     ),

@@ -84,27 +84,29 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
                   // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -168,30 +170,41 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           // Title
           Text(
             AppTranslations.getString(context, 'saloons_title'),
-            style: AppTheme.headingStyle.copyWith(fontSize: 32),
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Search bar
           Container(
             height: 48,
             decoration: BoxDecoration(
-              color: AppTheme.transparentBackground,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.transparentBackground
+                  : AppTheme.textWhite54,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.textPrimaryColor),
+              border: Border.all(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness)),
             ),
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
-              style: AppTheme.applyPoppins(
-                  const TextStyle(color: AppTheme.textPrimaryColor)),
+              style: AppTheme.applyPoppins(TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness))),
               decoration: InputDecoration(
                 hintText:
                     AppTranslations.getString(context, 'search_placeholder'),
-                hintStyle: AppTheme.applyPoppins(
-                    const TextStyle(color: AppTheme.textSecondaryColor)),
+                hintStyle: AppTheme.applyPoppins(TextStyle(
+                    color: AppTheme.getTextSecondaryColor(
+                        Theme.of(context).brightness))),
                 suffixIcon: Icon(
                   Icons.search,
-                  color: AppTheme.textSecondaryColor,
+                  color: AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
@@ -201,7 +214,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           MotivationalBanner(
             text: AppTranslations.getString(context, 'invite_saloons_hint'),
           ),
@@ -227,7 +240,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               (context, index) {
                 if (index == state.saloons.length) {
                   if (state.hasMore) {
-                    return const SizedBox(height: 32);
+                    return SizedBox(height: 32);
                   }
                   return _buildListFooter(
                     loaded: state.saloons.length,
@@ -267,9 +280,9 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 if (index == state.saloons.length) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: const Center(
+                    child: Center(
                       child: CircularProgressIndicator(
-                        color: AppTheme.accentColor,
+                        color: AppTheme.greenPrimary,
                       ),
                     ),
                   );
@@ -295,11 +308,12 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           Text(
             AppTranslations.getString(context, 'no_more_saloons'),
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 14,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             AppTranslations.getString(
               context,
@@ -309,7 +323,8 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                   total.toString(),
                 ),
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 12,
             ),
           ),
@@ -367,7 +382,9 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.transparent,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.transparentBackground
+              : AppTheme.textWhite54,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -380,7 +397,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: pictures.length > 0 ? pictures.length : 3,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                separatorBuilder: (context, index) => SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   return SizedBox(
                     width: 129, // Fixed width for each image
@@ -392,18 +409,19 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Saloon name (large, bold white text)
             Text(
               name,
-              style: AppTheme.applyPoppins(const TextStyle(
-                color: AppTheme.textPrimaryColor,
+              style: AppTheme.applyPoppins(TextStyle(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               )),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Description (max 1 line)
             if (description.isNotEmpty)
@@ -411,8 +429,9 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 width: double.infinity,
                 child: Text(
                   description,
-                  style: AppTheme.applyPoppins(const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 14,
                     height: 1.4,
                   )),
@@ -420,7 +439,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            if (description.isNotEmpty) const SizedBox(height: 8),
+            if (description.isNotEmpty) SizedBox(height: 8),
 
             // Domain and service count row
             Row(
@@ -428,8 +447,9 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 Expanded(
                   child: Text(
                     domain,
-                    style: AppTheme.applyPoppins(const TextStyle(
-                      color: AppTheme.textPrimaryColor,
+                    style: AppTheme.applyPoppins(TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 14,
                     )),
                   ),
@@ -440,23 +460,25 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                   children: [
                     Text(
                       '$serviceCount',
-                      style: AppTheme.applyPoppins(const TextStyle(
-                        color: AppTheme.textPrimaryColor,
+                      style: AppTheme.applyPoppins(TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       )),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Icon(
                       LucideIcons.zap,
-                      color: AppTheme.textPrimaryColor,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       size: 16,
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Service tags (dark grey rounded rectangles) - horizontally scrollable
             if (services.isNotEmpty)
@@ -465,8 +487,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: services.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 8),
+                  separatorBuilder: (context, index) => SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final serviceName = services[index];
                     return Container(
@@ -475,13 +496,15 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A), // Dark grey background
+                        color: AppTheme.getCardBackground(Theme.of(context)
+                            .brightness), // Dark grey background
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         serviceName,
-                        style: AppTheme.applyPoppins(const TextStyle(
-                          color: AppTheme.textPrimaryColor,
+                        style: AppTheme.applyPoppins(TextStyle(
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           fontSize: 12,
                         )),
                       ),
@@ -508,10 +531,12 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 return Container(
                   height: 120,
                   width: 129,
-                  color: const Color(0xFF2A2A2A),
-                  child: const Icon(
+                  color:
+                      AppTheme.getCardBackground(Theme.of(context).brightness),
+                  child: Icon(
                     Icons.image_outlined,
-                    color: AppTheme.textSecondaryColor,
+                    color: AppTheme.getTextSecondaryColor(
+                        Theme.of(context).brightness),
                     size: 30,
                   ),
                 );
@@ -521,7 +546,8 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 return Container(
                   height: 120,
                   width: 129,
-                  color: const Color(0xFF2A2A2A),
+                  color:
+                      AppTheme.getCardBackground(Theme.of(context).brightness),
                   child: Center(
                     child: CircularProgressIndicator(
                       value: loadingProgress.expectedTotalBytes != null
@@ -538,10 +564,11 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           : Container(
               height: 120,
               width: 129,
-              color: const Color(0xFF2A2A2A),
-              child: const Icon(
+              color: AppTheme.getCardBackground(Theme.of(context).brightness),
+              child: Icon(
                 Icons.image_outlined,
-                color: AppTheme.textSecondaryColor,
+                color: AppTheme.getTextSecondaryColor(
+                    Theme.of(context).brightness),
                 size: 30,
               ),
             ),
@@ -550,9 +577,9 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
   Widget _buildLoadingState() {
     return _buildScrollableStateWrapper(
-      const Center(
+      Center(
         child: CircularProgressIndicator(
-          color: AppTheme.accentColor,
+          color: AppTheme.greenPrimary,
         ),
       ),
     );
@@ -576,19 +603,20 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 size: 64,
                 color: AppTheme.greenColor,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 isAccountNotActive
                     ? AppTranslations.getString(context, 'account_not_active')
                     : AppTranslations.getString(
                         context, 'error_loading_saloons'),
-                style: AppTheme.applyPoppins(const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: AppTheme.applyPoppins(TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 )),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 isAccountNotActive
                     ? AppTranslations.getString(context, 'account_not_active')
@@ -600,7 +628,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                 textAlign: TextAlign.center,
               ),
               if (!isAccountNotActive) ...[
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
                     context.read<SaloonsBloc>().add(LoadSaloons(
@@ -610,7 +638,8 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accentColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                   ),
                   child: Text(AppTranslations.getString(context, 'retry')),
                 ),
@@ -633,22 +662,25 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               Icon(
                 Icons.storefront_outlined,
                 size: 64,
-                color: AppTheme.textSecondaryColor,
+                color: AppTheme.getTextSecondaryColor(
+                    Theme.of(context).brightness),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 AppTranslations.getString(context, 'no_saloons_found'),
                 style: AppTheme.applyPoppins(TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 )),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 AppTranslations.getString(context, 'no_saloons_message'),
                 style: AppTheme.applyPoppins(TextStyle(
-                  color: AppTheme.textSecondaryColor,
+                  color: AppTheme.getTextSecondaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 14,
                 )),
                 textAlign: TextAlign.center,
@@ -662,7 +694,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
   Widget _buildInitialState() {
     return _buildScrollableStateWrapper(
-      const Center(
+      Center(
         child: CircularProgressIndicator(
           color: AppTheme.accentColor,
         ),

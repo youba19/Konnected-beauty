@@ -492,29 +492,37 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           // Back Button
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios,
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 20,
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Title with Icon
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.person,
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                 size: 24,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 AppTranslations.getString(context, 'personal_information') ??
                     'Personal information',
                 style: AppTheme.headingStyle.copyWith(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -528,8 +536,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
   Widget _buildShimmerContent() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -538,39 +547,39 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           children: [
             // HEADER - Now scrollable
             _buildHeader(),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Profile Picture Shimmer
             _buildShimmerProfilePicture(),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Name Field Shimmer
             _buildShimmerTextField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Pseudo Field Shimmer
             _buildShimmerTextField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Email Field Shimmer
             _buildShimmerTextField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Phone Field Shimmer
             _buildShimmerTextField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Bio Field Shimmer
             _buildShimmerTextField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Zone Field Shimmer
             _buildShimmerTextField(),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
 
             // Save Button Shimmer
             _buildShimmerButton(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
         ),
       ),
@@ -586,11 +595,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           height: 16,
           width: 120,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // Profile picture shimmer
         Center(
@@ -598,10 +607,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: Colors.grey[700],
+              color: AppTheme.shimmerBaseMediumDark,
               shape: BoxShape.circle,
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                        .withOpacity(0.3),
                 width: 2,
               ),
             ),
@@ -620,21 +631,22 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           height: 16,
           width: 120,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // Text field shimmer
         Container(
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.white.withOpacity(0.3),
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                  .withOpacity(0.3),
               width: 1,
             ),
           ),
@@ -648,10 +660,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       height: 56,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+              .withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -666,21 +679,26 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           AppTranslations.getString(context, 'profile_picture') ??
               'Profile picture',
           style: AppTheme.subtitleStyle.copyWith(
-            color: Colors.white,
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         GestureDetector(
           onTap: _pickImage,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.transparentBackground,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightCardBackground
+                  : AppTheme.transparentBackground,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
+              border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightCardBorderColor
+                      : AppTheme.getBorderColor(Theme.of(context).brightness)),
             ),
             child: Row(
               children: [
@@ -689,9 +707,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppTheme.secondaryColor,
+                    color: AppTheme.getSecondaryColor(
+                        Theme.of(context).brightness),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    border: Border.all(
+                        color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness)
+                            .withOpacity(0.2)),
                   ),
                   child: _selectedImageFile != null
                       ? ClipRRect(
@@ -712,9 +734,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                                 width: 40,
                                 height: 40,
                                 errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
+                                  return Icon(
                                     Icons.person,
-                                    color: Colors.white,
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? AppTheme.lightTextPrimaryColor
+                                        : AppTheme.getTextPrimaryColor(
+                                            Theme.of(context).brightness),
                                     size: 24,
                                   );
                                 },
@@ -731,20 +757,24 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                                                   loadingProgress
                                                       .expectedTotalBytes!
                                               : null,
-                                      color: const Color(0xFF22C55E),
+                                      color: AppTheme.greenPrimary,
                                       strokeWidth: 2,
                                     ),
                                   );
                                 },
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.person,
-                              color: Colors.white,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? AppTheme.lightTextPrimaryColor
+                                  : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness),
                               size: 24,
                             ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     _selectedImageFile != null
@@ -753,7 +783,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             ? 'Current: ${profilePicture.split('/').last}'
                             : 'Tap to upload profile picture',
                     style: AppTheme.subtitleStyle.copyWith(
-                      color: AppTheme.textPrimaryColor,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                       fontSize: 16,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -766,20 +799,25 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.8),
+                        color: AppTheme.statusRed.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close,
-                        color: Colors.white,
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightTextPrimaryColor
+                            : AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                         size: 16,
                       ),
                     ),
                   ),
-                const SizedBox(width: 8),
-                const Icon(
+                SizedBox(width: 8),
+                Icon(
                   Icons.upload,
-                  color: Colors.white70,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.textWhite70,
                   size: 24,
                 ),
               ],
@@ -797,18 +835,26 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         Text(
           'Zone',
           style: TextStyle(
-            color: AppTheme.textPrimaryColor,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.transparentBackground,
-            border: Border.all(color: AppTheme.borderColor, width: 1),
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightCardBackground
+                : AppTheme.transparentBackground,
+            border: Border.all(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getBorderColor(Theme.of(context).brightness),
+                width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: DropdownButtonFormField<String>(
@@ -818,20 +864,29 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
               contentPadding: EdgeInsets.zero,
             ),
             isExpanded: true,
-            dropdownColor: AppTheme.primaryColor,
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            dropdownColor: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightCardBackground
+                : AppTheme.primaryColor,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
-            icon: const Icon(
+            icon: Icon(
               Icons.keyboard_arrow_down,
-              color: AppTheme.textPrimaryColor,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             ),
-            hint: const Text(
+            hint: Text(
               'Select Zone',
               style: TextStyle(
-                color: AppTheme.textPrimaryColor,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextSecondaryColor
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
@@ -839,7 +894,15 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
             items: _zones.map((String item) {
               return DropdownMenuItem<String>(
                 value: item,
-                child: Text(item),
+                child: Text(
+                  item,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
+                  ),
+                ),
               );
             }).toList(),
             onChanged: (String? newValue) {
@@ -868,28 +931,40 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           child: ElevatedButton(
             onPressed: (isUpdating || isValidating) ? null : _updateProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightCardBackground
+                  : AppTheme.transparentBackground,
+              foregroundColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                side: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness)
+                            .withOpacity(0.3)),
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (isUpdating) ...[
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                       strokeWidth: 2,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
+                  SizedBox(width: 8),
+                  Text(
                     'Updating...',
                     style: TextStyle(
                       fontSize: 16,
@@ -897,16 +972,17 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     ),
                   ),
                 ] else if (isValidating) ...[
-                  const SizedBox(
+                  SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       strokeWidth: 2,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
+                  SizedBox(width: 8),
+                  Text(
                     'Validating...',
                     style: TextStyle(
                       fontSize: 16,
@@ -914,9 +990,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     ),
                   ),
                 ] else ...[
-                  const Icon(Icons.edit, size: 20),
-                  const SizedBox(width: 8),
-                  const Text(
+                  Icon(Icons.edit, size: 20),
+                  SizedBox(width: 8),
+                  Text(
                     'Edit information',
                     style: TextStyle(
                       fontSize: 16,
@@ -937,40 +1013,42 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.error_outline,
-            color: Colors.red,
+            color: AppTheme.statusRed,
             size: 64,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             'Failed to load profile',
             style: AppTheme.headingStyle.copyWith(
-              color: Colors.white,
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 20,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             error,
             style: AppTheme.subtitleStyle.copyWith(
-              color: Colors.white70,
+              color: AppTheme.textWhite70,
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
           if (details != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               details,
               style: AppTheme.subtitleStyle.copyWith(
-                color: Colors.white.withOpacity(0.5),
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                        .withOpacity(0.5),
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
             ),
           ],
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
               context
@@ -978,14 +1056,15 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   .add(RefreshInfluencerProfile());
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF22C55E),
-              foregroundColor: Colors.white,
+              backgroundColor: AppTheme.greenPrimary,
+              foregroundColor:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text('Retry'),
+            child: Text('Retry'),
           ),
         ],
       ),
@@ -994,25 +1073,29 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -1087,11 +1170,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         children: [
                           // HEADER - Now scrollable
                           _buildHeader(),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
 
                           // Error content
                           _buildErrorWidget(state.error, state.details),
-                          const SizedBox(height: 40),
+                          SizedBox(height: 40),
                         ],
                       ),
                     );
@@ -1120,11 +1203,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         children: [
                           // HEADER - Now scrollable
                           _buildHeader(),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
 
                           // Profile Picture
                           _buildProfilePictureField(profileData.profilePicture),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
 
                           // Name
                           CustomTextField(
@@ -1136,7 +1219,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             controller: _nameController,
                             onChanged: (value) => _onFieldChanged(),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
 
                           // Pseudo
                           CustomTextField(
@@ -1149,7 +1232,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             controller: _pseudoController,
                             onChanged: (value) => _onFieldChanged(),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
 
                           // Email (Read-only)
                           CustomTextField(
@@ -1163,7 +1246,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             keyboardType: TextInputType.emailAddress,
                             enabled: false, // Make it read-only
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
 
                           // Phone
                           CustomTextField(
@@ -1177,7 +1260,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             keyboardType: TextInputType.phone,
                             onChanged: (value) => _onFieldChanged(),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
 
                           // Bio
                           CustomTextField(
@@ -1190,35 +1273,35 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             maxLines: 3,
                             onChanged: (value) => _onFieldChanged(),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
 
                           // Zone
                           _buildZoneField(),
-                          const SizedBox(height: 32),
+                          SizedBox(height: 32),
 
                           // Edit Button
                           _buildEditButton(),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
 
                           // Extra padding at bottom for better scrolling
-                          const SizedBox(height: 40),
+                          SizedBox(height: 40),
                         ],
                       ),
                     );
                   } else if (state is InfluencerProfileUpdated) {
                     // Show loading while navigating back
-                    return const Center(
+                    return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(
-                            color: Color(0xFF22C55E),
+                            color: AppTheme.greenPrimary,
                           ),
                           SizedBox(height: 16),
                           Text(
                             'Profile updated successfully!',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppTheme.getTextPrimaryColor(brightness),
                               fontSize: 16,
                             ),
                           ),
@@ -1226,7 +1309,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                           Text(
                             'Navigating back...',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: AppTheme.textWhite70,
                               fontSize: 14,
                             ),
                           ),
@@ -1235,10 +1318,11 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     );
                   } else {
                     // This should never happen, but provide a fallback
-                    return const Center(
+                    return Center(
                       child: Text(
                         'Loading...',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                            color: AppTheme.getTextPrimaryColor(brightness)),
                       ),
                     );
                   }

@@ -70,25 +70,29 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -90,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -115,13 +119,13 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                         children: [
                           // HEADER - Now scrollable
                           _buildHeader(),
-                          const SizedBox(height: 24),
+                          SizedBox(height: 24),
 
                           // Social media content
                           _buildContent(),
 
                           // Extra padding at bottom for better scrolling
-                          const SizedBox(height: 40),
+                          SizedBox(height: 40),
                         ],
                       ),
                     ),
@@ -141,20 +145,25 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           // Back Button
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios,
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 20,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           // Title with @ symbol
           Row(
             children: [
-              const Text(
+              Text(
                 '@ ',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -163,8 +172,11 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                 child: Text(
                   AppTranslations.getString(context, 'your_socials') ??
                       'Yours socials',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -181,8 +193,9 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
 
   Widget _buildShimmerContent() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -191,30 +204,30 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           children: [
             // HEADER - Now scrollable
             _buildHeader(),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Social media fields shimmer
             _buildShimmerSocialField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             _buildShimmerSocialField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             _buildShimmerSocialField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             _buildShimmerSocialField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             _buildShimmerSocialField(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Add link button shimmer
             _buildShimmerAddButton(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Extra padding at bottom for better scrolling
-            const SizedBox(height: 40),
+            SizedBox(height: 40),
           ],
         ),
       ),
@@ -230,21 +243,22 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           height: 16,
           width: 120,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // Text field shimmer
         Container(
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.white.withOpacity(0.3),
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                  .withOpacity(0.3),
               width: 1,
             ),
           ),
@@ -258,10 +272,11 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
       height: 56,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+              .withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -277,14 +292,14 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           label: AppTranslations.getString(context, 'instagram') ?? 'Instagram',
           controller: _instagramController,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // TikTok
         _buildSocialMediaField(
           label: AppTranslations.getString(context, 'tiktok') ?? 'TikTok',
           controller: _tiktokController,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // YouTube
         _buildSocialMediaField(
@@ -296,7 +311,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
         ..._buildAllOtherSocialMediaFields(),
 
         // Add some extra spacing to ensure scrolling works properly
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
       ],
     );
   }
@@ -310,31 +325,36 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white, width: 1),
+            border: Border.all(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+                width: 1),
           ),
           child: TextField(
             controller: controller,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               contentPadding:
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: InputBorder.none,
               hintText: 'Enter link',
               hintStyle: TextStyle(
-                color: Colors.white54,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.transparentBackground
+                    : AppTheme.textWhite54,
                 fontSize: 16,
               ),
             ),
@@ -369,7 +389,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               _buildUnifiedSocialMediaField(
                 label: name.substring(0, 1).toUpperCase() + name.substring(1),
                 controller: TextEditingController(text: displayLink),
@@ -390,7 +410,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               _buildUnifiedSocialMediaField(
                 label: name.substring(0, 1).toUpperCase() + name.substring(1),
                 controller: TextEditingController(text: link),
@@ -418,28 +438,45 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
         // Label
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         // Text field with delete icon in the same row
         Row(
           children: [
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightCardBackground
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white, width: 1),
+                  border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
+                      width: 1),
                 ),
                 child: TextField(
                   controller: controller,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness)),
                   decoration: InputDecoration(
                     hintText: 'Enter $label link',
-                    hintStyle: const TextStyle(color: Colors.white54),
+                    hintStyle: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightTextSecondaryColor
+                            : AppTheme.textWhite54),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -465,12 +502,12 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
             ),
             // Show delete icon for newly added links in the same row
             if (isNewlyAdded && onDelete != null) ...[
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               GestureDetector(
                 onTap: onDelete,
-                child: const Icon(
+                child: Icon(
                   Icons.delete_outline,
-                  color: Colors.red,
+                  color: AppTheme.statusRed,
                   size: 24,
                 ),
               ),
@@ -580,28 +617,31 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF2C2C2C),
-          title: const Text(
+          backgroundColor:
+              AppTheme.getPlaceholderBackground(Theme.of(context).brightness),
+          title: Text(
             'Delete Link',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness)),
           ),
           content: Text(
             'Are you sure you want to delete "$linkName"?',
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppTheme.textWhite70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text(
+              child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppTheme.textWhite70),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text(
+              child: Text(
                 'Delete',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: AppTheme.statusRed),
               ),
             ),
           ],
@@ -785,24 +825,25 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.error_outline,
-              color: Colors.red,
+              color: AppTheme.statusRed,
               size: 48,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               'Error: $_errorMessage',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadSocialMediaData,
-              child: const Text('Retry'),
+              child: Text('Retry'),
             ),
           ],
         ),
@@ -814,7 +855,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
       children: [
         // Social Media Links Section
         _buildSocialMediaSection(),
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
         // Action Buttons
         _buildActionButtons(),
       ],
@@ -1060,7 +1101,9 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.transparentBackground
+          : AppTheme.textWhite54,
       enableDrag: true,
       isDismissible: true,
       useSafeArea: true,
@@ -1075,8 +1118,8 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
 
   Widget _buildAddLinkBottomSheet() {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF121212),
+      decoration: BoxDecoration(
+        color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
@@ -1105,18 +1148,19 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Title
               Text(
                 AppTranslations.getString(context, 'add_link') ?? 'Add link',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
 
               // Link Name Field
               _buildAddLinkField(
@@ -1127,7 +1171,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                         context, 'link_name_placeholder') ??
                     'Link name',
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
 
               // Link URL Field
               _buildAddLinkField(
@@ -1137,7 +1181,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                     AppTranslations.getString(context, 'link_placeholder') ??
                         'www.....',
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
 
               // Action Buttons
               Row(
@@ -1154,18 +1198,21 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey.withOpacity(0.3),
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
-                            side:
-                                const BorderSide(color: Colors.white, width: 1),
+                            side: BorderSide(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
+                                width: 1),
                           ),
                           elevation: 0,
                         ),
                         child: Text(
                           AppTranslations.getString(context, 'cancel') ??
                               'Cancel',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1173,7 +1220,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
 
                   // Add Link Button
                   Expanded(
@@ -1196,8 +1243,9 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
+                          backgroundColor: AppTheme.getScaffoldBackground(
+                              Theme.of(context).brightness),
+                          foregroundColor: AppTheme.lightTextPrimaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -1206,7 +1254,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                         child: Text(
                           AppTranslations.getString(context, 'add_link') ??
                               'Add link',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1216,7 +1264,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
             ],
           ),
         ),
@@ -1234,22 +1282,25 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white, width: 1),
+            border: Border.all(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+                width: 1),
           ),
           child: TextField(
             controller: controller,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
             decoration: InputDecoration(
@@ -1257,8 +1308,10 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: InputBorder.none,
               hintText: placeholder,
-              hintStyle: const TextStyle(
-                color: Colors.white54,
+              hintStyle: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppTheme.transparentBackground
+                    : AppTheme.textWhite54,
                 fontSize: 16,
               ),
             ),
@@ -1280,23 +1333,36 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _isLoading
                   ? Colors.grey.withOpacity(0.3)
-                  : AppTheme.transparentBackground,
-              foregroundColor: _isLoading ? Colors.grey : Colors.white,
+                  : Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightCardBackground
+                      : AppTheme.transparentBackground,
+              foregroundColor: _isLoading
+                  ? Colors.grey
+                  : Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(
-                  color: Colors.white, // White border
-                  width: 1, // Border thickness
+                side: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
+                  width: 1,
                 ),
               ),
               elevation: 0,
             ),
             child: _isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                       strokeWidth: 2,
                     ),
                   )
@@ -1306,22 +1372,25 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
                       Text(
                         AppTranslations.getString(context, 'save_changes') ??
                             'Save changes',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.edit, // Modification icon
-                        color: Colors.white,
+                      SizedBox(width: 8),
+                      Icon(
+                        Icons.edit,
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightTextPrimaryColor
+                            : AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                         size: 20,
                       ),
                     ],
                   ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // Add Link Button
         SizedBox(
@@ -1332,11 +1401,20 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
               _showAddLinkBottomSheet();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.transparentBackground,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightCardBackground
+                  : AppTheme.transparentBackground,
+              foregroundColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Colors.white, width: 1),
+                side: BorderSide(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
+                    width: 1),
               ),
               elevation: 0,
             ),
@@ -1345,22 +1423,27 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
               children: [
                 Text(
                   AppTranslations.getString(context, 'add_link') ?? 'Add link',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Container(
                   width: 24,
                   height: 24,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.add,
-                    color: Colors.black,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightCardBackground
+                        : AppTheme.lightTextPrimaryColor,
                     size: 20,
                   ),
                 ),

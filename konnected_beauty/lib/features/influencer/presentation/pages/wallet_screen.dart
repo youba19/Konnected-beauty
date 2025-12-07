@@ -113,26 +113,29 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -150,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
                   // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -140,7 +143,6 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ),
           ),
-
           // CONTENT
           SafeArea(
             child: SingleChildScrollView(
@@ -169,17 +171,19 @@ class _WalletScreenState extends State<WalletScreen> {
         children: [
           Text(
             AppTranslations.getString(context, 'wallet'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             AppTranslations.getString(context, 'track_earnings_realtime'),
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.textWhite70,
               fontSize: 16,
               fontWeight: FontWeight.w400,
             ),
@@ -191,27 +195,28 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildLoadingContent() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildShimmerBalanceCard(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildShimmerRevenueCard(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildShimmerInfoCard(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildShimmerInfoCard(),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _buildShimmerInfoCard(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _buildShimmerButton(),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _buildShimmerButton(),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
         ),
       ),
@@ -222,7 +227,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -238,7 +243,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Container(
                 height: 16,
                 width: 100,
@@ -249,7 +254,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
             height: 20,
             width: 80,
@@ -268,7 +273,7 @@ class _WalletScreenState extends State<WalletScreen> {
       height: 206,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -295,7 +300,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -304,7 +309,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -326,7 +331,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
             height: 18,
             width: 120,
@@ -345,7 +350,7 @@ class _WalletScreenState extends State<WalletScreen> {
       height: 54,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -358,23 +363,23 @@ class _WalletScreenState extends State<WalletScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.grey[600],
+                    color: AppTheme.shimmerBaseMedium,
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Container(
                   height: 16,
                   width: 120,
                   decoration: BoxDecoration(
-                    color: Colors.grey[600],
+                    color: AppTheme.shimmerBaseMedium,
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Container(
             height: 20,
             width: 60,
@@ -393,7 +398,7 @@ class _WalletScreenState extends State<WalletScreen> {
       height: 56,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(16),
       ),
     );
@@ -405,71 +410,79 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Column(
         children: [
           _buildBalanceCard(),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           buildTotalRevenueCard(),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildInfoCard(
             icon: LucideIcons.euro,
             title: AppTranslations.getString(context, 'pending_requests'),
             value: '${_stats['pendingRequests'] ?? 0}',
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildInfoCard(
             icon: LucideIcons.boxes,
             title: AppTranslations.getString(context, 'total_orders'),
             value: '${_stats['totalOrders']?['current'] ?? 0}',
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _buildInfoCard(
             icon: LucideIcons.euro,
             title: AppTranslations.getString(context, 'avg_order_value'),
             value:
                 '€ ${(_stats['averageOrderValue']?['current'] ?? 0.0).toStringAsFixed(2)}',
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildWithdrawHistoryButton(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildRequestWithdrawButton(),
-          const SizedBox(height: 12),
-          _buildViewReportsButton(),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
         ],
       ),
     );
   }
 
   Widget _buildBalanceCard() {
+    final brightness = Theme.of(context).brightness;
     return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: brightness == Brightness.light
+              ? AppTheme.lightCardBackground
+              : AppTheme.getTextPrimaryColor(brightness),
           borderRadius: BorderRadius.circular(16),
+          border: brightness == Brightness.light
+              ? Border.all(color: AppTheme.lightCardBorderColor, width: 1)
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   LucideIcons.euro,
-                  color: Color(0xFF337f2b),
+                  color: AppTheme.greenDarkest,
                   size: 22,
                 ),
                 Text(
                   AppTranslations.getString(context, 'your_balance'),
-                  style: const TextStyle(
-                    color: AppTheme.primaryColor,
+                  style: TextStyle(
+                    color: brightness == Brightness.light
+                        ? AppTheme.lightTextSecondaryColor
+                        : AppTheme.primaryColor,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '€ ${_balance.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Color(0xFF111827),
+              style: TextStyle(
+                color: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.lightTextPrimaryColor,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -479,16 +492,20 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget buildTotalRevenueCard() {
+    final brightness = Theme.of(context).brightness;
     return SizedBox(
       height: 206,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.lightCardBackground,
           borderRadius: BorderRadius.circular(24),
+          border: brightness == Brightness.light
+              ? Border.all(color: AppTheme.lightCardBorderColor, width: 1)
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: AppTheme.lightTextPrimaryColor.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -503,8 +520,8 @@ class _WalletScreenState extends State<WalletScreen> {
               children: [
                 Text(
                   '€ ${(_stats['totalRevenue']?['totalRevenue'] ?? 0.0).toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextPrimaryColor,
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                   ),
@@ -513,22 +530,21 @@ class _WalletScreenState extends State<WalletScreen> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: Colors.white,
                     border: Border.all(
-                      color: Color(0xFF16A34A),
+                      color: AppTheme.greenDark,
                       width: 2,
                     ),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     LucideIcons.euro,
-                    color: Color(0xFF16A34A),
+                    color: AppTheme.greenDark,
                     size: 18,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Green curved chart - Expanded to fill remaining space
             Expanded(
@@ -539,7 +555,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 size: const Size(double.infinity, double.infinity),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Dates row
             Row(
@@ -547,27 +563,27 @@ class _WalletScreenState extends State<WalletScreen> {
               children: [
                 Text(
                   _getStartDate(),
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
                 Text(
                   _getEndDate(),
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // Bottom label
-            const Text(
+            Text(
               'Total Revenue',
               style: TextStyle(
-                color: Color(0xFF111827),
+                color: AppTheme.lightTextPrimaryColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -584,15 +600,21 @@ class _WalletScreenState extends State<WalletScreen> {
     required String title,
     required String value,
   }) {
+    final brightness = Theme.of(context).brightness;
     return Container(
-      height: 54,
+      height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: brightness == Brightness.light
+            ? AppTheme.lightCardBackground
+            : AppTheme.getTextPrimaryColor(brightness),
         borderRadius: BorderRadius.circular(16),
+        border: brightness == Brightness.light
+            ? Border.all(color: AppTheme.lightCardBorderColor, width: 1)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppTheme.lightTextPrimaryColor.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -611,17 +633,19 @@ class _WalletScreenState extends State<WalletScreen> {
                   child: Center(
                     child: Icon(
                       icon,
-                      color: const Color(0xFF16A34A),
+                      color: AppTheme.greenDark,
                       size: 22,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      color: Color(0xFF111827),
+                    style: TextStyle(
+                      color: brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(brightness),
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -631,11 +655,13 @@ class _WalletScreenState extends State<WalletScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             value,
-            style: const TextStyle(
-              color: Color(0xFF111827),
+            style: TextStyle(
+              color: brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.lightTextPrimaryColor,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -662,14 +688,16 @@ class _WalletScreenState extends State<WalletScreen> {
               AppTheme.transparentBackground, // Dark gray background
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppTheme.borderColor, width: 1),
+            side: BorderSide(
+                color: AppTheme.getBorderColor(Theme.of(context).brightness),
+                width: 1),
           ),
           elevation: 0,
         ),
         child: Text(
           AppTranslations.getString(context, 'view_reports'),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -679,6 +707,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildWithdrawHistoryButton() {
+    final brightness = Theme.of(context).brightness;
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -695,14 +724,18 @@ class _WalletScreenState extends State<WalletScreen> {
               AppTheme.transparentBackground, // Dark gray background
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppTheme.borderColor, width: 1),
+            side: BorderSide(
+                color: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getBorderColor(brightness),
+                width: brightness == Brightness.light ? 1 : 2),
           ),
           elevation: 0,
         ),
         child: Text(
           AppTranslations.getString(context, 'withdraw_history'),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(brightness),
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -717,14 +750,14 @@ class _WalletScreenState extends State<WalletScreen> {
         width: double.infinity,
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF3A3A3A),
+          color: AppTheme.getButtonBackground(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Center(
           child: Text(
             'Withdraw request pending...',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -733,6 +766,7 @@ class _WalletScreenState extends State<WalletScreen> {
       );
     }
 
+    final brightness = Theme.of(context).brightness;
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -741,7 +775,7 @@ class _WalletScreenState extends State<WalletScreen> {
           _showWithdrawRequestDialog(context);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF22C55E),
+          backgroundColor: AppTheme.greenPrimary,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -749,8 +783,10 @@ class _WalletScreenState extends State<WalletScreen> {
         ),
         child: Text(
           AppTranslations.getString(context, 'request_withdraw'),
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark),
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -763,7 +799,7 @@ class _WalletScreenState extends State<WalletScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppTheme.transparentBackground,
       builder: (BuildContext context) {
         return _WithdrawRequestDialog(
           onRequestSubmitted: () {
@@ -780,7 +816,7 @@ class _WalletScreenState extends State<WalletScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppTheme.transparentBackground,
       builder: (BuildContext context) {
         return _ThankYouDialog();
       },
@@ -793,12 +829,12 @@ class ChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF22C55E)
+      ..color = AppTheme.greenPrimary
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
     final fillPaint = Paint()
-      ..color = const Color(0xFF22C55E).withOpacity(0.2)
+      ..color = AppTheme.greenPrimary.withOpacity(0.2)
       ..style = PaintingStyle.fill;
 
     final path = Path();
@@ -1008,8 +1044,8 @@ class _RevenueChartPainter extends CustomPainter {
     final fillPaint = Paint()
       ..shader = const LinearGradient(
         colors: [
-          Color(0xFF22C55E),
-          Color(0x00FFFFFF),
+          AppTheme.greenPrimary,
+          AppTheme.transparentBackground,
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -1017,7 +1053,7 @@ class _RevenueChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF16A34A)
+      ..color = AppTheme.greenDark
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -1059,8 +1095,8 @@ class _WithdrawRequestDialogState extends State<_WithdrawRequestDialog> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF2C2C2C),
+      decoration: BoxDecoration(
+        color: AppTheme.getPlaceholderBackground(Theme.of(context).brightness),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -1079,35 +1115,35 @@ class _WithdrawRequestDialogState extends State<_WithdrawRequestDialog> {
           // Title
           Text(
             AppTranslations.getString(context, 'request_a_withdraw'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Description
           Text(
             AppTranslations.getString(context, 'send_withdraw_request'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 16,
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // Amount input
           Text(
             AppTranslations.getString(context, 'enter_the_amount'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           TextField(
             controller: _amountController,
@@ -1129,28 +1165,51 @@ class _WithdrawRequestDialogState extends State<_WithdrawRequestDialog> {
                 return oldValue;
               }),
             ],
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness)),
             decoration: InputDecoration(
               hintText:
                   AppTranslations.getString(context, 'amount_placeholder'),
-              hintStyle: const TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextSecondaryColor
+                    : AppTheme.borderColorLight,
+              ),
               filled: true,
-              fillColor: AppTheme.transparentBackground,
+              fillColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightCardBackground
+                  : AppTheme.transparentBackground,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey),
+                borderSide: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.borderColorLight,
+                  width: 1,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey),
+                borderSide: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.borderColorLight,
+                  width: 1,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white),
+                borderSide: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getBorderColor(Theme.of(context).brightness),
+                  width: 1,
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           // Buttons
           Row(
@@ -1161,47 +1220,70 @@ class _WithdrawRequestDialogState extends State<_WithdrawRequestDialog> {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3A3A3A),
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightCardBackground
+                            : AppTheme.getButtonBackground(
+                                Theme.of(context).brightness),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightTextPrimaryColor
+                            : Colors.transparent,
+                        width: 1,
+                      ),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: Text(
                     AppTranslations.getString(context, 'cancel'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightTextPrimaryColor
+                            : AppTheme.getScaffoldBackground(
+                                Theme.of(context).brightness),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _isSubmitting
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.black),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightCardBackground
+                                    : AppTheme.lightTextPrimaryColor),
                           ),
                         )
                       : Text(
                           AppTranslations.getString(context, 'submit'),
-                          style: const TextStyle(
-                            color: Colors.black,
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppTheme.lightCardBackground
+                                    : AppTheme.getTextPrimaryColor(
+                                        Theme.of(context).brightness),
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1302,7 +1384,7 @@ class _WithdrawRequestDialogState extends State<_WithdrawRequestDialog> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppTheme.transparentBackground,
       builder: (BuildContext context) {
         return _ThankYouDialog();
       },
@@ -1314,8 +1396,8 @@ class _ThankYouDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF2C2C2C),
+      decoration: BoxDecoration(
+        color: AppTheme.getPlaceholderBackground(Theme.of(context).brightness),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -1334,24 +1416,24 @@ class _ThankYouDialog extends StatelessWidget {
           // Title
           Text(
             AppTranslations.getString(context, 'thank_you_for_request'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // Description
           Text(
             AppTranslations.getString(context, 'team_contact_message'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 16,
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           // Close button
           SizedBox(
@@ -1361,7 +1443,8 @@ class _ThankYouDialog extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3A3A3A),
+                backgroundColor:
+                    AppTheme.getButtonBackground(Theme.of(context).brightness),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1369,8 +1452,9 @@ class _ThankYouDialog extends StatelessWidget {
               ),
               child: Text(
                 AppTranslations.getString(context, 'close'),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
