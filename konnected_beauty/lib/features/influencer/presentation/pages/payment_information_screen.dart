@@ -175,8 +175,9 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
 
   Widget _buildShimmerContent() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
@@ -212,7 +213,7 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
           height: 16,
           width: 140,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -223,10 +224,11 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: AppTheme.shimmerBaseMediumDark,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.white.withOpacity(0.3),
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                  .withOpacity(0.3),
               width: 1,
             ),
           ),
@@ -240,10 +242,11 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
       height: 56,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: AppTheme.shimmerBaseMediumDark,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+              .withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -259,9 +262,11 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
           // Back Button
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios,
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 20,
             ),
           ),
@@ -271,16 +276,22 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
           // Title with Icon
           Row(
             children: [
-              const Icon(
+              Icon(
                 LucideIcons.wallet,
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 AppTranslations.getString(context, 'payment_information'),
                 style: AppTheme.headingStyle.copyWith(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -302,15 +313,24 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
           child: ElevatedButton(
             onPressed: isLoading ? null : () => _saveInformations(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightCardBackground
+                  : AppTheme.transparentBackground,
+              foregroundColor: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: _hasTextInAnyField
-                      ? Colors.white
-                      : Colors.white.withOpacity(0.3),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : (_hasTextInAnyField
+                          ? AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness)
+                          : AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness)
+                              .withOpacity(0.3)),
                   width: _hasTextInAnyField ? 2 : 1,
                 ),
               ),
@@ -319,13 +339,20 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (isLoading) ...[
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final brightness = Theme.of(context).brightness;
+                      return SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: brightness == Brightness.light
+                              ? AppTheme.lightTextPrimaryColor
+                              : AppTheme.getTextPrimaryColor(brightness),
+                          strokeWidth: 2,
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 12),
                 ],
@@ -336,9 +363,14 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: _hasTextInAnyField
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.7),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : (_hasTextInAnyField
+                            ? AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness)
+                            : AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness)
+                                .withOpacity(0.7)),
                   ),
                 ),
               ],
@@ -420,24 +452,27 @@ class _PaymentInformationContent extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF121212),
+        backgroundColor:
+            AppTheme.getScaffoldBackground(Theme.of(context).brightness),
         body: Stack(
           children: [
             // TOP GREEN GLOW
             Positioned(
-              top: -90,
+              top: -120,
               left: -60,
               right: -60,
               child: IgnorePointer(
                 child: Container(
-                  height: 300,
+                  height: 280,
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       center: const Alignment(0, -0.6),
-                      radius: 0.9,
+                      radius: 0.8,
                       colors: [
-                        const Color(0xFF22C55E).withOpacity(0.55),
-                        Colors.transparent,
+                        AppTheme.greenPrimary.withOpacity(0.35),
+                        Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.transparentBackground
+                            : AppTheme.textWhite54,
                       ],
                       stops: const [0.0, 1.0],
                     ),

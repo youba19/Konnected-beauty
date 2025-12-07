@@ -48,13 +48,16 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.textPrimaryColor,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -74,37 +77,53 @@ class CustomTextField extends StatelessWidget {
           autovalidateMode: autovalidateMode
               ? AutovalidateMode.onUserInteraction
               : AutovalidateMode.disabled,
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: brightness == Brightness.light
+                ? AppTheme.lightTextPrimaryColor
+                : AppTheme.textPrimaryColor,
             fontSize: 16,
           ),
           decoration: InputDecoration(
             hintText: placeholder,
-            hintStyle: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            hintStyle: TextStyle(
+              color: brightness == Brightness.light
+                  ? AppTheme.lightTextSecondaryColor
+                  : AppTheme.textSecondaryColor,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
             filled: true,
-            fillColor: AppTheme.transparentBackground,
+            fillColor: brightness == Brightness.light
+                ? AppTheme.lightCardBackground
+                : AppTheme.transparentBackground,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: isError ? Colors.red : AppTheme.borderColor,
+                color: isError
+                    ? Colors.red
+                    : brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.borderColor,
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: isError ? Colors.red : AppTheme.borderColor,
+                color: isError
+                    ? Colors.red
+                    : brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.borderColor,
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(
-                color: AppTheme.accentColor,
+              borderSide: BorderSide(
+                color: brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.accentColor,
                 width: 2,
               ),
             ),

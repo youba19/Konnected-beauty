@@ -10,6 +10,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/bloc/app_bloc_observer.dart';
 import 'core/services/firebase_notification_service.dart';
 import 'core/bloc/language/language_bloc.dart';
+import 'core/bloc/theme/theme_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/bloc/welcome/welcome_bloc.dart';
 import 'core/bloc/saloon_registration/saloon_registration_bloc.dart';
 import 'core/bloc/influencer_registration/influencer_registration_bloc.dart';
@@ -89,11 +91,22 @@ void main() async {
   print('🎨 === MAIN DEBUG ===');
   print('🎨 AppTheme.fontFamily: ${AppTheme.fontFamily}');
 
-  runApp(const KonnectedBeautyApp());
+  // Load theme synchronously before running app
+  final prefs = await SharedPreferences.getInstance();
+  final isDark = prefs.getBool('selected_theme') ?? true; // Default to dark
+  final initialBrightness = isDark ? Brightness.dark : Brightness.light;
+  print('🎨 Initial theme brightness: $initialBrightness');
+
+  runApp(KonnectedBeautyApp(initialBrightness: initialBrightness));
 }
 
 class KonnectedBeautyApp extends StatelessWidget {
-  const KonnectedBeautyApp({super.key});
+  final Brightness initialBrightness;
+
+  const KonnectedBeautyApp({
+    super.key,
+    required this.initialBrightness,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +114,15 @@ class KonnectedBeautyApp extends StatelessWidget {
       providers: [
         BlocProvider<LanguageBloc>(
           create: (context) => LanguageBloc()..add(LoadLanguage()),
+        ),
+        BlocProvider<ThemeBloc>(
+          create: (context) {
+            // Create bloc with initial brightness, then verify from storage
+            final bloc = ThemeBloc(initialBrightness: initialBrightness);
+            // Still load from storage to ensure consistency
+            bloc.add(LoadTheme());
+            return bloc;
+          },
         ),
         BlocProvider<WelcomeBloc>(
           create: (context) => WelcomeBloc(),
@@ -169,87 +191,28 @@ class KonnectedBeautyApp extends StatelessWidget {
       ],
       child: BlocBuilder<LanguageBloc, LanguageState>(
         builder: (context, languageState) {
-          return BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              return MaterialApp(
-                title: 'Konnected Beauty',
-                debugShowCheckedModeBanner: false,
-                theme: ThemeData(
-                  // Inherit from AppTheme.darkTheme
-                  brightness: Brightness.dark,
-                  primaryColor: AppTheme.primaryColor,
-                  scaffoldBackgroundColor: AppTheme.transparentBackground,
-                  fontFamily: GoogleFonts.poppins().fontFamily,
-                  // Force all text to use Poppins with aggressive override using Google Fonts
-                  textTheme:
-                      GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme)
-                          .apply(
-                    bodyColor: AppTheme.textPrimaryColor,
-                    displayColor: AppTheme.textPrimaryColor,
-                  ),
-
-                  // Apply font family to other theme elements
-                  appBarTheme: AppTheme.darkTheme.appBarTheme.copyWith(
-                    titleTextStyle: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                  ),
-
-                  elevatedButtonTheme: ElevatedButtonThemeData(
-                    style: ElevatedButton.styleFrom(
-                      textStyle: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-
-                  textButtonTheme: TextButtonThemeData(
-                    style: TextButton.styleFrom(
-                      textStyle: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  outlinedButtonTheme: OutlinedButtonThemeData(
-                    style: OutlinedButton.styleFrom(
-                      textStyle: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-
-                  inputDecorationTheme: InputDecorationTheme(
-                    labelStyle: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    hintStyle: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    errorStyle: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-                locale: languageState.locale,
-                supportedLocales: AppTranslations.supportedLocales,
-                localizationsDelegates: const [
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                home: _buildHomeScreen(authState),
-                builder: (context, child) {
-                  return FontOverrideWidget(
-                    child: child!,
+          return BlocBuilder<ThemeBloc, ThemeState>(
+            builder: (context, themeState) {
+              return BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  final brightness = themeState.brightness;
+                  return MaterialApp(
+                    title: 'Konected Beauty',
+                    debugShowCheckedModeBanner: false,
+                    theme: AppTheme.getThemeData(brightness),
+                    locale: languageState.locale,
+                    supportedLocales: AppTranslations.supportedLocales,
+                    localizationsDelegates: const [
+                      GlobalMaterialLocalizations.delegate,
+                      GlobalWidgetsLocalizations.delegate,
+                      GlobalCupertinoLocalizations.delegate,
+                    ],
+                    home: _buildHomeScreen(authState),
+                    builder: (context, child) {
+                      return FontOverrideWidget(
+                        child: child!,
+                      );
+                    },
                   );
                 },
               );
@@ -266,13 +229,18 @@ class KonnectedBeautyApp extends StatelessWidget {
 
     if (authState is AuthLoading) {
       print('🏠 Showing loading screen');
-      return const Scaffold(
-        backgroundColor: AppTheme.primaryColor,
-        body: Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.textPrimaryColor,
-          ),
-        ),
+      return BlocBuilder<ThemeBloc, ThemeState>(
+        builder: (context, themeState) {
+          final brightness = themeState.brightness;
+          return Scaffold(
+            backgroundColor: AppTheme.getScaffoldBackground(brightness),
+            body: Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.greenPrimary,
+              ),
+            ),
+          );
+        },
       );
     } else if (authState is AuthAuthenticated) {
       print('🏠 User is authenticated');

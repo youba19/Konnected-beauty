@@ -36,26 +36,29 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
           // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
                   // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -78,12 +81,12 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Language Selection Field
                         _buildLanguageField(),
 
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Save Changes Button
                         _buildSaveButton(),
@@ -108,32 +111,34 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
           // Back Button
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios,
-              color: Colors.white,
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 20,
             ),
           ),
 
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Title Row
           Row(
             children: [
               // Language Icon
-              const Icon(
+              Icon(
                 LucideIcons.languages,
-                color: Colors.white,
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 size: 28,
               ),
 
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
 
               // Title
               Text(
                 AppTranslations.getString(context, 'language'),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -149,10 +154,13 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.transparentBackground
+            : AppTheme.textWhite54,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+              .withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -160,15 +168,16 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
         child: DropdownButton<String>(
           value: _selectedLanguage,
           isExpanded: true,
-          dropdownColor: AppTheme.secondaryColor,
-          style: const TextStyle(
-            color: Colors.white,
+          dropdownColor:
+              AppTheme.getSecondaryColor(Theme.of(context).brightness),
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
-            color: Colors.white,
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             size: 22,
           ),
           items: [
@@ -179,12 +188,13 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.languages,
-                      color: Colors.white,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       size: 22,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                         '${AppTranslations.getString(context, 'language')} (English)'),
                   ],
@@ -198,12 +208,13 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.languages,
-                      color: Colors.white,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       size: 22,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Text(
                         '${AppTranslations.getString(context, 'language')} (Français)'),
                   ],
@@ -226,23 +237,29 @@ class _InfluencerLanguageScreenState extends State<InfluencerLanguageScreen> {
       width: double.infinity,
       height: 48,
       decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.transparentBackground
+            : AppTheme.textWhite54,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+              .withOpacity(0.3),
           width: 1,
         ),
       ),
       child: Material(
-        color: Colors.transparent,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.transparentBackground
+            : AppTheme.textWhite54,
         child: InkWell(
           onTap: _selectedLanguage != null ? _saveLanguage : null,
           borderRadius: BorderRadius.circular(12),
           child: Center(
             child: Text(
               AppTranslations.getString(context, 'save_changes'),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),

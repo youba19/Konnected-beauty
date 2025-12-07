@@ -25,6 +25,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return BlocListener<InfluencerCampaignBloc, InfluencerCampaignState>(
       listener: (context, state) {
         if (state is CampaignActionSuccess) {
@@ -42,25 +43,25 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
       child: BlocBuilder<LanguageBloc, LanguageState>(
         builder: (context, languageState) {
           return Scaffold(
-            backgroundColor: const Color(0xFF121212),
+            backgroundColor: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
             body: Stack(
               children: [
                 // TOP GREEN GLOW (same as influencer home screen)
                 Positioned(
-                  top: -140,
+                  top: -80,
                   left: -60,
                   right: -60,
                   child: IgnorePointer(
                     child: Container(
-                      height: 300,
+                      height: 150,
                       decoration: BoxDecoration(
                         // soft radial green halo like the screenshot
                         gradient: RadialGradient(
                           center: const Alignment(0, -0.6),
-                          radius: 0.9,
+                          radius: 0.6,
                           colors: [
-                            const Color(0xFF22C55E).withOpacity(0.55),
-                            Colors.transparent,
+                            AppTheme.greenPrimary.withOpacity(0.3),
+                            Theme.of(context).brightness == Brightness.dark ? AppTheme.transparentBackground : AppTheme.textWhite54,
                           ],
                           stops: const [0.0, 1.0],
                         ),
@@ -95,8 +96,8 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
         children: [
           Text(
             AppTranslations.getString(context, 'campaigns'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
@@ -110,7 +111,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
     return BlocBuilder<InfluencerCampaignBloc, InfluencerCampaignState>(
       builder: (context, state) {
         if (state is InfluencerCampaignLoading) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             ),
@@ -138,14 +139,14 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
   Widget _buildCampaignsList(List<Map<String, dynamic>> campaigns) {
     return RefreshIndicator(
       color: AppTheme.primaryColor,
-      backgroundColor: AppTheme.secondaryColor,
+      backgroundColor: AppTheme.getSecondaryColor(Theme.of(context).brightness),
       onRefresh: () async {
         context.read<InfluencerCampaignBloc>().add(LoadInfluencerCampaigns());
       },
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: campaigns.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        separatorBuilder: (context, index) => SizedBox(height: 16),
         itemBuilder: (context, index) {
           final campaign = campaigns[index];
           return _buildCampaignCard(campaign);
@@ -170,10 +171,10 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppTheme.secondaryColor,
+          color: AppTheme.getSecondaryColor(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppTheme.borderColor.withOpacity(0.1),
+            color: AppTheme.getBorderColor(Theme.of(context).brightness).withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -189,17 +190,17 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
                     children: [
                       Text(
                         AppTranslations.getString(context, 'campaign_with'),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
+                        style: TextStyle(
+                          color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         campaign['saloonName'] ?? 'Salon name',
-                        style: const TextStyle(
-                          color: AppTheme.textPrimaryColor,
+                        style: TextStyle(
+                          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -211,7 +212,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Date and promotion info
             Row(
@@ -222,16 +223,16 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
                     children: [
                       Text(
                         AppTranslations.getString(context, 'created_at'),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
+                        style: TextStyle(
+                          color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         campaign['createdAt'] ?? '14/07/2025',
-                        style: const TextStyle(
-                          color: AppTheme.textPrimaryColor,
+                        style: TextStyle(
+                          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -245,16 +246,16 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
                     children: [
                       Text(
                         AppTranslations.getString(context, 'promotion_type'),
-                        style: const TextStyle(
-                          color: AppTheme.textSecondaryColor,
+                        style: TextStyle(
+                          color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         campaign['promotionType'] ?? 'Pourcentage',
-                        style: const TextStyle(
-                          color: AppTheme.textPrimaryColor,
+                        style: TextStyle(
+                          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -271,7 +272,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
                   ),
                   child: Text(
                     campaign['promotionValue'] ?? '20%',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.primaryColor,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -281,7 +282,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Statistics row
             Row(
@@ -290,15 +291,15 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
                   AppTranslations.getString(context, 'clicks'),
                   campaign['clicks']?.toString() ?? '0',
                 ),
-                const SizedBox(width: 20),
+                SizedBox(width: 20),
                 _buildStatItem(
                   AppTranslations.getString(context, 'orders'),
                   campaign['completedOrders']?.toString() ?? '0',
                 ),
-                const Spacer(),
+                Spacer(),
                 Text(
                   campaign['total'] ?? '0 EUR',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.primaryColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -320,8 +321,8 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
 
     switch (status) {
       case 'waiting for you':
-        backgroundColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
+        backgroundColor = AppTheme.statusOrange.withOpacity(0.1);
+        textColor = AppTheme.statusOrange;
         displayText = AppTranslations.getString(context, 'waiting_for_you');
         icon = Icons.person;
         break;
@@ -338,8 +339,8 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
         icon = Icons.check_circle_outline;
         break;
       default:
-        backgroundColor = AppTheme.textSecondaryColor.withOpacity(0.1);
-        textColor = AppTheme.textSecondaryColor;
+        backgroundColor = AppTheme.getTextSecondaryColor(Theme.of(context).brightness).withOpacity(0.1);
+        textColor = AppTheme.getTextSecondaryColor(Theme.of(context).brightness);
         displayText = status;
         icon = Icons.info_outline;
     }
@@ -354,7 +355,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: textColor),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             displayText,
             style: TextStyle(
@@ -374,16 +375,16 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppTheme.textSecondaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
             fontSize: 12,
           ),
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -400,27 +401,27 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
           Icon(
             Icons.campaign_outlined,
             size: 80,
-            color: AppTheme.textSecondaryColor.withOpacity(0.5),
+            color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness).withOpacity(0.5),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             AppTranslations.getString(context, 'no_campaigns_yet'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             AppTranslations.getString(context, 'campaigns_will_appear_here'),
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           ElevatedButton(
             onPressed: () {
               context
@@ -429,7 +430,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
+              foregroundColor: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -437,7 +438,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
             ),
             child: Text(
               AppTranslations.getString(context, 'refresh'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -462,35 +463,35 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
                 : Icons.error_outline,
             size: 80,
             color: isAccountNotActive
-                ? Colors.red
+                ? AppTheme.statusRed
                 : AppTheme.errorColor.withOpacity(0.5),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(
             isAccountNotActive
                 ? AppTranslations.getString(context, 'account_not_active')
                 : AppTranslations.getString(context, 'something_went_wrong'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             isAccountNotActive
                 ? AppTranslations.getString(context, 'account_not_active')
                 : state.message,
             style: TextStyle(
               color:
-                  isAccountNotActive ? Colors.red : AppTheme.textSecondaryColor,
+                  isAccountNotActive ? AppTheme.statusRed : AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
           // Only show retry button if it's not a 403 error
           if (!isAccountNotActive) ...[
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
                 context
@@ -499,7 +500,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -508,7 +509,7 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
               ),
               child: Text(
                 AppTranslations.getString(context, 'try_again'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),

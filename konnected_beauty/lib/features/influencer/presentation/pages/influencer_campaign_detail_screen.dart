@@ -23,6 +23,7 @@ class _InfluencerCampaignDetailScreenState
     extends State<InfluencerCampaignDetailScreen> {
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return BlocListener<InfluencerCampaignBloc, InfluencerCampaignState>(
       listener: (context, state) {
         if (state is CampaignActionSuccess) {
@@ -42,25 +43,26 @@ class _InfluencerCampaignDetailScreenState
       child: BlocBuilder<LanguageBloc, LanguageState>(
         builder: (context, languageState) {
           return Scaffold(
-            backgroundColor: const Color(0xFF121212),
+            backgroundColor:
+                AppTheme.getScaffoldBackground(Theme.of(context).brightness),
             body: Stack(
               children: [
                 // TOP GREEN GLOW (same as influencer home screen)
                 Positioned(
-                  top: -140,
+                  top: -80,
                   left: -60,
                   right: -60,
                   child: IgnorePointer(
                     child: Container(
-                      height: 300,
+                      height: 150,
                       decoration: BoxDecoration(
                         // soft radial green halo like the screenshot
                         gradient: RadialGradient(
                           center: const Alignment(0, -0.6),
-                          radius: 0.9,
+                          radius: 0.6,
                           colors: [
-                            const Color(0xFF22C55E).withOpacity(0.55),
-                            Colors.transparent,
+                            AppTheme.greenPrimary.withOpacity(0.3),
+                            Theme.of(context).brightness == Brightness.dark ? AppTheme.transparentBackground : AppTheme.textWhite54,
                           ],
                           stops: const [0.0, 1.0],
                         ),
@@ -78,23 +80,23 @@ class _InfluencerCampaignDetailScreenState
                       children: [
                         // Header
                         _buildHeader(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
 
                         // Campaign Information
                         _buildCreatedAtSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildPromotionSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildMessageSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildClicksSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildCompletedOrdersSection(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildTotalSection(),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         _buildActionButtons(),
-                        const SizedBox(
+                        SizedBox(
                             height: 20), // Bottom padding for better scrolling
                       ],
                     ),
@@ -119,18 +121,19 @@ class _InfluencerCampaignDetailScreenState
             onTap: () => Navigator.of(context).pop(),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.transparent,
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark ? AppTheme.transparentBackground : AppTheme.textWhite54,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_back_ios,
-                color: AppTheme.textPrimaryColor,
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 size: 24,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Campaign name and status
           Row(
@@ -142,17 +145,19 @@ class _InfluencerCampaignDetailScreenState
                   children: [
                     Text(
                       AppTranslations.getString(context, 'campaign_with'),
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
+                      style: TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       widget.campaign['saloonName'] ?? 'Salon name',
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
+                      style: TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -176,16 +181,16 @@ class _InfluencerCampaignDetailScreenState
       children: [
         Text(
           AppTranslations.getString(context, 'campaign_with'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           widget.campaign['saloonName'] ?? 'Salon name',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -200,16 +205,16 @@ class _InfluencerCampaignDetailScreenState
       children: [
         Text(
           AppTranslations.getString(context, 'created_at'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           widget.campaign['createdAt'] ?? '14/07/2025',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -227,16 +232,18 @@ class _InfluencerCampaignDetailScreenState
             children: [
               Text(
                 AppTranslations.getString(context, 'promotion_type'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 widget.campaign['promotionType'] ?? 'Pourcentage',
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -244,23 +251,25 @@ class _InfluencerCampaignDetailScreenState
             ],
           ),
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: 20),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 AppTranslations.getString(context, 'value'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 widget.campaign['promotionValue'] ?? '20%',
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -278,16 +287,16 @@ class _InfluencerCampaignDetailScreenState
       children: [
         Text(
           AppTranslations.getString(context, 'message'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           widget.campaign['message'] ?? 'Salut Perdo! Accepter svp!',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -302,16 +311,16 @@ class _InfluencerCampaignDetailScreenState
       children: [
         Text(
           AppTranslations.getString(context, 'clicks'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           widget.campaign['clicks']?.toString() ?? '0',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -326,16 +335,16 @@ class _InfluencerCampaignDetailScreenState
       children: [
         Text(
           AppTranslations.getString(context, 'completed_orders'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           widget.campaign['completedOrders']?.toString() ?? '0',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -350,16 +359,16 @@ class _InfluencerCampaignDetailScreenState
       children: [
         Text(
           AppTranslations.getString(context, 'total'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           widget.campaign['total'] ?? '0 EUR',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -377,24 +386,27 @@ class _InfluencerCampaignDetailScreenState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Text(
-              'Finished',
-              style: TextStyle(
-                color: AppTheme.secondaryColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            Builder(
+              builder: (context) => Text(
+                'Finished',
+                style: TextStyle(
+                  color:
+                      AppTheme.getSecondaryColor(Theme.of(context).brightness),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             SizedBox(width: 5),
             Icon(
               Icons.done_all_outlined,
-              color: AppTheme.secondaryColor,
+              color: AppTheme.getSecondaryColor(Theme.of(context).brightness),
               size: 20,
             ),
           ],
@@ -405,7 +417,7 @@ class _InfluencerCampaignDetailScreenState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -415,16 +427,16 @@ class _InfluencerCampaignDetailScreenState
               status == 'waiting for you'
                   ? 'Waiting for you'
                   : AppTranslations.getString(context, 'received_invitation'),
-              style: const TextStyle(
-                color: AppTheme.secondaryColor,
+              style: TextStyle(
+                color: AppTheme.getSecondaryColor(Theme.of(context).brightness),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: 5),
             Icon(
               status == 'waiting for you' ? Icons.person : Icons.mail,
-              color: AppTheme.secondaryColor,
+              color: AppTheme.getSecondaryColor(Theme.of(context).brightness),
               size: 20,
             ),
           ],
@@ -435,37 +447,40 @@ class _InfluencerCampaignDetailScreenState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
+          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black, width: 1),
+          border: Border.all(color: AppTheme.lightTextPrimaryColor, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'On going',
               style: TextStyle(
-                color: Colors.black,
+                color: AppTheme.lightTextPrimaryColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Container(
               width: 12,
               height: 12,
               decoration: BoxDecoration(
                 border: Border.all(
-                    color: Colors.black, width: 1, style: BorderStyle.solid),
+                    color: AppTheme.lightTextPrimaryColor,
+                    width: 1,
+                    style: BorderStyle.solid),
                 shape: BoxShape.circle,
               ),
-              child: const Center(
+              child: Center(
                 child: SizedBox(
                   width: 6,
                   height: 6,
                   child: CircularProgressIndicator(
                     strokeWidth: 1,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.lightTextPrimaryColor),
                   ),
                 ),
               ),
@@ -500,7 +515,8 @@ class _InfluencerCampaignDetailScreenState
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -512,19 +528,19 @@ class _InfluencerCampaignDetailScreenState
                 children: [
                   Text(
                     AppTranslations.getString(context, 'accept_campaign'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.check, size: 24),
+                  SizedBox(width: 8),
+                  Icon(Icons.check, size: 24),
                 ],
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Refuse Campaign Button
           SizedBox(
@@ -534,13 +550,17 @@ class _InfluencerCampaignDetailScreenState
                 _showRefuseCampaignDialog();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.transparentBackground,
-                foregroundColor: AppTheme.borderColor,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.transparentBackground : AppTheme.textWhite54,
+                foregroundColor:
+                    AppTheme.getBorderColor(Theme.of(context).brightness),
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Colors.white, width: 1),
+                  side: BorderSide(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
+                      width: 1),
                 ),
               ),
               child: Row(
@@ -548,13 +568,13 @@ class _InfluencerCampaignDetailScreenState
                 children: [
                   Text(
                     AppTranslations.getString(context, 'refuse_campaign'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.close, size: 24),
+                  SizedBox(width: 8),
+                  Icon(Icons.close, size: 24),
                 ],
               ),
             ),
@@ -572,13 +592,17 @@ class _InfluencerCampaignDetailScreenState
                 );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.transparentBackground : AppTheme.textWhite54,
+            foregroundColor:
+                AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Colors.white, width: 1),
+              side: BorderSide(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
+                  width: 1),
             ),
           ),
           child: Row(
@@ -586,13 +610,13 @@ class _InfluencerCampaignDetailScreenState
             children: [
               Text(
                 AppTranslations.getString(context, 'copy_link'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.copy, size: 24),
+              SizedBox(width: 8),
+              Icon(Icons.copy, size: 24),
             ],
           ),
         ),
@@ -605,21 +629,22 @@ class _InfluencerCampaignDetailScreenState
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
+          backgroundColor:
+              AppTheme.getSecondaryColor(Theme.of(context).brightness),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           title: Text(
             AppTranslations.getString(context, 'refuse_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
             AppTranslations.getString(context, 'refuse_campaign_confirmation'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             ),
           ),
           actions: [
@@ -627,7 +652,9 @@ class _InfluencerCampaignDetailScreenState
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(
                 AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(color: AppTheme.textPrimaryColor),
+                style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness)),
               ),
             ),
             TextButton(
@@ -639,7 +666,7 @@ class _InfluencerCampaignDetailScreenState
               },
               child: Text(
                 AppTranslations.getString(context, 'refuse'),
-                style: const TextStyle(color: AppTheme.errorColor),
+                style: TextStyle(color: AppTheme.errorColor),
               ),
             ),
           ],

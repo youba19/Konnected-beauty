@@ -5,6 +5,7 @@ import '../../../../core/translations/app_translations.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../core/bloc/influencers/influencer_profile_bloc.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
@@ -77,24 +78,28 @@ class _SecurityScreenState extends State<SecurityScreen> {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: const Color(0xFF121212),
+          backgroundColor:
+              AppTheme.getScaffoldBackground(Theme.of(context).brightness),
           body: Stack(
             children: [
               // TOP GREEN GLOW
               Positioned(
-                top: -90,
+                top: -120,
                 left: -60,
                 right: -60,
                 child: IgnorePointer(
                   child: Container(
-                    height: 300,
+                    height: 280,
                     decoration: BoxDecoration(
+                      // soft radial green halo like the screenshot
                       gradient: RadialGradient(
                         center: const Alignment(0, -0.6),
-                        radius: 0.9,
+                        radius: 0.8,
                         colors: [
-                          const Color(0xFF22C55E).withOpacity(0.55),
-                          Colors.transparent,
+                          AppTheme.greenPrimary.withOpacity(0.35),
+                          Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.transparentBackground
+                              : AppTheme.textWhite54,
                         ],
                         stops: const [0.0, 1.0],
                       ),
@@ -142,25 +147,33 @@ class _SecurityScreenState extends State<SecurityScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back,
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 24,
             ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.shield_outlined,
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 AppTranslations.getString(context, 'security'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -169,6 +182,88 @@ class _SecurityScreenState extends State<SecurityScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildThemeSection() {
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final isDarkMode = themeState.brightness == Brightness.dark;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppTranslations.getString(context, 'appearance') ?? 'Appearance',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightTextPrimaryColor
+                    : AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTheme.lightCardBackground
+                    : AppTheme.getCardBackground(Theme.of(context).brightness),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightCardBorderColor
+                      : AppTheme.getBorderColor(Theme.of(context).brightness),
+                  width: 1,
+                ),
+              ),
+              child: ListTile(
+                leading: Icon(
+                  isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTheme.lightTextPrimaryColor
+                      : AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
+                ),
+                title: Text(
+                  AppTranslations.getString(context, 'theme') ?? 'Theme',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextPrimaryColor
+                        : AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(
+                  isDarkMode
+                      ? (AppTranslations.getString(context, 'dark_mode') ??
+                          'Dark Mode')
+                      : (AppTranslations.getString(context, 'light_mode') ??
+                          'Light Mode'),
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTheme.lightTextSecondaryColor
+                        : AppTheme.getTextSecondaryColor(
+                            Theme.of(context).brightness),
+                    fontSize: 14,
+                  ),
+                ),
+                trailing: Switch(
+                  value: !isDarkMode, // Switch shows light mode when true
+                  onChanged: (value) {
+                    final newBrightness =
+                        value ? Brightness.light : Brightness.dark;
+                    context.read<ThemeBloc>().add(ChangeTheme(newBrightness));
+                  },
+                  activeColor: AppTheme.greenPrimary,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -243,7 +338,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
         onPressed: onTogglePassword,
         icon: Icon(
           showPassword ? Icons.visibility : Icons.visibility_off,
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppTheme.lightTextPrimaryColor
+              : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
           size: 20,
         ),
       ),
@@ -258,26 +355,43 @@ class _SecurityScreenState extends State<SecurityScreen> {
       child: ElevatedButton(
         onPressed: isLoading ? null : _savePasswordChanges,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).brightness == Brightness.light
+              ? AppTheme.lightCardBackground
+              : AppTheme.transparentBackground,
+          foregroundColor: Theme.of(context).brightness == Brightness.light
+              ? AppTheme.lightTextPrimaryColor
+              : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: _hasTextInAnyField
-                  ? Colors.white
-                  : Colors.white.withOpacity(0.3),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : (_hasTextInAnyField
+                      ? AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness)
+                      : AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness)
+                          .withOpacity(0.3)),
               width: _hasTextInAnyField ? 2 : 1,
             ),
           ),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                child: Builder(
+                  builder: (context) {
+                    final brightness = Theme.of(context).brightness;
+                    return CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          brightness == Brightness.light
+                              ? AppTheme.lightTextPrimaryColor
+                              : AppTheme.getTextPrimaryColor(brightness)),
+                    );
+                  },
                 ),
               )
             : Row(
@@ -288,9 +402,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: _hasTextInAnyField
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.7),
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.lightTextPrimaryColor
+                          : (_hasTextInAnyField
+                              ? AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness)
+                              : AppTheme.getTextPrimaryColor(
+                                      Theme.of(context).brightness)
+                                  .withOpacity(0.7)),
                     ),
                   ),
                 ],

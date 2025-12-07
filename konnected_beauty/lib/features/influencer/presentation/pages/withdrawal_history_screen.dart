@@ -129,26 +129,33 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: AppTheme.scaffoldBackground,
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
           // Green gradient at top
+          // TOP GREEN GLOW
           Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 200,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0, -0.6),
-                  radius: 0.9,
-                  colors: [
-                    const Color(0xFF22C55E).withOpacity(0.55),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 1.0],
+            top: -120,
+            left: -60,
+            right: -60,
+            child: IgnorePointer(
+              child: Container(
+                height: 280,
+                decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -0.6),
+                    radius: 0.8,
+                    colors: [
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
+                    ],
+                    stops: const [0.0, 1.0],
+                  ),
                 ),
               ),
             ),
@@ -184,17 +191,17 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
-            child: const Icon(
+            child: Icon(
               LucideIcons.arrowLeft,
-              color: Colors.white,
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 24,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             AppTranslations.getString(context, 'withdrawal_history'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
@@ -221,7 +228,7 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
             return Container(
               margin: const EdgeInsets.only(top: 16, bottom: 20),
               child: _isLoadingMore
-                  ? const Center(
+                  ? Center(
                       child: Padding(
                         padding: EdgeInsets.all(16),
                         child: CircularProgressIndicator(),
@@ -230,16 +237,22 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
                   : ElevatedButton(
                       onPressed: _loadMoreWithdrawals,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.transparentBackground,
-                        foregroundColor: AppTheme.textPrimaryColor,
-                        side: BorderSide(color: AppTheme.borderColor),
+                        backgroundColor:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.transparentBackground
+                                : AppTheme.textWhite54,
+                        foregroundColor: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
+                        side: BorderSide(
+                            color: AppTheme.getBorderColor(
+                                Theme.of(context).brightness)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: Text(
                         AppTranslations.getString(context, 'load_more'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -266,14 +279,16 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
           children: [
             Icon(
               Icons.account_balance_wallet_outlined,
-              color: AppTheme.textSecondaryColor,
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               size: 64,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               AppTranslations.getString(context, 'no_withdrawals_found'),
               style: TextStyle(
-                color: AppTheme.textSecondaryColor,
+                color: AppTheme.getTextSecondaryColor(
+                    Theme.of(context).brightness),
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -296,17 +311,26 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
   }
 
   Widget _buildShimmerCard() {
+    final brightness = Theme.of(context).brightness;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: ShimmerLoading(
+        baseColor: brightness == Brightness.light
+            ? AppTheme.lightBannerBackground
+            : null,
+        highlightColor: brightness == Brightness.light
+            ? AppTheme.lightCardBackground
+            : null,
         child: Container(
           height: 80,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.transparentBackground,
+            color: brightness == Brightness.light
+                ? AppTheme.lightCardBackground
+                : AppTheme.transparentBackground,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppTheme.borderColor,
+              color: AppTheme.getBorderColor(brightness),
               width: 1,
             ),
           ),
@@ -323,40 +347,44 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
                       height: 14,
                       width: 80,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     // Amount shimmer
                     Container(
                       height: 18,
                       width: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     // Date shimmer
                     Container(
                       height: 14,
                       width: 120,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // Right side status shimmer
               Container(
                 height: 16,
                 width: 60,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -374,28 +402,30 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
         children: [
           Icon(
             Icons.error_outline,
-            color: AppTheme.textSecondaryColor,
+            color: AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
             size: 64,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             _errorMessage,
             style: TextStyle(
-              color: AppTheme.textSecondaryColor,
+              color:
+                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => _loadWithdrawalHistory(isRefresh: true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentColor,
-              foregroundColor: AppTheme.textPrimaryColor,
+              foregroundColor:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             ),
             child: Text(
               AppTranslations.getString(context, 'retry'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -427,10 +457,12 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.transparentBackground
+            : AppTheme.textWhite54,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.borderColor,
+          color: AppTheme.getBorderColor(Theme.of(context).brightness),
           width: 1,
         ),
       ),
@@ -445,30 +477,33 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
                 // Transaction ID
                 Text(
                   id.length > 8 ? '${id.substring(0, 8)}...' : id,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 // Amount
                 Text(
                   formattedAmount,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
 
                 // Date
                 Text(
                   formattedDate,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
+                  style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(
+                        Theme.of(context).brightness),
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
@@ -479,7 +514,7 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
             ),
           ),
 
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
 
           // Right side - Status
           Text(
@@ -538,17 +573,17 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
       case 'completed':
       case 'done':
       case 'approved':
-        return Colors.green;
+        return AppTheme.statusGreen;
       case 'pending':
       case 'requested':
-        return Colors.orange;
+        return AppTheme.statusOrange;
       case 'rejected':
       case 'cancelled':
-        return Colors.red;
+        return AppTheme.statusRed;
       case 'processing':
-        return Colors.blue;
+        return AppTheme.statusBlue;
       default:
-        return AppTheme.textPrimaryColor;
+        return AppTheme.getTextPrimaryColor(Theme.of(context).brightness);
     }
   }
 }

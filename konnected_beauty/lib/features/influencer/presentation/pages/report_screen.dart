@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:konnected_beauty/core/theme/app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/translations/app_translations.dart';
@@ -105,25 +106,29 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       body: Stack(
         children: [
-          // TOP GREEN GLOW (same as wallet screen)
+          // TOP GREEN GLOW
           Positioned(
-            top: -140,
+            top: -120,
             left: -60,
             right: -60,
             child: IgnorePointer(
               child: Container(
-                height: 300,
+                height: 280,
                 decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.6),
-                    radius: 0.9,
+                    radius: 0.8,
                     colors: [
-                      const Color(0xFF22C55E).withOpacity(0.55),
-                      Colors.transparent,
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -163,29 +168,29 @@ class _ReportScreenState extends State<ReportScreen> {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios,
-              color: Colors.white,
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               size: 24,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             AppTranslations.getString(context, 'report'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: 5),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '${AppTranslations.getString(context, 'filter_from')} ${_getStartDate()} ${AppTranslations.getString(context, 'filter_to')} ${_getEndDate()}',
-                style: const TextStyle(
-                  color: Colors.white70,
+                style: TextStyle(
+                  color: AppTheme.textWhite70,
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                 ),
@@ -194,9 +199,10 @@ class _ReportScreenState extends State<ReportScreen> {
                 onTap: () {
                   _showFilterModal();
                 },
-                child: const Icon(
+                child: Icon(
                   LucideIcons.filter,
-                  color: Colors.white,
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   size: 20,
                 ),
               ),
@@ -212,21 +218,21 @@ class _ReportScreenState extends State<ReportScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _buildShimmerCard(206),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildShimmerCard(100),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildShimmerCard(206),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildShimmerCard(100),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildShimmerCard(100),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildShimmerCard(100),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildShimmerCard(100),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
         ],
       ),
     );
@@ -234,12 +240,13 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildShimmerCard(double height) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
+      highlightColor:
+          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: Colors.grey[700],
+          color: AppTheme.shimmerBaseMediumDark,
           borderRadius: BorderRadius.circular(16),
         ),
       ),
@@ -253,7 +260,7 @@ class _ReportScreenState extends State<ReportScreen> {
         children: [
           // Total Revenue Card with Chart
           _buildTotalRevenueCard(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Total clicks on promotions
           _buildMetricCard(
@@ -261,11 +268,11 @@ class _ReportScreenState extends State<ReportScreen> {
                 AppTranslations.getString(context, 'total_clicks_promotions'),
             value: _formatNumber(_stats['totalClicksOnPromotions'] ?? 1200),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Total Orders Card with Chart
           _buildTotalOrdersCard(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Avg Order Value
           _buildMetricCard(
@@ -273,21 +280,21 @@ class _ReportScreenState extends State<ReportScreen> {
             value:
                 '€ ${(_stats['averageOrderValue']?['current'] ?? 124.3).toStringAsFixed(1)}',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Total campaigns
           _buildMetricCard(
             title: AppTranslations.getString(context, 'total_campaigns'),
             value: _formatNumber(_stats['totalCampaigns'] ?? 20),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Avg promotion %
           _buildMetricCard(
             title: AppTranslations.getString(context, 'avg_promotion_percent'),
             value: '${_stats['avgPromotionPercent'] ?? 15}%',
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // Total influencers you've worked with
           _buildMetricCard(
@@ -295,7 +302,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 context, 'total_influencers_worked_with'),
             value: _formatNumber(_stats['totalInfluencersWorkedWith'] ?? 5),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
         ],
       ),
     );
@@ -308,11 +315,11 @@ class _ReportScreenState extends State<ReportScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.lightCardBackground,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: AppTheme.lightTextPrimaryColor.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -323,47 +330,48 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             Text(
               AppTranslations.getString(context, 'total_revenue'),
-              style: const TextStyle(
-                color: Color(0xFF111827),
+              style: TextStyle(
+                color: AppTheme.lightTextPrimaryColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               _formatCurrency((_stats['totalRevenue']?['totalRevenue'] ?? 12124)
                   .toDouble()),
-              style: const TextStyle(
-                color: Color(0xFF111827),
+              style: TextStyle(
+                color: AppTheme.lightTextPrimaryColor,
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Chart area - Expanded to fill remaining space
             Expanded(
               child: CustomPaint(
                 painter: _RevenueAreaChartPainter(
                   dailyRevenue: dailyRevenue,
+                  brightness: Theme.of(context).brightness,
                 ),
                 size: const Size(double.infinity, double.infinity),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _getStartDate(),
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
                 Text(
                   _getEndDate(),
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
@@ -382,11 +390,11 @@ class _ReportScreenState extends State<ReportScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.lightCardBackground,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: AppTheme.lightTextPrimaryColor.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -397,46 +405,47 @@ class _ReportScreenState extends State<ReportScreen> {
           children: [
             Text(
               AppTranslations.getString(context, 'total_orders'),
-              style: const TextStyle(
-                color: Color(0xFF111827),
+              style: TextStyle(
+                color: AppTheme.lightTextPrimaryColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               _formatNumber(_stats['totalOrders']?['current'] ?? 1200),
-              style: const TextStyle(
-                color: Color(0xFF111827),
+              style: TextStyle(
+                color: AppTheme.lightTextPrimaryColor,
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Chart area - Expanded to fill remaining space
             Expanded(
               child: CustomPaint(
                 painter: _OrdersAreaChartPainter(
                   dailyOrders: dailyOrders,
+                  brightness: Theme.of(context).brightness,
                 ),
                 size: const Size(double.infinity, double.infinity),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _getStartDate(),
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
                 Text(
                   _getEndDate(),
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppTheme.lightTextSecondaryColor,
                     fontSize: 14,
                   ),
                 ),
@@ -460,7 +469,7 @@ class _ReportScreenState extends State<ReportScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: AppTheme.lightTextPrimaryColor.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -471,17 +480,17 @@ class _ReportScreenState extends State<ReportScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF111827),
+            style: TextStyle(
+              color: AppTheme.lightTextPrimaryColor,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              color: Color(0xFF111827),
+            style: TextStyle(
+              color: AppTheme.lightTextPrimaryColor,
               fontSize: 28,
               fontWeight: FontWeight.w700,
             ),
@@ -495,7 +504,9 @@ class _ReportScreenState extends State<ReportScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.transparentBackground
+          : AppTheme.textWhite54,
       builder: (BuildContext context) {
         return _FilterModal(
           startDate: _startDate,
@@ -618,11 +629,20 @@ class _FilterModalState extends State<_FilterModal> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF22C55E),
-              onPrimary: Colors.white,
-              surface: Color(0xFF1E1E1E),
-              onSurface: Colors.white,
+            colorScheme: ColorScheme(
+              brightness: Theme.of(context).brightness,
+              primary: AppTheme.greenPrimary,
+              onPrimary:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              secondary: AppTheme.greenPrimary,
+              onSecondary:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              error: AppTheme.statusRed,
+              onError: AppTheme.textPrimaryColor,
+              surface:
+                  AppTheme.getScaffoldBackground(Theme.of(context).brightness),
+              onSurface:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             ),
           ),
           child: child!,
@@ -645,11 +665,20 @@ class _FilterModalState extends State<_FilterModal> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF22C55E),
-              onPrimary: Colors.white,
-              surface: Color(0xFF1E1E1E),
-              onSurface: Colors.white,
+            colorScheme: ColorScheme(
+              brightness: Theme.of(context).brightness,
+              primary: AppTheme.greenPrimary,
+              onPrimary:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              secondary: AppTheme.greenPrimary,
+              onSecondary:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              error: AppTheme.statusRed,
+              onError: AppTheme.textPrimaryColor,
+              surface:
+                  AppTheme.getScaffoldBackground(Theme.of(context).brightness),
+              onSurface:
+                  AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
             ),
           ),
           child: child!,
@@ -666,8 +695,8 @@ class _FilterModalState extends State<_FilterModal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF121212),
+      decoration: BoxDecoration(
+        color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -686,13 +715,13 @@ class _FilterModalState extends State<_FilterModal> {
           // Title
           Text(
             AppTranslations.getString(context, 'reports_filter'),
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           // Subtitle
           Text(
             AppTranslations.getString(context, 'select_influencer_period'),
@@ -702,7 +731,7 @@ class _FilterModalState extends State<_FilterModal> {
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           // Date Range Row (Start and End in same row)
           Row(
             children: [
@@ -713,13 +742,14 @@ class _FilterModalState extends State<_FilterModal> {
                   children: [
                     Text(
                       AppTranslations.getString(context, 'filter_start'),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     GestureDetector(
                       onTap: _selectStartDate,
                       child: Container(
@@ -727,7 +757,8 @@ class _FilterModalState extends State<_FilterModal> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: AppTheme.getScaffoldBackground(
+                              Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.2),
@@ -736,8 +767,9 @@ class _FilterModalState extends State<_FilterModal> {
                         ),
                         child: Text(
                           _formatDateForInput(_startDate),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                           ),
@@ -747,7 +779,7 @@ class _FilterModalState extends State<_FilterModal> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // End Date
               Expanded(
                 child: Column(
@@ -755,13 +787,14 @@ class _FilterModalState extends State<_FilterModal> {
                   children: [
                     Text(
                       AppTranslations.getString(context, 'filter_end'),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     GestureDetector(
                       onTap: _selectEndDate,
                       child: Container(
@@ -769,7 +802,8 @@ class _FilterModalState extends State<_FilterModal> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: AppTheme.getScaffoldBackground(
+                              Theme.of(context).brightness),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.2),
@@ -782,8 +816,9 @@ class _FilterModalState extends State<_FilterModal> {
                                   _endDate.year == DateTime.now().year
                               ? AppTranslations.getString(context, 'today')
                               : _formatDateForInput(_endDate),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                           ),
@@ -795,26 +830,28 @@ class _FilterModalState extends State<_FilterModal> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           // Salon
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 AppTranslations.getString(context, 'saloon'),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.getTextPrimaryColor(
+                      Theme.of(context).brightness),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: AppTheme.getScaffoldBackground(
+                      Theme.of(context).brightness),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.2),
@@ -829,8 +866,9 @@ class _FilterModalState extends State<_FilterModal> {
                         onChanged: (value) {
                           _searchSalons(value);
                         },
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
                           fontSize: 16,
                         ),
                         decoration: InputDecoration(
@@ -846,10 +884,11 @@ class _FilterModalState extends State<_FilterModal> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(
+                    SizedBox(width: 8),
+                    Icon(
                       LucideIcons.chevronDown,
-                      color: Colors.white,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       size: 20,
                     ),
                   ],
@@ -863,7 +902,8 @@ class _FilterModalState extends State<_FilterModal> {
               margin: const EdgeInsets.only(top: 8),
               constraints: const BoxConstraints(maxHeight: 200),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
@@ -883,8 +923,9 @@ class _FilterModalState extends State<_FilterModal> {
                         return ListTile(
                           title: Text(
                             name,
-                            style: const TextStyle(
-                              color: Color(0xFF111827),
+                            style: TextStyle(
+                              color: AppTheme.getTextPrimaryColor(
+                                  Theme.of(context).brightness),
                               fontSize: 16,
                             ),
                           ),
@@ -900,7 +941,7 @@ class _FilterModalState extends State<_FilterModal> {
                       },
                     ),
             ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           // Buttons Row
           Row(
             children: [
@@ -916,19 +957,23 @@ class _FilterModalState extends State<_FilterModal> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.transparent,
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.transparentBackground
+                            : AppTheme.textWhite54,
                   ),
                   child: Text(
                     AppTranslations.getString(context, 'cancel'),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
@@ -940,8 +985,8 @@ class _FilterModalState extends State<_FilterModal> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF111827),
+                    backgroundColor: AppTheme.lightCardBackground,
+                    foregroundColor: AppTheme.lightTextPrimaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -950,8 +995,9 @@ class _FilterModalState extends State<_FilterModal> {
                   ),
                   child: Text(
                     AppTranslations.getString(context, 'apply_filter'),
-                    style: const TextStyle(
-                      color: Color(0xFF111827),
+                    style: TextStyle(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -969,16 +1015,20 @@ class _FilterModalState extends State<_FilterModal> {
 // Area chart painter for revenue
 class _RevenueAreaChartPainter extends CustomPainter {
   final List<dynamic> dailyRevenue;
+  final Brightness brightness;
 
-  _RevenueAreaChartPainter({required this.dailyRevenue});
+  _RevenueAreaChartPainter(
+      {required this.dailyRevenue, required this.brightness});
 
   @override
   void paint(Canvas canvas, Size size) {
     final fillPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         colors: [
-          Color(0xFF86EFAC), // Light green for area fill
-          Color(0x00FFFFFF),
+          AppTheme.greenPrimary.withOpacity(0.3), // Light green for area fill
+          brightness == Brightness.dark
+              ? AppTheme.transparentBackground
+              : AppTheme.textWhite54,
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -986,7 +1036,7 @@ class _RevenueAreaChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF86EFAC) // Light green for line
+      ..color = AppTheme.greenPrimary // Light green for line
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -1098,16 +1148,20 @@ class _RevenueAreaChartPainter extends CustomPainter {
 // Area chart painter for orders
 class _OrdersAreaChartPainter extends CustomPainter {
   final List<dynamic> dailyOrders;
+  final Brightness brightness;
 
-  _OrdersAreaChartPainter({required this.dailyOrders});
+  _OrdersAreaChartPainter(
+      {required this.dailyOrders, required this.brightness});
 
   @override
   void paint(Canvas canvas, Size size) {
     final fillPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         colors: [
-          Color(0xFF86EFAC), // Light green for area fill
-          Color(0x00FFFFFF),
+          AppTheme.greenPrimary.withOpacity(0.3), // Light green for area fill
+          brightness == Brightness.dark
+              ? AppTheme.transparentBackground
+              : AppTheme.textWhite54,
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -1115,7 +1169,7 @@ class _OrdersAreaChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF86EFAC) // Light green for line
+      ..color = AppTheme.greenPrimary // Light green for line
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 

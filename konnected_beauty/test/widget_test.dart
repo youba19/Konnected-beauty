@@ -5,6 +5,8 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'dart:ui';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:konnected_beauty/main.dart';
@@ -12,7 +14,8 @@ import 'package:konnected_beauty/main.dart';
 void main() {
   testWidgets('Welcome screen smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const KonnectedBeautyApp());
+    await tester
+        .pumpWidget(KonnectedBeautyApp(initialBrightness: Brightness.light));
 
     // Verify that welcome screen loads
     expect(find.text('Bienvenue sur Konected'), findsOneWidget);
