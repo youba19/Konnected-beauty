@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 import '../storage/token_storage_service.dart';
 import 'influencer_auth_service.dart';
 import 'salon_auth_service.dart';
+import '../../config/api_base_url.dart';
 
 class HttpInterceptor {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Intercept HTTP requests and automatically handle token refresh
   static Future<http.Response> interceptRequest(
@@ -200,6 +201,12 @@ class HttpInterceptor {
       print('🔐 === END TOKEN INFO ===');
 
       final requestHeaders = Map<String, String>.from(headers ?? {});
+      if (ApiBaseUrl.useDevTunnel) {
+        requestHeaders.putIfAbsent(
+          'ngrok-skip-browser-warning',
+          () => 'true',
+        );
+      }
       if (accessToken != null && accessToken.isNotEmpty) {
         requestHeaders['Authorization'] = 'Bearer $accessToken';
         print('✅ Authorization header added');

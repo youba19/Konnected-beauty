@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class SalonProfileService {
-  static const String _baseUrl = 'https://server.konectedbeauty.com';
+  static String get _baseUrl => ApiBaseUrl.value;
 
   // Get salon profile
   Future<Map<String, dynamic>> getSalonProfile() async {

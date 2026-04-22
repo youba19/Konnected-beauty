@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class InfluencerAuthService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Helper method to format message (handle both string and list cases)
   static String formatMessage(dynamic message) {
@@ -39,10 +40,10 @@ class InfluencerAuthService {
           })}');
 
       // Use proper headers that match curl
-      final requestHeaders = {
+      final requestHeaders = ApiBaseUrl.mergeRequestHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-      };
+      });
 
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/login'),
@@ -201,9 +202,9 @@ class InfluencerAuthService {
       // Try the first format (without +)
       var response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/signup'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: jsonEncode(requestBody),
       );
 
@@ -214,9 +215,9 @@ class InfluencerAuthService {
           print('First attempt failed, trying with + prefix...');
           response = await http.post(
             Uri.parse('$baseUrl/influencer-auth/signup'),
-            headers: {
+            headers: ApiBaseUrl.mergeRequestHeaders({
               'Content-Type': 'application/json',
-            },
+            }),
             body: jsonEncode(alternativeRequestBody),
           );
         }
@@ -276,9 +277,9 @@ class InfluencerAuthService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/validate-otp'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: jsonEncode({
           'email': email,
           'otp': otp,
@@ -327,9 +328,9 @@ class InfluencerAuthService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/resend-otp'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: jsonEncode({
           'email': email,
         }),
@@ -357,11 +358,11 @@ class InfluencerAuthService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/refresh-token'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $refreshToken',
-        },
+        }),
       );
 
       print('📡 Response Status: ${response.statusCode}');
@@ -518,6 +519,9 @@ class InfluencerAuthService {
             '🔐 Authorization header set: Bearer ${accessToken.substring(0, 20)}...');
       } else {
         print('❌ No access token available for authorization header');
+      }
+      if (ApiBaseUrl.useDevTunnel) {
+        request.headers['ngrok-skip-browser-warning'] = 'true';
       }
 
       // Add text fields as form data
@@ -786,11 +790,11 @@ class InfluencerAuthService {
         "socials": socials,
       });
 
-      final headers = {
+      final headers = ApiBaseUrl.mergeRequestHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization': 'Bearer $accessToken',
-      };
+      });
 
       print('🔗 Request URL: $uri');
       print('📋 Request Headers: $headers');
@@ -858,10 +862,10 @@ class InfluencerAuthService {
 
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/request-password-reset'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-        },
+        }),
         body: jsonEncode({
           'email': email,
         }),
@@ -912,10 +916,10 @@ class InfluencerAuthService {
 
       final response = await http.post(
         Uri.parse('$baseUrl/influencer-auth/verify-reset-password-otp'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-        },
+        }),
         body: jsonEncode({
           'email': email,
           'otp': otp,
@@ -976,10 +980,10 @@ class InfluencerAuthService {
         requestBody['email'] = email;
       }
 
-      final headers = {
+      final headers = ApiBaseUrl.mergeRequestHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-      };
+      });
 
       // Add authorization header if resetToken is provided
       if (resetToken != null) {
@@ -1043,11 +1047,11 @@ class InfluencerAuthService {
 
         return await http.get(
           Uri.parse('$baseUrl/influencer/profile'),
-          headers: {
+          headers: ApiBaseUrl.mergeRequestHeaders({
             'Authorization': 'Bearer $accessToken',
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-          },
+          }),
         );
       });
 
@@ -1172,11 +1176,11 @@ class InfluencerAuthService {
 
         return await http.get(
           Uri.parse('$baseUrl/influencer/socials'),
-          headers: {
+          headers: ApiBaseUrl.mergeRequestHeaders({
             'Authorization': 'Bearer $accessToken',
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-          },
+          }),
         );
       });
 
@@ -1233,11 +1237,11 @@ class InfluencerAuthService {
 
         return await http.patch(
           Uri.parse('$baseUrl/influencer/socials'),
-          headers: {
+          headers: ApiBaseUrl.mergeRequestHeaders({
             'Authorization': 'Bearer $accessToken',
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-          },
+          }),
           body: jsonEncode({
             'socials': socials,
           }),
@@ -1288,10 +1292,10 @@ class InfluencerAuthService {
       final response = await HttpInterceptor.authenticatedRequest(
         method: 'POST',
         endpoint: '/influencer-auth/logout',
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-        },
+        }),
       );
 
       print('📡 Response Status: ${response.statusCode}');
@@ -1346,17 +1350,17 @@ class InfluencerAuthService {
 
         return await http.post(
           Uri.parse('$baseUrl/influencer/change-password'),
-          headers: {
+          headers: ApiBaseUrl.mergeRequestHeaders({
             'Authorization': 'Bearer $accessToken',
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-        },
-        body: jsonEncode({
+          }),
+          body: jsonEncode({
             'oldPassword': oldPassword,
             'newPassword': newPassword,
             'confirmPassword': confirmPassword,
-        }),
-      );
+          }),
+        );
       });
 
       print('📡 Response Status: ${response.statusCode}');

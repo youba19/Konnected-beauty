@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'core/config/api_base_url.dart';
 
 class CampaignsApiTester {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
   static const String endpoint = '/campaign/salon-campaigns';
 
   static Future<String?> _getAccessToken() async {

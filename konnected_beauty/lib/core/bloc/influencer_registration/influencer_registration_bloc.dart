@@ -1266,10 +1266,10 @@ class InfluencerRegistrationBloc
 
   void _onSkipStripeOnboarding(SkipStripeOnboarding event,
       Emitter<InfluencerRegistrationState> emit) async {
-    // Allow user to skip Stripe onboarding and proceed to success
+    // Skip Stripe: UI navigates straight to influencer home (no success interstitial).
     emit(InfluencerRegistrationSuccess(
       state,
-      successMessage: 'Account created successfully!',
+      successMessage: 'stripe_onboarding_skipped',
     ));
   }
 

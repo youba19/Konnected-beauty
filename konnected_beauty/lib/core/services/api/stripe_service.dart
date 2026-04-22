@@ -3,9 +3,10 @@ import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
 import 'salon_auth_service.dart';
 import 'influencer_auth_service.dart';
+import '../../config/api_base_url.dart';
 
 class StripeService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   // Stripe Express endpoints
   static const String onboardEndpoint = '/stripe/express/onboard';

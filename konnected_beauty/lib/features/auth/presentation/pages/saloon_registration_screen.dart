@@ -17,6 +17,7 @@ import 'welcome_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import 'stripe_onboarding_webview_screen.dart';
 import 'registration_success_screen.dart';
+import '../../../company/presentation/pages/salon_main_wrapper.dart';
 
 class SaloonRegistrationScreen extends StatefulWidget {
   const SaloonRegistrationScreen({super.key});
@@ -313,8 +314,21 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             listener: (context, state) {
               // On full success: navigate to success screen first, then to salon home
               if (state is SaloonRegistrationSuccess) {
-                // Navigate to success screen first, then to salon home
+                if (state.successMessage == 'stripe_onboarding_skipped') {
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (!context.mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const SalonMainWrapper(),
+                      ),
+                      (route) => false,
+                    );
+                  });
+                  return;
+                }
+                // Stripe completed: success screen, then salon home
                 Future.delayed(const Duration(milliseconds: 300), () {
+                  if (!context.mounted) return;
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => const RegistrationSuccessScreen(
@@ -1302,7 +1316,30 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           });
         }
 
-        return _buildConnectStripeButton(context, state);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildConnectStripeButton(context, state),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: state.isLoading
+                  ? null
+                  : () {
+                      context
+                          .read<SaloonRegistrationBloc>()
+                          .add(SkipStripeOnboarding());
+                    },
+              child: Text(
+                AppTranslations.getString(context, 'skip_for_now'),
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
       default:
         return const SizedBox.shrink();
     }

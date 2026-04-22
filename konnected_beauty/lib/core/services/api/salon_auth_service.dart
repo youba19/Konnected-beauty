@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class SalonAuthService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   // Signup endpoint
   static const String signupEndpoint = '/salon-auth/signup';
@@ -40,10 +41,10 @@ class SalonAuthService {
   // Account deletion endpoint
   static const String deleteAccountEndpoint = '/salon-auth/delete-account';
 
-  // Headers for API requests
-  static const Map<String, String> headers = {
-    'Content-Type': 'application/json',
-  };
+  // Headers for API requests (includes ngrok bypass when [ApiBaseUrl.useDevTunnel]).
+  static Map<String, String> get headers => ApiBaseUrl.mergeRequestHeaders({
+        'Content-Type': 'application/json',
+      });
 
   /// Helper method to format message (handle both string and list cases)
   static String formatMessage(dynamic message) {
@@ -227,10 +228,10 @@ class SalonAuthService {
           })}');
 
       // Use proper headers that match curl
-      final requestHeaders = {
+      final requestHeaders = ApiBaseUrl.mergeRequestHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-      };
+      });
 
       final response = await http.post(
         Uri.parse('$baseUrl$loginEndpoint'),
@@ -321,10 +322,10 @@ class SalonAuthService {
 
       final response = await http.post(
         Uri.parse('$baseUrl$refreshTokenEndpoint'),
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           ...headers,
           'Authorization': 'Bearer $refreshToken',
-        },
+        }),
       );
 
       print('📡 Refresh Response Status: ${response.statusCode}');
@@ -503,6 +504,9 @@ class SalonAuthService {
         // Set Authorization header
         if (accessToken != null && accessToken.isNotEmpty) {
           request.headers['Authorization'] = 'Bearer $accessToken';
+        }
+        if (ApiBaseUrl.useDevTunnel) {
+          request.headers['ngrok-skip-browser-warning'] = 'true';
         }
 
         // Add text fields
@@ -1599,10 +1603,10 @@ class SalonAuthService {
       final response = await HttpInterceptor.authenticatedRequest(
         method: 'POST',
         endpoint: '/salon-auth/logout',
-        headers: {
+        headers: ApiBaseUrl.mergeRequestHeaders({
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-        },
+        }),
       );
 
       print('📡 Response Status: ${response.statusCode}');

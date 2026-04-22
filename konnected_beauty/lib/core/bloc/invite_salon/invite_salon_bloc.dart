@@ -36,8 +36,10 @@ class InviteSalonBloc extends Bloc<InviteSalonEvent, InviteSalonState> {
         ));
       } else {
         print('❌ Failed to send invitation: ${result['message']}');
-        emit(
-            InviteSalonError(result['message'] ?? 'Failed to send invitation'));
+        emit(InviteSalonError(
+          result['message'] ?? 'Failed to send invitation',
+          stripeAccountNotLinked: result['stripeAccountNotLinked'] == true,
+        ));
       }
     } catch (e) {
       print('❌ Error in invite salon bloc: $e');

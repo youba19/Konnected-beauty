@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'http_interceptor.dart';
 import '../storage/token_storage_service.dart';
+import '../../config/api_base_url.dart';
 
 class SalonDetailsService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Fetch salon details by ID
   static Future<Map<String, dynamic>> getSalonDetails(String salonId,

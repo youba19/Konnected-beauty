@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class SalonWalletService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Get salon wallet balance
   static Future<Map<String, dynamic>> getBalance() async {
@@ -99,7 +100,7 @@ class SalonWalletService {
       print('📊 Query Parameters Count: ${queryParams.length}');
 
       // Build the full request URL to show what will be sent
-      final baseUrl = 'https://server.konectedbeauty.com';
+      final baseUrl = ApiBaseUrl.value;
       final endpoint = '/salon-stats/report';
       final queryString = queryParams.entries
           .map((e) =>

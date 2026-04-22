@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'http_interceptor.dart';
 import '../storage/token_storage_service.dart';
 import '../../models/filter_model.dart';
+import '../../config/api_base_url.dart';
+import '../../utils/stripe_link_error.dart';
 
 class InfluencersService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Fetch all influencers with dynamic filter support
   static Future<Map<String, dynamic>> getInfluencersWithFilters({
@@ -430,7 +432,23 @@ class InfluencersService {
       print('🔍 === END INVITE INFLUENCER SERVICE DEBUG ===');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
+        final responseData =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        final bodyCode =
+            StripeLinkError.parseStatusCode(responseData['statusCode']);
+        final bodyMessage = StripeLinkError.messageFrom(responseData);
+        if (bodyCode == 499 ||
+            StripeLinkError.isAccountNotLinked(bodyMessage, bodyCode)) {
+          print('❌ Invite influencer blocked: Stripe account not linked (body)');
+          return {
+            'success': false,
+            'message': bodyMessage.isNotEmpty
+                ? bodyMessage
+                : 'Stripe account id not linked',
+            'statusCode': bodyCode ?? 499,
+            'stripeAccountNotLinked': true,
+          };
+        }
         print('✅ Influencer invited successfully');
         print('📊 Campaign Data: ${responseData['data']}');
 
@@ -446,17 +464,27 @@ class InfluencersService {
             '❌ Failed to invite influencer with status: ${response.statusCode}');
         print('🔍 Response: ${response.body}');
 
-        // Try to parse error response for more details
         try {
-          final errorData = jsonDecode(response.body);
-          final errorMessage = errorData['message'] ??
+          final errorData =
+              jsonDecode(response.body) as Map<String, dynamic>;
+          final msg = StripeLinkError.messageFrom(errorData);
+          final bodyCode =
+              StripeLinkError.parseStatusCode(errorData['statusCode']);
+          final effectiveCode = bodyCode ?? response.statusCode;
+          final stripeNotLinked = effectiveCode == 499 ||
+              StripeLinkError.isAccountNotLinked(msg, effectiveCode);
+          final fallbackMsg = errorData['message'] ??
               errorData['error'] ??
-              'Failed to invite influencer: ${response.statusCode}';
+              errorData['messgae'] ??
+              'Failed to invite influencer: $effectiveCode';
+          final errorMessage =
+              msg.isNotEmpty ? msg : fallbackMsg.toString();
 
           return {
             'success': false,
             'message': errorMessage,
-            'statusCode': response.statusCode,
+            'statusCode': effectiveCode,
+            'stripeAccountNotLinked': stripeNotLinked,
             'errorDetails': errorData,
           };
         } catch (e) {

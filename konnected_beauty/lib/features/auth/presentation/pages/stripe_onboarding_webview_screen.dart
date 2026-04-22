@@ -200,19 +200,20 @@ class _StripeOnboardingWebViewScreenState
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isLight = brightness == Brightness.light;
+    final onSurface = AppTheme.getTextPrimaryColor(brightness);
+    final onSurfaceMuted = AppTheme.getTextSecondaryColor(brightness);
+
     return Scaffold(
-      backgroundColor: AppTheme.getScaffoldBackground(
-        Theme.of(context).brightness,
-      ),
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
       appBar: AppBar(
-        backgroundColor: AppTheme.getScaffoldBackground(
-          Theme.of(context).brightness,
-        ),
+        backgroundColor: AppTheme.getScaffoldBackground(brightness),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back,
-            color: AppTheme.textPrimaryColor,
+            color: onSurface,
           ),
           onPressed: () {
             Navigator.of(context).pop();
@@ -220,8 +221,8 @@ class _StripeOnboardingWebViewScreenState
         ),
         title: Text(
           AppTranslations.getString(context, 'stripe_payment_setup'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -334,31 +335,33 @@ class _StripeOnboardingWebViewScreenState
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [
-                    const Color(0xFF3B3B3B),
-                    const Color(0xFF1F1E1E),
-                  ],
+                  colors: isLight
+                      ? [
+                          AppTheme.lightScaffoldBackground,
+                          AppTheme.lightSecondaryColor,
+                        ]
+                      : const [
+                          Color(0xFF3B3B3B),
+                          Color(0xFF1F1E1E),
+                        ],
                 ),
               ),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Stripe logo or loading indicator
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        // Shadow/background "S"
                         Text(
                           '',
                           style: TextStyle(
                             fontSize: 80,
                             fontWeight: FontWeight.w300,
-                            color: AppTheme.textSecondaryColor.withOpacity(0.1),
+                            color: onSurfaceMuted.withValues(alpha: 0.12),
                             letterSpacing: -3,
                           ),
                         ),
-                        // Main "S" with animation
                         TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.0, end: 1.0),
                           duration: const Duration(seconds: 2),
@@ -371,7 +374,7 @@ class _StripeOnboardingWebViewScreenState
                                 style: TextStyle(
                                   fontSize: 80,
                                   fontWeight: FontWeight.w300,
-                                  color: AppTheme.textPrimaryColor,
+                                  color: onSurface,
                                   letterSpacing: -3,
                                 ),
                               ),
@@ -381,7 +384,6 @@ class _StripeOnboardingWebViewScreenState
                       ],
                     ),
                     const SizedBox(height: 24),
-                    // Loading indicator
                     SizedBox(
                       width: 40,
                       height: 40,
@@ -390,15 +392,16 @@ class _StripeOnboardingWebViewScreenState
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           AppTheme.greenPrimary,
                         ),
-                        backgroundColor: AppTheme.borderColorGray,
+                        backgroundColor: isLight
+                            ? AppTheme.lightPlaceholderBackground
+                            : AppTheme.borderColorGray,
                       ),
                     ),
                     const SizedBox(height: 24),
-                    // Loading text
                     Text(
                       'Loading Stripe onboarding...',
                       style: TextStyle(
-                        color: AppTheme.textPrimaryColor,
+                        color: onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -407,7 +410,7 @@ class _StripeOnboardingWebViewScreenState
                     Text(
                       'Please wait while we connect your account',
                       style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
+                        color: onSurfaceMuted,
                         fontSize: 14,
                       ),
                       textAlign: TextAlign.center,
@@ -421,7 +424,9 @@ class _StripeOnboardingWebViewScreenState
                             LinearProgressIndicator(
                               value: _progress,
                               minHeight: 4,
-                              backgroundColor: AppTheme.borderColorGray,
+                              backgroundColor: isLight
+                                  ? AppTheme.lightPlaceholderBackground
+                                  : AppTheme.borderColorGray,
                               borderRadius: BorderRadius.circular(2),
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                 AppTheme.greenPrimary,
@@ -431,7 +436,7 @@ class _StripeOnboardingWebViewScreenState
                             Text(
                               '${(_progress * 100).toInt()}%',
                               style: TextStyle(
-                                color: AppTheme.textSecondaryColor,
+                                color: onSurfaceMuted,
                                 fontSize: 12,
                               ),
                             ),

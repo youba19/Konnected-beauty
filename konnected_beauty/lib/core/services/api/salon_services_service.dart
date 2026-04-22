@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class SalonServicesService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   // Salon services endpoint
   static const String servicesEndpoint = '/salon-service';

@@ -1438,10 +1438,10 @@ class SaloonRegistrationBloc
 
   void _onSkipStripeOnboarding(SkipStripeOnboarding event,
       Emitter<SaloonRegistrationState> emit) async {
-    // Allow user to skip Stripe onboarding and proceed to success
+    // Skip Stripe: UI navigates straight to salon home (no success interstitial).
     emit(SaloonRegistrationSuccess(
       state,
-      successMessage: 'Account created successfully!',
+      successMessage: 'stripe_onboarding_skipped',
     ));
   }
 
