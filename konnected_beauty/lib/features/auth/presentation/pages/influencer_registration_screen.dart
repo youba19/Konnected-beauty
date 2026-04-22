@@ -15,7 +15,8 @@ import '../../../../widgets/forms/custom_button.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'welcome_screen.dart';
-import '../../../influencer/presentation/pages/influencer_home_screen.dart';
+import 'stripe_onboarding_webview_screen.dart';
+import 'registration_success_screen.dart';
 
 class InfluencerRegistrationScreen extends StatefulWidget {
   final InfluencerRegistrationBloc? existingBloc;
@@ -76,6 +77,11 @@ class _InfluencerRegistrationScreenState
 
   // Flag to prevent multiple OTP resend requests
   bool _isResendRequestInProgress = false;
+
+  // Flag to prevent multiple Stripe WebView openings
+  bool _stripeWebViewOpened = false;
+  // Flag to track if automatic opening has already happened (prevents auto-reopening after return)
+  bool _hasAutoOpenedOnce = false;
 
   // Image picker
   final ImagePicker _imagePicker = ImagePicker();
@@ -510,14 +516,15 @@ class _InfluencerRegistrationScreenState
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
             colors: [
-              Color(0xFF1E1E1E),
-              Color(0xFF2D2D2D),
-              Color(0xFF3D3D3D),
+              Color(0xFF3B3B3B),
+              Color(0xFF1F1E1E), // Bottom color (darker)
+              // Top color (lighter)
             ],
           ),
         ),
         child: Scaffold(
           backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: true,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -574,22 +581,17 @@ class _InfluencerRegistrationScreenState
                   print('💬 Success Message: ${state.successMessage}');
                   print('🎯 Navigating to step: ${state.currentStep}');
 
-                  // Check if this is the final success (after socials submission)
-                  if (state.successMessage == 'socials_added_success') {
+                  // Check if this is the final success (after Stripe onboarding)
+                  if (state.successMessage == 'Account created successfully!') {
                     print(
-                        '🏠 === REGISTRATION COMPLETE - NAVIGATING TO INFLUENCER HOME ===');
+                        '🎉 === REGISTRATION COMPLETE - NAVIGATING TO SUCCESS SCREEN ===');
 
-                    // Show simple account created success message instead of the long default one
-                    TopNotificationService.showSuccess(
-                      context: context,
-                      message: AppTranslations.getString(
-                          context, 'account_created_successfully'),
-                    );
-
-                    // Navigate immediately to influencer home page
+                    // Navigate to success screen first, then to influencer home
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
-                        builder: (context) => const InfluencerHomeScreen(),
+                        builder: (context) => const RegistrationSuccessScreen(
+                          userRole: 'influencer',
+                        ),
                       ),
                       (route) => false, // Remove all previous routes
                     );
@@ -613,8 +615,7 @@ class _InfluencerRegistrationScreenState
                 }
 
                 // Handle step changes for navigation (regular state, not success state)
-                if (state is InfluencerRegistrationState &&
-                    state.currentStep == 3) {
+                if (state.currentStep == 3) {
                   print('📱 === STEP CHANGED TO SOCIALS (3) ===');
                   print('🎯 UI should now show social media step');
                   print('🔄 This is a regular state change, not success state');
@@ -660,35 +661,23 @@ class _InfluencerRegistrationScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header
-                        Container(
-                          color: Colors.transparent,
-                          child: _buildHeader(),
-                        ),
-                        const SizedBox(height: 20),
+                        // Header (hide for Stripe step)
+                        if (state.currentStep != 4) ...[
+                          _buildHeader(),
+                          const SizedBox(height: 20),
+                        ],
 
                         // Content
                         Expanded(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return SingleChildScrollView(
-                                physics: const BouncingScrollPhysics(),
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minHeight: constraints.maxHeight,
-                                  ),
-                                  child: IntrinsicHeight(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        _buildStepContent(context, state),
-                                        const SizedBox(height: 20),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildStepContent(context, state),
+                                const SizedBox(height: 10),
+                              ],
+                            ),
                           ),
                         ),
 
@@ -749,6 +738,9 @@ class _InfluencerRegistrationScreenState
           const SizedBox(width: 8),
           _buildStepIndicator(
               context, 3, state.currentStep >= 3, state.currentStep == 3),
+          const SizedBox(width: 8),
+          _buildStepIndicator(
+              context, 4, state.currentStep >= 4, state.currentStep == 4),
         ],
       ),
     );
@@ -788,6 +780,9 @@ class _InfluencerRegistrationScreenState
         case 3:
           print('📱 Building Social Media Step');
           return _buildSocialMediaStep(context, state);
+        case 4:
+          print('💳 Building Stripe Onboarding Step');
+          return _buildStripeOnboardingStep(context, state);
         default:
           print('❌ Unknown step: ${state.currentStep}');
           return const SizedBox.shrink();
@@ -1405,11 +1400,22 @@ class _InfluencerRegistrationScreenState
           onPressed: state.isLoading
               ? () {}
               : () {
+                  print('Continue button pressed for step 0');
+                  print('📧 Email: ${emailController.text}');
+                  print('📧 Email validation: ${_isValidEmail(emailController.text)}');
+                  print('📧 Form validation: ${emailFormKey.currentState?.validate()}');
                   // First trigger validation to show inline errors
                   _triggerValidationAndUpdateUI();
 
                   // Check if we can proceed after validation
-                  if (_canProceedToNextStep(state)) {
+                  final canProceed = _canProceedToNextStep(state);
+                  print('✅ Can proceed: $canProceed');
+                  print('  - Name: ${nameController.text.isNotEmpty}');
+                  print('  - Email: ${emailController.text.isNotEmpty} && ${_isValidEmail(emailController.text)}');
+                  print('  - Phone: ${phoneController.text.isNotEmpty}');
+                  print('  - Password: ${passwordController.text.isNotEmpty}');
+                  
+                  if (canProceed) {
                     // Auto-convert 06 or 07 to +33 before sending
                     String phoneValue = phoneController.text.trim();
                     if (phoneValue.startsWith('06') ||
@@ -1438,7 +1444,6 @@ class _InfluencerRegistrationScreenState
                         .add(SubmitSignup());
                   }
                 },
-          leadingIcon: LucideIcons.arrowRight,
           isLoading: state.isLoading,
         );
       case 1:
@@ -1503,6 +1508,50 @@ class _InfluencerRegistrationScreenState
                 },
           isLoading: state.isLoading,
         );
+      case 4:
+        // Single "Connect with Stripe" button
+        // Automatically open WebView when URL is ready (only once, never again after return)
+        if (state.stripeOnboardingUrl != null &&
+            !state.isLoading &&
+            !_stripeWebViewOpened &&
+            !_hasAutoOpenedOnce) {
+          _stripeWebViewOpened = true;
+          _hasAutoOpenedOnce = true; // Mark that auto-opening has happened
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && state.stripeOnboardingUrl != null) {
+              final url = state.stripeOnboardingUrl!;
+              print('🌐 Auto-opening Stripe onboarding URL in WebView: $url');
+              final registrationContext = context;
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => StripeOnboardingWebViewScreen(
+                    onboardingUrl: url,
+                    accountId: state.stripeAccountId,
+                    onSuccess: () {
+                      print('✅ Stripe onboarding completed and verified');
+                      registrationContext
+                          .read<InfluencerRegistrationBloc>()
+                          .add(CompleteStripeOnboarding());
+                    },
+                    onFailure: () {
+                      print('❌ Stripe onboarding had issues');
+                      registrationContext
+                          .read<InfluencerRegistrationBloc>()
+                          .add(SkipStripeOnboarding());
+                    },
+                  ),
+                ),
+              ).then((_) {
+                // Reset flag when user returns from WebView - button becomes clickable again
+                // But don't reset _hasAutoOpenedOnce to prevent automatic reopening
+                _stripeWebViewOpened = false;
+                print('🔄 Reset _stripeWebViewOpened flag - button is clickable again (manual only)');
+              });
+            }
+          });
+        }
+
+        return _buildConnectStripeButton(context, state);
       default:
         return const SizedBox.shrink();
     }
@@ -1586,6 +1635,269 @@ class _InfluencerRegistrationScreenState
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    // Accept emails in format: something@something.something
+    // Allows hyphens in domain and TLD, and TLDs of any length (e.g., .paris, .photography)
+    // Note: Hyphen must be at the end of character class to be treated as literal
+    return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]+$').hasMatch(email);
   }
+
+  Widget _buildStripeOnboardingStep(
+      BuildContext context, InfluencerRegistrationState state) {
+    // Don't automatically start - wait for user to click button
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Title: "Link your Stripe"
+        Text(
+          AppTranslations.getString(context, 'link_your_stripe'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Description text
+        Text(
+          AppTranslations.getString(context, 'stripe_onboarding_description'),
+          style: const TextStyle(
+            color: AppTheme.textSecondaryColor,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 100),
+        // Logos: Konected and Stripe - centered
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  SizedBox(width: 100),
+                  // Konected Logo
+                  Image.asset(
+                    'assets/images/Konected beauty - Logo white.png',
+                    height: 60,
+                    fit: BoxFit.contain,
+                  ),
+                ],
+              ),
+
+              // Link icon (rotated -180 degrees)
+              Transform.rotate(
+                angle: -3.14159, // -180 degrees in radians
+                child: Icon(
+                  LucideIcons.link,
+                  color: AppTheme.textSecondaryColor,
+                  size: 24,
+                ),
+              ),
+              // Stripe logo and text
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Stripe logo (stylized "S")
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Shadow/background "S"
+                    ], // Main "S"
+                  ),
+                  // "stripe" text in blue
+                  Text(
+                    'stripe',
+                    style: TextStyle(
+                      fontSize: 50,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF635BFF), // Stripe blue
+                      letterSpacing: -0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(width: 50),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectStripeButton(
+      BuildContext context, InfluencerRegistrationState state) {
+    final isLoading = state.isLoading;
+    final hasUrl = state.stripeOnboardingUrl != null;
+
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: (isLoading || (hasUrl && _stripeWebViewOpened))
+            ? null
+            : () {
+                if (hasUrl) {
+                  // URL exists, open WebView manually (when user clicks after returning)
+                  _stripeWebViewOpened = true;
+                  final url = state.stripeOnboardingUrl!;
+                  print('🌐 Manually opening Stripe onboarding URL in WebView: $url');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => StripeOnboardingWebViewScreen(
+                        onboardingUrl: url,
+                        accountId: state.stripeAccountId,
+                        onSuccess: () {
+                          print('✅ Stripe onboarding completed and verified');
+                          context
+                              .read<InfluencerRegistrationBloc>()
+                              .add(CompleteStripeOnboarding());
+                        },
+                        onFailure: () {
+                          print('❌ Stripe onboarding had issues');
+                          context
+                              .read<InfluencerRegistrationBloc>()
+                              .add(SkipStripeOnboarding());
+                        },
+                      ),
+                    ),
+                  ).then((_) {
+                    // Reset flag when user returns from WebView - button becomes clickable again
+                    _stripeWebViewOpened = false;
+                    print('🔄 Reset _stripeWebViewOpened flag - button is clickable again');
+                  });
+                } else {
+                  // URL doesn't exist, generate it
+                  print('🔄 Starting Stripe onboarding to generate link...');
+                  context
+                      .read<InfluencerRegistrationBloc>()
+                      .add(StartStripeOnboarding());
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: isLoading
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppTranslations.getString(context, 'connect_with_stripe'),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Stripe "S" icon (black)
+                  Text(
+                    'S',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppTranslations.getString(context, 'connect_with_stripe'),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// Custom painter for Stripe logo
+class StripeLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final baseRadius = size.width * 0.12;
+
+    // Draw central circle (larger)
+    canvas.drawCircle(center, baseRadius * 1.2, paint);
+
+    // Draw top-left petal
+    final topLeftRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center:
+            Offset(center.dx - baseRadius * 0.8, center.dy - baseRadius * 1.5),
+        width: baseRadius * 1.6,
+        height: baseRadius * 2.2,
+      ),
+      Radius.circular(baseRadius * 0.8),
+    );
+    canvas.drawRRect(topLeftRect, paint);
+
+    // Draw top-right petal
+    final topRightRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center:
+            Offset(center.dx + baseRadius * 0.8, center.dy - baseRadius * 1.5),
+        width: baseRadius * 1.6,
+        height: baseRadius * 2.2,
+      ),
+      Radius.circular(baseRadius * 0.8),
+    );
+    canvas.drawRRect(topRightRect, paint);
+
+    // Draw bottom-left petal
+    final bottomLeftRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center:
+            Offset(center.dx - baseRadius * 0.8, center.dy + baseRadius * 1.5),
+        width: baseRadius * 1.6,
+        height: baseRadius * 2.2,
+      ),
+      Radius.circular(baseRadius * 0.8),
+    );
+    canvas.drawRRect(bottomLeftRect, paint);
+
+    // Draw bottom-right petal
+    final bottomRightRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center:
+            Offset(center.dx + baseRadius * 0.8, center.dy + baseRadius * 1.5),
+        width: baseRadius * 1.6,
+        height: baseRadius * 2.2,
+      ),
+      Radius.circular(baseRadius * 0.8),
+    );
+    canvas.drawRRect(bottomRightRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

@@ -190,6 +190,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         String currentName = widget.serviceName;
         String currentPrice = widget.servicePrice;
         String currentDescription = widget.serviceDescription;
+        List<dynamic> servicePictures = [];
 
         if (state is SalonServicesLoaded) {
           // Find the updated service in the loaded services
@@ -207,11 +208,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               updatedService['price']?.toString() ?? widget.servicePrice;
           currentDescription =
               updatedService['description'] ?? widget.serviceDescription;
+          servicePictures = updatedService['pictures'] as List<dynamic>? ?? [];
         }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Service Pictures
+            if (servicePictures.isNotEmpty) ...[
+              _buildServicePictures(servicePictures),
+              const SizedBox(height: 24),
+            ],
+
             // Service Name
             Text(
               currentName,
@@ -222,7 +230,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
             // Service Price
             Text(
-              currentPrice,
+              '$currentPrice EURO (TTC)',
               style: const TextStyle(
                 color: AppTheme.accentColor,
                 fontSize: 20,
@@ -243,6 +251,66 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildServicePictures(List<dynamic> pictures) {
+    // Extract image URLs
+    final imageUrls = pictures
+        .map((pic) => (pic['url'] ?? pic['imageUrl'] ?? '').toString())
+        .where((url) => url.isNotEmpty)
+        .toList();
+
+    if (imageUrls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // If only one image, show it without carousel
+    if (imageUrls.length == 1) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          imageUrls[0],
+          width: double.infinity,
+          height: 252,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 252,
+              color: AppTheme.border2,
+              child: Icon(
+                Icons.image,
+                color: AppTheme.getTextSecondaryColor(
+                    Theme.of(context).brightness),
+                size: 40,
+              ),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              height: 252,
+              color: AppTheme.border2,
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  strokeWidth: 2,
+                  color: AppTheme.accentColor,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Multiple images: show carousel with indicators
+    return SizedBox(
+      height: 252,
+      child: _ServicePicturesCarousel(imageUrls: imageUrls),
     );
   }
 
@@ -410,6 +478,125 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+// Image carousel widget with page indicators for service pictures
+class _ServicePicturesCarousel extends StatefulWidget {
+  final List<String> imageUrls;
+
+  const _ServicePicturesCarousel({
+    required this.imageUrls,
+  });
+
+  @override
+  State<_ServicePicturesCarousel> createState() =>
+      _ServicePicturesCarouselState();
+}
+
+class _ServicePicturesCarouselState extends State<_ServicePicturesCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        PageView.builder(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentPage = index;
+            });
+          },
+          itemCount: widget.imageUrls.length,
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: EdgeInsets.only(
+                right: index < widget.imageUrls.length - 1 ? 12 : 0,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  widget.imageUrls[index],
+                  height: 252,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 252,
+                      color: AppTheme.border2,
+                      child: Icon(
+                        Icons.image,
+                        color: AppTheme.getTextSecondaryColor(
+                            Theme.of(context).brightness),
+                        size: 40,
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 252,
+                      color: AppTheme.border2,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          strokeWidth: 2,
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+        // Page indicators overlay at the bottom of the image
+        Positioned(
+          bottom: 12,
+          left: 0,
+          right: 0,
+          child: _buildPageIndicators(widget.imageUrls.length),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPageIndicators(int totalPages) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        totalPages,
+        (index) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: _currentPage == index ? 8 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(3),
+            color: _currentPage == index
+                ? AppTheme.greenPrimary
+                : Colors.white.withOpacity(0.5),
+          ),
+        ),
+      ),
     );
   }
 }

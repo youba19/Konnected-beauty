@@ -36,6 +36,7 @@ import 'core/bloc/influencer_campaigns/influencer_campaigns_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'core/translations/app_translations.dart';
 import 'features/auth/presentation/pages/welcome_screen.dart';
+import 'features/auth/presentation/pages/onboarding_screen.dart';
 import 'features/company/presentation/pages/salon_main_wrapper.dart';
 import 'features/influencer/presentation/pages/influencer_home_screen.dart';
 
@@ -44,42 +45,54 @@ void main() async {
   Bloc.observer = AppBlocObserver();
 
   // Initialize Firebase asynchronously (non-blocking)
+  // Note: On iOS, Firebase is also configured in AppDelegate.swift
   // This prevents crashes during app startup
   Future.microtask(() async {
     try {
-      // Initialize Firebase
-      // On Android, if values.xml is not generated, initialize manually
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        try {
+      // Check if Firebase is already initialized (iOS might initialize it in AppDelegate)
+      try {
+        Firebase.app(); // This will throw if not initialized
+        print('✅ Firebase already initialized (likely by AppDelegate on iOS)');
+      } catch (e) {
+        // Firebase not initialized yet, initialize it
+        print('🔧 Initializing Firebase in main.dart...');
+        // On Android, if values.xml is not generated, initialize manually
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          try {
+            await Firebase.initializeApp();
+            print('✅ Firebase initialized successfully');
+          } catch (e) {
+            // If initialization fails, try with manual options
+            print(
+                '⚠️ Firebase auto-init failed, trying manual initialization...');
+            await Firebase.initializeApp(
+              options: const FirebaseOptions(
+                apiKey: 'AIzaSyDZ8AJrJLRe528MeKc2x2YLp3bWZOK5de4',
+                appId: '1:712681738234:android:666b0d5c00ec6a537bde43',
+                messagingSenderId: '712681738234',
+                projectId: 'konected-beauty',
+                storageBucket: 'konected-beauty.firebasestorage.app',
+              ),
+            );
+            print('✅ Firebase initialized manually');
+          }
+        } else {
+          // On iOS, AppDelegate should have initialized it, but initialize here as fallback
           await Firebase.initializeApp();
           print('✅ Firebase initialized successfully');
-        } catch (e) {
-          // If initialization fails, try with manual options
-          print(
-              '⚠️ Firebase auto-init failed, trying manual initialization...');
-          await Firebase.initializeApp(
-            options: const FirebaseOptions(
-              apiKey: 'AIzaSyDZ8AJrJLRe528MeKc2x2YLp3bWZOK5de4',
-              appId: '1:712681738234:android:666b0d5c00ec6a537bde43',
-              messagingSenderId: '712681738234',
-              projectId: 'konected-beauty',
-              storageBucket: 'konected-beauty.firebasestorage.app',
-            ),
-          );
-          print('✅ Firebase initialized manually');
         }
-      } else {
-        await Firebase.initializeApp();
-        print('✅ Firebase initialized successfully');
       }
 
-      // Set up background message handler
+      // Set up background message handler (MUST be top-level function)
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      print('✅ Background message handler registered');
 
       // Initialize Firebase Notification Service (non-blocking)
-      FirebaseNotificationService().initialize().catchError((error) {
-        print('⚠️ Firebase Notification Service initialization error: $error');
-      });
+      // Wait a bit to ensure Firebase is fully initialized
+      await Future.delayed(Duration(seconds: 1));
+      print('🔔 Initializing Firebase Notification Service...');
+      await FirebaseNotificationService().initialize();
+      print('✅ Firebase Notification Service initialized');
     } catch (e, stackTrace) {
       print('❌ Firebase initialization error: $e');
       print('❌ Stack trace: $stackTrace');
@@ -97,15 +110,24 @@ void main() async {
   final initialBrightness = isDark ? Brightness.dark : Brightness.light;
   print('🎨 Initial theme brightness: $initialBrightness');
 
-  runApp(KonnectedBeautyApp(initialBrightness: initialBrightness));
+  // Check if onboarding has been shown
+  final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+  print('📱 Has seen onboarding: $hasSeenOnboarding');
+
+  runApp(KonnectedBeautyApp(
+    initialBrightness: initialBrightness,
+    hasSeenOnboarding: hasSeenOnboarding,
+  ));
 }
 
 class KonnectedBeautyApp extends StatelessWidget {
   final Brightness initialBrightness;
+  final bool hasSeenOnboarding;
 
   const KonnectedBeautyApp({
     super.key,
     required this.initialBrightness,
+    required this.hasSeenOnboarding,
   });
 
   @override
@@ -263,11 +285,25 @@ class KonnectedBeautyApp extends StatelessWidget {
         return const WelcomeScreen();
       }
     } else if (authState is AuthProfileIncomplete) {
-      print('🏠 Profile incomplete, showing WelcomeScreen');
-      return const WelcomeScreen();
+      print('🏠 Profile incomplete');
+      // Show onboarding only if not seen before
+      if (!hasSeenOnboarding) {
+        print('🏠 Showing OnboardingScreen (first time)');
+        return const OnboardingScreen();
+      } else {
+        print('🏠 Onboarding already seen, showing WelcomeScreen');
+        return const WelcomeScreen();
+      }
     } else {
-      print('🏠 User not authenticated, showing WelcomeScreen');
-      return const WelcomeScreen();
+      print('🏠 User not authenticated');
+      // Show onboarding only if not seen before
+      if (!hasSeenOnboarding) {
+        print('🏠 Showing OnboardingScreen (first time)');
+        return const OnboardingScreen();
+      } else {
+        print('🏠 Onboarding already seen, showing WelcomeScreen');
+        return const WelcomeScreen();
+      }
     }
   }
 }

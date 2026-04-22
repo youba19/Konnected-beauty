@@ -4,8 +4,10 @@ import 'package:konnected_beauty/core/theme/app_theme.dart';
 import 'package:konnected_beauty/core/translations/app_translations.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/services/api/influencer_wallet_service.dart';
 import '../../../../core/services/api/http_interceptor.dart';
+import '../../../../core/services/api/stripe_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'withdrawal_history_screen.dart';
 import 'report_screen.dart';
@@ -20,6 +22,7 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   bool _isLoading = true;
   bool _hasPendingWithdrawRequest = false;
+  bool _isLoadingStripe = false;
   double _balance = 0.0;
 
   // Stats data from the same stats API
@@ -409,15 +412,8 @@ class _WalletScreenState extends State<WalletScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          _buildBalanceCard(),
-          SizedBox(height: 8),
+          // Only show: Total Revenue, Total Orders, Average Order Value
           buildTotalRevenueCard(),
-          SizedBox(height: 8),
-          _buildInfoCard(
-            icon: LucideIcons.euro,
-            title: AppTranslations.getString(context, 'pending_requests'),
-            value: '${_stats['pendingRequests'] ?? 0}',
-          ),
           SizedBox(height: 8),
           _buildInfoCard(
             icon: LucideIcons.boxes,
@@ -432,11 +428,150 @@ class _WalletScreenState extends State<WalletScreen> {
                 '€ ${(_stats['averageOrderValue']?['current'] ?? 0.0).toStringAsFixed(2)}',
           ),
           SizedBox(height: 20),
-          _buildWithdrawHistoryButton(),
-          SizedBox(height: 12),
-          _buildRequestWithdrawButton(),
+          // Open Stripe dashboard button
+          _buildStripeButton(),
           SizedBox(height: 20),
+          // Withdraw buttons are hidden
+          // _buildWithdrawHistoryButton(),
+          // SizedBox(height: 12),
+          // _buildRequestWithdrawButton(),
+          // Hidden cards:
+          // _buildBalanceCard(),
+          // _buildInfoCard(
+          //   icon: LucideIcons.euro,
+          //   title: AppTranslations.getString(context, 'pending_requests'),
+          //   value: '${_stats['pendingRequests'] ?? 0}',
+          // ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openStripeDashboard() async {
+    if (_isLoadingStripe) return;
+
+    setState(() {
+      _isLoadingStripe = true;
+    });
+
+    try {
+      print('💳 Opening Stripe dashboard...');
+      final result = await StripeService.getLoginLink();
+
+      if (result['success'] == true) {
+        final data = result['data'] as Map<String, dynamic>?;
+        final loginUrl = data?['loginUrl'] as String?;
+
+        if (loginUrl != null && loginUrl.isNotEmpty) {
+          print('🌐 Opening Stripe dashboard URL: $loginUrl');
+          final uri = Uri.parse(loginUrl);
+          
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+          } else {
+            print('❌ Cannot launch URL: $loginUrl');
+            TopNotificationService.showError(
+              context: context,
+              message: 'Cannot open Stripe dashboard',
+            );
+          }
+        } else {
+          print('❌ No login URL in response');
+          TopNotificationService.showError(
+            context: context,
+            message: 'Stripe dashboard link not available',
+          );
+        }
+      } else {
+        print('❌ Failed to get Stripe login link: ${result['message']}');
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to open Stripe dashboard',
+        );
+      }
+    } catch (e) {
+      print('❌ Error opening Stripe dashboard: $e');
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error opening Stripe dashboard: ${e.toString()}',
+      );
+    } finally {
+      setState(() {
+        _isLoadingStripe = false;
+      });
+    }
+  }
+
+  Widget _buildStripeButton() {
+    final brightness = Theme.of(context).brightness;
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoadingStripe ? null : _openStripeDashboard,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : Colors.transparent,
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            // Stripe "S" logo
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Text(
+                  'S',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Button text
+            Text(
+              _isLoadingStripe ? 'Loading...' : 'Open Stripe dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+            ),
+            if (_isLoadingStripe) ...[
+              const Spacer(),
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  color: Colors.black,
+                  strokeWidth: 2,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -645,7 +780,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     style: TextStyle(
                       color: brightness == Brightness.light
                           ? AppTheme.lightTextPrimaryColor
-                          : AppTheme.getTextPrimaryColor(brightness),
+                          : Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -661,7 +796,7 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextStyle(
               color: brightness == Brightness.light
                   ? AppTheme.lightTextPrimaryColor
-                  : AppTheme.lightTextPrimaryColor,
+                  : Colors.black,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),

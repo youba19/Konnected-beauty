@@ -973,17 +973,21 @@ class InfluencersService {
   }
 
   /// Refuse campaign (for salon when influencer initiated)
-  static Future<Map<String, dynamic>> refuseCampaign({
+  static Future<Map<String, dynamic>> refuseInfluencerInvite({
     required String campaignId,
   }) async {
     try {
-      print('❌ === REFUSING CAMPAIGN ===');
+      print('❌ === REFUSING INFLUENCER INVITE (SALON) ===');
       print('🆔 Campaign ID: $campaignId');
+
+      final body = {
+        'campaignId': campaignId,
+      };
 
       final response = await HttpInterceptor.authenticatedRequest(
         method: 'POST',
         endpoint: '/campaign/reject-influencer-invite',
-        body: jsonEncode({'campaignId': campaignId}),
+        body: jsonEncode(body),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1025,6 +1029,134 @@ class InfluencersService {
       return {
         'success': false,
         'message': 'Error refusing campaign: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Send reply message (for salon when influencer initiated)
+  static Future<Map<String, dynamic>> sendReplyToInfluencerInvite({
+    required String campaignId,
+    required String replyMessage,
+  }) async {
+    try {
+      print('💬 === SENDING REPLY TO INFLUENCER INVITE ===');
+      print('🆔 Campaign ID: $campaignId');
+      print('💬 Reply Message: $replyMessage');
+
+      final body = {
+        'campaignId': campaignId,
+        'replyMessage': replyMessage,
+      };
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/reply-influencer-invite',
+        body: jsonEncode(body),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Reply sent successfully',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 400) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Bad request',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'success': false,
+          'message': 'You are not authorized to reply to this campaign',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to send reply',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error sending reply message: $e');
+      return {
+        'success': false,
+        'message': 'Error sending reply message: $e',
+        'statusCode': 500,
+      };
+    }
+  }
+
+  /// Send reply message (for influencer when salon initiated)
+  static Future<Map<String, dynamic>> sendReplyToSalonInvite({
+    required String campaignId,
+    required String replyMessage,
+  }) async {
+    try {
+      print('💬 === SENDING REPLY TO SALON INVITE ===');
+      print('🆔 Campaign ID: $campaignId');
+      print('💬 Reply Message: $replyMessage');
+
+      final body = {
+        'campaignId': campaignId,
+        'replyMessage': replyMessage,
+      };
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/campaign/reply-salon-invite',
+        body: jsonEncode(body),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Reply sent successfully',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 400) {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Bad request',
+          'statusCode': response.statusCode,
+        };
+      } else if (response.statusCode == 403) {
+        return {
+          'success': false,
+          'message': 'You are not authorized to reply to this campaign',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to send reply',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error sending reply message: $e');
+      return {
+        'success': false,
+        'message': 'Error sending reply message: $e',
         'statusCode': 500,
       };
     }

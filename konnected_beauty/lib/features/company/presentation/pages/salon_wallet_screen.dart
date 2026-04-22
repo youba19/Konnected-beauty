@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/translations/app_translations.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../widgets/common/shimmer_loading.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../core/services/api/salon_wallet_service.dart';
-import 'withdrawal_history_screen.dart';
+import '../../../../core/services/api/stripe_service.dart';
+import 'salon_reports_screen.dart';
 
 class SalonWalletScreen extends StatefulWidget {
   const SalonWalletScreen({super.key});
@@ -18,6 +21,7 @@ class SalonWalletScreen extends StatefulWidget {
 class _SalonWalletScreenState extends State<SalonWalletScreen> {
   bool _isLoading = true;
   bool _hasPendingWithdrawRequest = false;
+  bool _isLoadingStripe = false;
   double _balance = 0.0;
 
   // Stats data
@@ -97,81 +101,87 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _loadWalletData,
-        color: Colors.white,
-        backgroundColor: const Color(0xFF3A3A3A),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppTranslations.getString(context, 'wallet'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+    // Force dark mode for salon - wrap in Theme with dark brightness
+    return Theme(
+      data: ThemeData.dark(),
+      child: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadWalletData,
+          color: Colors.white,
+          backgroundColor: const Color(0xFF3A3A3A),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppTranslations.getString(context, 'wallet'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppTranslations.getString(
-                        context, 'track_earnings_realtime'),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
+                    const SizedBox(height: 8),
+                    Text(
+                      AppTranslations.getString(
+                          context, 'track_earnings_realtime'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              // Balance card (dark gray)
-              _isLoading
-                  ? const ShimmerCard(
-                      height: 72,
-                      borderRadius: BorderRadius.all(Radius.circular(12)))
-                  : _buildBalanceCard(),
+                // Balance card (dark gray)
+                _isLoading
+                    ? const ShimmerCard(
+                        height: 72,
+                        borderRadius: BorderRadius.all(Radius.circular(12)))
+                    : _buildBalanceCard(),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Metrics grid (2 columns)
-              _isLoading ? _buildMetricsShimmer() : _buildMetricsGrid(context),
+                // Metrics grid (2 columns)
+                _isLoading
+                    ? _buildMetricsShimmer()
+                    : _buildMetricsGrid(context),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Action Buttons
-              _buildActionButtons(),
+                // Action Buttons
+                _buildActionButtons(),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Orders section
-              _buildChartSection(
-                title: AppTranslations.getString(context, 'orders'),
-                subtitle:
-                    AppTranslations.getString(context, 'from_last_3_months'),
-                isLoading: _isLoading,
-                child: _buildOrdersChart(),
-              ),
+                // Orders section
+                _buildChartSection(
+                  title: AppTranslations.getString(context, 'orders'),
+                  subtitle:
+                      AppTranslations.getString(context, 'from_last_3_months'),
+                  isLoading: _isLoading,
+                  child: _buildOrdersChart(),
+                ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Revenue section
-              _buildChartSection(
-                title: AppTranslations.getString(context, 'revenue'),
-                subtitle:
-                    AppTranslations.getString(context, 'from_last_3_months'),
-                isLoading: _isLoading,
-                child: _buildRevenueChart(),
-              ),
-            ],
+                // Revenue section
+                _buildChartSection(
+                  title: AppTranslations.getString(context, 'revenue'),
+                  subtitle:
+                      AppTranslations.getString(context, 'from_last_3_months'),
+                  isLoading: _isLoading,
+                  child: _buildRevenueChart(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -181,7 +191,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        // Withdraw history button
+        // View Reports button
         SizedBox(
           width: double.infinity,
           height: 48,
@@ -189,7 +199,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const WithdrawalHistoryScreen(),
+                  builder: (context) => const SalonReportsScreen(),
                 ),
               );
             },
@@ -201,7 +211,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
               backgroundColor: Colors.transparent,
             ),
             child: Text(
-              AppTranslations.getString(context, 'withdraw_history'),
+              AppTranslations.getString(context, 'view_reports'),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -210,35 +220,69 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
             ),
           ),
         ),
-        // Only show request withdraw button if no pending request
-        if (!_hasPendingWithdrawRequest) ...[
-          const SizedBox(height: 12),
-          // Request withdraw button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                _showWithdrawRequestDialog(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                AppTranslations.getString(context, 'request_withdraw'),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
+        const SizedBox(height: 12),
+        // Open Stripe dashboard button
+        _buildStripeButton(),
+        // Withdraw buttons are hidden
+        // const SizedBox(height: 12),
+        // // Withdraw history button
+        // SizedBox(
+        //   width: double.infinity,
+        //   height: 48,
+        //   child: OutlinedButton(
+        //     onPressed: () {
+        //       Navigator.of(context).push(
+        //         MaterialPageRoute(
+        //           builder: (context) => const WithdrawalHistoryScreen(),
+        //         ),
+        //       );
+        //     },
+        //     style: OutlinedButton.styleFrom(
+        //       side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
+        //       shape: RoundedRectangleBorder(
+        //         borderRadius: BorderRadius.circular(12),
+        //       ),
+        //       backgroundColor: Colors.transparent,
+        //     ),
+        //     child: Text(
+        //       AppTranslations.getString(context, 'withdraw_history'),
+        //       style: const TextStyle(
+        //         color: Colors.white,
+        //         fontSize: 16,
+        //         fontWeight: FontWeight.w600,
+        //       ),
+        //     ),
+        //   ),
+        // ),
+        // // Only show request withdraw button if no pending request
+        // if (!_hasPendingWithdrawRequest) ...[
+        //   const SizedBox(height: 12),
+        //   // Request withdraw button
+        //   SizedBox(
+        //     width: double.infinity,
+        //     height: 48,
+        //     child: ElevatedButton(
+        //       onPressed: () {
+        //         _showWithdrawRequestDialog(context);
+        //       },
+        //       style: ElevatedButton.styleFrom(
+        //         backgroundColor: Colors.white,
+        //         shape: RoundedRectangleBorder(
+        //           borderRadius: BorderRadius.circular(12),
+        //         ),
+        //         elevation: 0,
+        //       ),
+        //       child: Text(
+        //         AppTranslations.getString(context, 'request_withdraw'),
+        //         style: const TextStyle(
+        //           color: Colors.black,
+        //           fontSize: 16,
+        //           fontWeight: FontWeight.w600,
+        //         ),
+        //       ),
+        //     ),
+        //   ),
+        // ],
         // Show pending request message if request was submitted
         if (_hasPendingWithdrawRequest) ...[
           const SizedBox(height: 12),
@@ -476,6 +520,135 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
           },
         );
       },
+    );
+  }
+
+  Future<void> _openStripeDashboard() async {
+    if (_isLoadingStripe) return;
+
+    setState(() {
+      _isLoadingStripe = true;
+    });
+
+    try {
+      print('💳 Opening Stripe dashboard...');
+      final result = await StripeService.getLoginLink();
+
+      if (result['success'] == true) {
+        final data = result['data'] as Map<String, dynamic>?;
+        final loginUrl = data?['loginUrl'] as String?;
+
+        if (loginUrl != null && loginUrl.isNotEmpty) {
+          print('🌐 Opening Stripe dashboard URL: $loginUrl');
+          final uri = Uri.parse(loginUrl);
+          
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+          } else {
+            print('❌ Cannot launch URL: $loginUrl');
+            TopNotificationService.showError(
+              context: context,
+              message: 'Cannot open Stripe dashboard',
+            );
+          }
+        } else {
+          print('❌ No login URL in response');
+          TopNotificationService.showError(
+            context: context,
+            message: 'Stripe dashboard link not available',
+          );
+        }
+      } else {
+        print('❌ Failed to get Stripe login link: ${result['message']}');
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to open Stripe dashboard',
+        );
+      }
+    } catch (e) {
+      print('❌ Error opening Stripe dashboard: $e');
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error opening Stripe dashboard: ${e.toString()}',
+      );
+    } finally {
+      setState(() {
+        _isLoadingStripe = false;
+      });
+    }
+  }
+
+  Widget _buildStripeButton() {
+    final brightness = Theme.of(context).brightness;
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoadingStripe ? null : _openStripeDashboard,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : Colors.transparent,
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            // Stripe "S" logo
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Text(
+                  'S',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Button text
+            Text(
+              _isLoadingStripe ? 'Loading...' : 'Open Stripe dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+            ),
+            if (_isLoadingStripe) ...[
+              const Spacer(),
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  color: Colors.black,
+                  strokeWidth: 2,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

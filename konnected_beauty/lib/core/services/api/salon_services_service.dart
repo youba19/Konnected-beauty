@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 import 'http_interceptor.dart';
 
@@ -357,13 +359,26 @@ class SalonServicesService {
     required String name,
     required int price,
     required String description,
+    List<File>? pictures,
   }) async {
     try {
       print('🆕 === CREATE SALON SERVICE WITH INTERCEPTOR ===');
       print('📝 Name: $name');
       print('💰 Price: $price');
       print('📄 Description: $description');
+      print('📸 Pictures: ${pictures?.length ?? 0}');
 
+      // If pictures are provided, use multipart request
+      if (pictures != null && pictures.isNotEmpty) {
+        return await _createSalonServiceWithImages(
+          name: name,
+          price: price,
+          description: description,
+          pictures: pictures,
+        );
+      }
+
+      // Otherwise use JSON request
       final requestBody = {
         'name': name,
         'price': price,
@@ -412,12 +427,120 @@ class SalonServicesService {
     }
   }
 
+  /// Create a new salon service with images using multipart/form-data
+  static Future<Map<String, dynamic>> _createSalonServiceWithImages({
+    required String name,
+    required int price,
+    required String description,
+    required List<File> pictures,
+  }) async {
+    try {
+      print('📤 === CREATING MULTIPART REQUEST FOR SERVICE ===');
+      
+      // Get access token
+      final accessToken = await TokenStorageService.getAccessToken();
+      if (accessToken == null) {
+        return {
+          'success': false,
+          'message': 'No access token available',
+          'error': 'AuthenticationError',
+          'statusCode': 401,
+        };
+      }
+
+      // Create multipart request
+      final uri = Uri.parse('$baseUrl/salon-service');
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add headers
+      request.headers['Authorization'] = 'Bearer $accessToken';
+      request.headers['Accept'] = 'application/json';
+
+      // Add form fields
+      request.fields['name'] = name;
+      request.fields['price'] = price.toString();
+      request.fields['description'] = description;
+
+      print('📝 Form fields added: name=$name, price=$price, description=$description');
+
+      // Add picture files
+      for (var file in pictures) {
+        if (await file.exists()) {
+          final fileExtension = file.path.split('.').last.toLowerCase();
+          MediaType? contentType;
+          
+          switch (fileExtension) {
+            case 'jpg':
+            case 'jpeg':
+              contentType = MediaType('image', 'jpeg');
+              break;
+            case 'png':
+              contentType = MediaType('image', 'png');
+              break;
+            case 'gif':
+              contentType = MediaType('image', 'gif');
+              break;
+            case 'webp':
+              contentType = MediaType('image', 'webp');
+              break;
+            default:
+              contentType = MediaType('image', 'jpeg');
+          }
+
+          final multipartFile = await http.MultipartFile.fromPath(
+            'pictures', // Field name for pictures
+            file.path,
+            contentType: contentType,
+          );
+          request.files.add(multipartFile);
+          print('📸 Added file: ${multipartFile.filename} (${multipartFile.length} bytes)');
+        }
+      }
+
+      print('📤 Sending multipart request with ${request.fields.length} fields and ${request.files.length} files');
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📡 Response Status Code: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': responseData['data'],
+          'message': responseData['message'],
+          'statusCode': responseData['statusCode'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to create service',
+          'error': responseData['error'],
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error creating service with images: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'error': 'NetworkError',
+        'statusCode': 0,
+      };
+    }
+  }
+
   /// Update an existing salon service using HTTP interceptor
   static Future<Map<String, dynamic>> updateSalonService({
     required String serviceId,
     String? name,
     int? price,
     String? description,
+    List<File>? pictures,
   }) async {
     try {
       print('🔄 === UPDATE SALON SERVICE WITH INTERCEPTOR ===');
@@ -425,7 +548,20 @@ class SalonServicesService {
       print('📝 Name: $name');
       print('💰 Price: $price');
       print('📄 Description: $description');
+      print('📸 Pictures: ${pictures?.length ?? 0}');
 
+      // If pictures are provided, use multipart request
+      if (pictures != null && pictures.isNotEmpty) {
+        return await _updateSalonServiceWithImages(
+          serviceId: serviceId,
+          name: name,
+          price: price,
+          description: description,
+          pictures: pictures,
+        );
+      }
+
+      // Otherwise use JSON request
       final Map<String, dynamic> updateData = {};
       if (name != null) updateData['name'] = name;
       if (price != null) updateData['price'] = price;
@@ -484,6 +620,114 @@ class SalonServicesService {
       }
     } catch (e) {
       print('❌ Error updating service: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'error': 'NetworkError',
+        'statusCode': 0,
+      };
+    }
+  }
+
+  /// Update a salon service with images using multipart/form-data
+  static Future<Map<String, dynamic>> _updateSalonServiceWithImages({
+    required String serviceId,
+    String? name,
+    int? price,
+    String? description,
+    required List<File> pictures,
+  }) async {
+    try {
+      print('📤 === CREATING MULTIPART REQUEST FOR SERVICE UPDATE ===');
+      
+      // Get access token
+      final accessToken = await TokenStorageService.getAccessToken();
+      if (accessToken == null) {
+        return {
+          'success': false,
+          'message': 'No access token available',
+          'error': 'AuthenticationError',
+          'statusCode': 401,
+        };
+      }
+
+      // Create multipart request
+      final uri = Uri.parse('$baseUrl/salon-service/$serviceId');
+      final request = http.MultipartRequest('PATCH', uri);
+
+      // Add headers
+      request.headers['Authorization'] = 'Bearer $accessToken';
+      request.headers['Accept'] = 'application/json';
+
+      // Add form fields
+      if (name != null) request.fields['name'] = name;
+      if (price != null) request.fields['price'] = price.toString();
+      if (description != null) request.fields['description'] = description;
+
+      print('📝 Form fields added: name=$name, price=$price, description=$description');
+
+      // Add picture files
+      for (var file in pictures) {
+        if (await file.exists()) {
+          final fileExtension = file.path.split('.').last.toLowerCase();
+          MediaType? contentType;
+          
+          switch (fileExtension) {
+            case 'jpg':
+            case 'jpeg':
+              contentType = MediaType('image', 'jpeg');
+              break;
+            case 'png':
+              contentType = MediaType('image', 'png');
+              break;
+            case 'gif':
+              contentType = MediaType('image', 'gif');
+              break;
+            case 'webp':
+              contentType = MediaType('image', 'webp');
+              break;
+            default:
+              contentType = MediaType('image', 'jpeg');
+          }
+
+          final multipartFile = await http.MultipartFile.fromPath(
+            'pictures', // Field name for pictures
+            file.path,
+            contentType: contentType,
+          );
+          request.files.add(multipartFile);
+          print('📸 Added file: ${multipartFile.filename} (${multipartFile.length} bytes)');
+        }
+      }
+
+      print('📤 Sending multipart request with ${request.fields.length} fields and ${request.files.length} files');
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📡 Response Status Code: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': responseData['data'],
+          'message': responseData['message'],
+          'statusCode': responseData['statusCode'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to update service',
+          'error': responseData['error'],
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error updating service with images: $e');
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',

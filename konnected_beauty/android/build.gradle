@@ -15,13 +15,23 @@ allprojects {
     }
 }
 
-// Force only use API 34 to avoid corrupted API 35
+// Support API 35 for Google Play requirements (using compileSdk 34, targetSdk 35)
 allprojects {
     afterEvaluate { project ->
         if (project.hasProperty("android")) {
             project.android {
                 if (project.android.hasProperty("compileSdkVersion")) {
                     compileSdkVersion 34
+                }
+            }
+            // Fix namespace issue for qr_code_scanner plugin
+            if (project.name == "qr_code_scanner") {
+                project.android.namespace = "net.touchcapture.qr.flutterqr"
+                // Fix JVM target compatibility for Kotlin
+                project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                    kotlinOptions {
+                        jvmTarget = "1.8"
+                    }
                 }
             }
         }

@@ -23,6 +23,7 @@ import 'service_filter_screen.dart';
 import 'influencers_screen.dart';
 import 'qr_scanner_screen.dart';
 import '../../../../widgets/common/motivational_banner.dart';
+import 'salon_notifications_screen.dart';
 
 class SalonHomeScreen extends StatefulWidget {
   final bool showDeleteSuccess;
@@ -468,7 +469,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title and Logout Button
+          // Title and Notification Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -482,7 +483,21 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                   ),
                 ),
               ),
-              // Logout Button
+              // Notification Button
+              IconButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SalonNotificationsScreen(),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  LucideIcons.bell,
+                  color: AppTheme.textPrimaryColor,
+                  size: 24,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -744,7 +759,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                       padding: const EdgeInsets.only(bottom: 16.0),
                       child: _buildServiceCard(
                         title: service['name'] ?? 'Service',
-                        price: '${service['price'] ?? 0} €',
+                        price: '${service['price'] ?? 0} € (TTC)',
                         description: service['description'] ??
                             'No description available',
                         serviceId: service['id']?.toString(),
@@ -989,7 +1004,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                 ),
                 child: _buildServiceCard(
                   title: service['name'] ?? 'Service',
-                  price: '${service['price'] ?? 0} €',
+                  price: '${service['price'] ?? 0} € (TTC)',
                   description:
                       service['description'] ?? 'No description available',
                   serviceId: service['id'],
@@ -1401,18 +1416,20 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
           ),
           const SizedBox(height: 3),
           Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? AppTheme.textPrimaryColor
-                    : AppTheme.navBartextColor,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? AppTheme.textPrimaryColor
+                      : AppTheme.navBartextColor,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
               ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ),
         ],

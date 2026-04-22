@@ -49,15 +49,29 @@ class CustomTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final isLightMode = brightness == Brightness.light;
+    
+    // Determine colors based on theme
+    final textColor = isLightMode 
+        ? AppTheme.lightTextPrimaryColor 
+        : AppTheme.getTextPrimaryColor(brightness);
+    final borderColor = isLightMode 
+        ? AppTheme.lightTextPrimaryColor 
+        : Colors.white;
+    final hintColor = isLightMode 
+        ? AppTheme.lightTextSecondaryColor 
+        : AppTheme.textSecondaryColor;
+    final fillColor = isLightMode 
+        ? AppTheme.lightCardBackground 
+        : AppTheme.transparentBackground;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: brightness == Brightness.light
-                ? AppTheme.lightTextPrimaryColor
-                : AppTheme.textPrimaryColor,
+            color: textColor,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -78,52 +92,36 @@ class CustomTextField extends StatelessWidget {
               ? AutovalidateMode.onUserInteraction
               : AutovalidateMode.disabled,
           style: TextStyle(
-            color: brightness == Brightness.light
-                ? AppTheme.lightTextPrimaryColor
-                : AppTheme.textPrimaryColor,
+            color: textColor,
             fontSize: 16,
           ),
           decoration: InputDecoration(
             hintText: placeholder,
             hintStyle: TextStyle(
-              color: brightness == Brightness.light
-                  ? AppTheme.lightTextSecondaryColor
-                  : AppTheme.textSecondaryColor,
+              color: hintColor,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
             filled: true,
-            fillColor: brightness == Brightness.light
-                ? AppTheme.lightCardBackground
-                : AppTheme.transparentBackground,
+            fillColor: fillColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: isError
-                    ? Colors.red
-                    : brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : AppTheme.borderColor,
+                color: isError ? Colors.red : borderColor,
                 width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: isError
-                    ? Colors.red
-                    : brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : AppTheme.borderColor,
+                color: isError ? Colors.red : borderColor,
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: brightness == Brightness.light
-                    ? AppTheme.lightTextPrimaryColor
-                    : AppTheme.accentColor,
+                color: borderColor,
                 width: 2,
               ),
             ),

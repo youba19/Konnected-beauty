@@ -13,6 +13,7 @@ import '../../../../core/bloc/campaign_actions/campaign_actions_bloc.dart';
 import '../../../../core/bloc/campaign_actions/campaign_actions_event.dart';
 import '../../../../core/bloc/campaign_actions/campaign_actions_state.dart';
 import '../../../../core/services/api/http_interceptor.dart';
+import '../../../../core/services/api/influencers_service.dart';
 
 class CampaignDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> campaign;
@@ -33,6 +34,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   String? _campaignLink;
   String _totalAmount = '0';
   String _totalCompletedOrders = '0';
+  Map<String, dynamic>? _updatedCampaignData;
+  final TextEditingController _refuseMessageController =
+      TextEditingController();
+  final TextEditingController _replyMessageController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -67,7 +73,19 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             responseData['message'] == 'success') {
           final campaignData = responseData['data'] as Map<String, dynamic>;
 
+          // Extract salon name from API response structure
+          final salon = campaignData['salon'] as Map<String, dynamic>? ?? {};
+          final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
+          final salonName =
+              salonInfo['name'] ?? campaignData['salonName'] ?? '';
+
+          // Update campaign data with salon name if not present
+          if (salonName.isNotEmpty && campaignData['salonName'] == null) {
+            campaignData['salonName'] = salonName;
+          }
+
           setState(() {
+            _updatedCampaignData = campaignData;
             _campaignLink = campaignData['link'];
             _totalAmount = campaignData['totalAmount']?.toString() ?? '0';
             _totalCompletedOrders =
@@ -79,6 +97,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           print('📋 Link: $_campaignLink');
           print('📋 Total Amount: $_totalAmount');
           print('📋 Total Completed Orders: $_totalCompletedOrders');
+          print('📋 Salon Name: $salonName');
+          print('📋 Reply Message: ${campaignData['replyMessage']}');
+          print('📋 Influencer Reply Message: ${campaignData['influencerReplyMessage']}');
+          print('📋 Campaign Data Keys: ${campaignData.keys.toList()}');
         } else {
           setState(() {
             _isLoadingDetails = false;
@@ -99,11 +121,33 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     }
   }
 
+  Future<void> _refreshCampaignData() async {
+    await _fetchCampaignDetails();
+    // Trigger a rebuild to show the updated data
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // Helper method to get campaign data (updated from API or fallback to widget data)
+  Map<String, dynamic> get campaignData {
+    return _updatedCampaignData ?? widget.campaign;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final campaign = widget.campaign;
-    final salonName = campaign['salonName'] ??
-        AppTranslations.getString(context, 'saloon_name');
+    final campaign = campaignData;
+
+    // Extract salon name from various possible locations in the data structure
+    String salonName = campaign['salonName'] ?? '';
+    if (salonName.isEmpty) {
+      final salon = campaign['salon'] as Map<String, dynamic>? ?? {};
+      final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
+      salonName = salonInfo['name'] ?? '';
+    }
+    if (salonName.isEmpty) {
+      salonName = AppTranslations.getString(context, 'saloon_name');
+    }
     final createdAt = campaign['createdAt'] ?? '';
     final message = campaign['invitationMessage'] ?? '';
     final promotion = campaign['promotion'] ?? 0;
@@ -139,12 +183,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               context: context,
               message: state.message,
             );
-            // Call the callback to refresh campaigns if provided
-            if (widget.onCampaignDeleted != null) {
-              widget.onCampaignDeleted!();
-            }
-            // Navigate back to campaigns screen
-            Navigator.of(context).pop();
+            // Refresh campaign data to show the reply message
+            _refreshCampaignData();
           } else if (state is CampaignActionsError) {
             TopNotificationService.showError(
               context: context,
@@ -205,16 +245,31 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 SafeArea(
                   child: Column(
                     children: [
+                      // Header
                       _buildHeader(),
+                      // Campaign Information (Scrollable)
                       Expanded(
                         child: SingleChildScrollView(
+                          child: Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12.0, vertical: 16.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildCampaignInfo(salonName, status, initiator),
+                                SizedBox(height: 24),
+                                // Show reply message if it exists (when influencer replied)
+                                if (_shouldShowInfluencerReplyMessage())
+                                  _buildInfluencerReplyMessageCard(),
+                                if (_shouldShowInfluencerReplyMessage())
                               SizedBox(height: 24),
+                              // Show salon message card if campaign is rejected
+                              if (status == 'rejected' &&
+                                  _shouldShowSalonMessage())
+                                _buildSalonMessageCard(),
+                              if (status == 'rejected' &&
+                                  _shouldShowSalonMessage())
+                                SizedBox(height: 24),
                               if (status == 'in progress') ...[
                                 _buildCreatedAndStartedAt(date),
                                 SizedBox(height: 24),
@@ -240,6 +295,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                           ),
                         ),
                       ),
+                      ),
+                      // Action Buttons (Fixed at bottom)
                       _buildActionButtons(status, initiator),
                     ],
                   ),
@@ -608,7 +665,52 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             children: [
               if (status == 'pending') ...[
                 if (initiator == 'salon') ...[
-                  // Salon invited influencer - show Accept/Refuse buttons
+                  // Salon invited influencer - show Reply/Accept/Refuse buttons
+                  // Reply Button (FIRST)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
+                      onPressed: isLoading
+                          ? null
+                          : () => _showReplyDialog(),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
+                            width: 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              AppTranslations.getString(context, 'reply'),
+                              style: TextStyle(
+                                color: AppTheme.getTextPrimaryColor(
+                                    Theme.of(context).brightness),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.reply,
+                            color: AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 12),
                   // Accept Campaign Button
                   SizedBox(
                     width: double.infinity,
@@ -1002,58 +1104,99 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   void _showRefuseCampaignDialog(CampaignActionsBloc bloc) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor:
-              AppTheme.getSecondaryColor(Theme.of(context).brightness),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            AppTranslations.getString(context, 'refuse_campaign'),
-            style: TextStyle(
-              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+      builder: (BuildContext dialogContext) {
+        final brightness = Theme.of(context).brightness;
+        
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.getSecondaryColor(brightness),
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          content: Text(
-            AppTranslations.getString(context, 'confirm_refuse_campaign'),
-            style: TextStyle(
-              color:
-                  AppTheme.getTextSecondaryColor(Theme.of(context).brightness),
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text(
-                AppTranslations.getString(context, 'cancel'),
-                style: TextStyle(
-                  color: AppTheme.getTextSecondaryColor(
-                      Theme.of(context).brightness),
-                  fontSize: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Main question
+                Text(
+                  AppTranslations.getString(
+                      context, 'are_you_sure_refuse_campaign'),
+                  style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(brightness),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _performRefuseCampaign(bloc);
-              },
-              child: Text(
-                AppTranslations.getString(context, 'confirm'),
-                style: TextStyle(
-                  color: AppTheme.statusRed,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 16),
+                // Warning message
+                Text(
+                  AppTranslations.getString(context, 'no_going_back_warning'),
+                  style: TextStyle(
+                    color: AppTheme.getTextPrimaryColor(brightness),
+                    fontSize: 14,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 24),
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Cancel button
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: AppTheme.getTextPrimaryColor(brightness),
+                          width: 1,
+                        ),
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(context, 'cancel'),
+                        style: TextStyle(
+                          color: AppTheme.getTextPrimaryColor(brightness),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Yes, Refuse button
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        _performRefuseCampaign(bloc);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red, width: 1),
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(context, 'yes_refuse'),
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -1074,7 +1217,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  void _performRefuseCampaign(CampaignActionsBloc bloc) {
+  void _performRefuseCampaign(CampaignActionsBloc bloc) async {
     final campaignId = widget.campaign['id'] as String?;
     if (campaignId == null || campaignId.isEmpty) {
       TopNotificationService.showError(
@@ -1084,9 +1227,305 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       return;
     }
 
-    bloc.add(
-      RejectCampaign(campaignId: campaignId),
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.greenColor,
+        ),
+      ),
     );
+
+    try {
+      final result = await InfluencersService.rejectSalonInvite(
+        campaignId: campaignId,
+      );
+
+      // Hide loading indicator
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result['success'] == true) {
+        TopNotificationService.showSuccess(
+          context: context,
+          message: result['message'] ??
+              AppTranslations.getString(context, 'campaign_refused_success'),
+        );
+
+        // Refresh campaign data
+        await _fetchCampaignDetails();
+      } else {
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to refuse campaign',
+        );
+      }
+    } catch (e) {
+      // Hide loading indicator if still showing
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error refusing campaign: $e',
+      );
+    }
+  }
+
+  void _showReplyDialog() {
+    _replyMessageController.clear(); // Clear previous message
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Theme.of(context).brightness == Brightness.light
+              ? Colors.white
+              : AppTheme.secondaryColor,
+          insetPadding: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    AppTranslations.getString(context, 'reply'),
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.black
+                          : AppTheme.textPrimaryColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Message to salon section
+                  Text(
+                    AppTranslations.getString(context, 'message_to_salon'),
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.black
+                          : AppTheme.textPrimaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Text input field
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.grey[100]
+                          : AppTheme.scaffoldBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? Colors.grey[300]!
+                            : AppTheme.border2,
+                        width: 1,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _replyMessageController,
+                      maxLines: 5,
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? Colors.black
+                            : AppTheme.textPrimaryColor,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: AppTranslations.getString(
+                            context, 'write_message'),
+                        hintStyle: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.light
+                              ? Colors.grey[600]
+                              : AppTheme.textSecondaryColor.withOpacity(0.6),
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Info text
+                  Text(
+                    AppTranslations.getString(
+                        context, 'single_message_allowed'),
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.grey[600]
+                          : AppTheme.textSecondaryColor.withOpacity(0.8),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Action buttons
+                  Column(
+                    children: [
+                      // Send Reply button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                            _performReply();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.greenColor,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  AppTranslations.getString(
+                                      context, 'send_reply'),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.send,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Cancel button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey[300]!
+                                  : AppTheme.textSecondaryColor,
+                              width: 1,
+                            ),
+                            foregroundColor:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? Colors.black
+                                    : AppTheme.textPrimaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Text(
+                            AppTranslations.getString(context, 'cancel'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _performReply() async {
+    try {
+    final campaignId = widget.campaign['id'] as String?;
+    if (campaignId == null || campaignId.isEmpty) {
+      TopNotificationService.showError(
+        context: context,
+        message: 'Campaign ID not found',
+      );
+      return;
+    }
+
+      final replyMessage = _replyMessageController.text.trim();
+      if (replyMessage.isEmpty) {
+      TopNotificationService.showError(
+        context: context,
+          message: 'Please enter a message',
+      );
+      return;
+    }
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.greenColor,
+          ),
+        ),
+      );
+
+      final result = await InfluencersService.sendReplyToSalonInvite(
+        campaignId: campaignId,
+        replyMessage: replyMessage,
+      );
+
+      // Hide loading indicator
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result['success'] == true) {
+        TopNotificationService.showSuccess(
+          context: context,
+          message: result['message'] ??
+              AppTranslations.getString(context, 'reply_sent_successfully'),
+        );
+
+        // Refresh campaign data to show the message
+        await _fetchCampaignDetails();
+      } else {
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to send reply',
+        );
+      }
+    } catch (e) {
+      // Hide loading indicator if still showing
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error sending reply: $e',
+    );
+    }
   }
 
   void _copyLink() {
@@ -1212,5 +1651,215 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         message: 'Campaign ID not found',
       );
     }
+  }
+
+  bool _shouldShowInfluencerReplyMessage() {
+    // Show reply message if it exists (when influencer replied to salon invite)
+    final campaign = campaignData;
+    final status = campaign['status']?.toString().toLowerCase() ?? '';
+    final initiator = campaign['initiator']?.toString().toLowerCase() ?? '';
+    
+    // Show if status is pending and salon initiated (influencer can reply)
+    if (status == 'pending' && initiator == 'salon') {
+      // Check for influencer reply message in various possible fields
+      final influencerReplyMessage = campaign['influencerReplyMessage'] ??
+          campaign['replyMessage'] ??
+          campaign['influencerMessage'] ??
+          '';
+      
+      print('🔍 === CHECKING INFLUENCER REPLY MESSAGE ===');
+      print('🔍 Status: $status');
+      print('🔍 Initiator: $initiator');
+      print('🔍 influencerReplyMessage: ${campaign['influencerReplyMessage']}');
+      print('🔍 replyMessage: ${campaign['replyMessage']}');
+      print('🔍 influencerMessage: ${campaign['influencerMessage']}');
+      print('🔍 Final message: $influencerReplyMessage');
+      print('🔍 Should show: ${influencerReplyMessage.toString().isNotEmpty}');
+      print('🔍 === END CHECKING INFLUENCER REPLY MESSAGE ===');
+      
+      return influencerReplyMessage.toString().isNotEmpty;
+    }
+    
+    return false;
+  }
+
+  bool _shouldShowSalonMessage() {
+    final campaign = campaignData;
+    final status = campaign['status']?.toString().toLowerCase() ?? '';
+
+    // Show message card if campaign is rejected
+    if (status == 'rejected') {
+      final salonMessage = campaign['replyMessage'] ?? '';
+      return salonMessage.toString().isNotEmpty;
+    }
+    return false;
+  }
+
+  Widget _buildInfluencerReplyMessageCard() {
+    final campaign = campaignData;
+    
+    // Get influencer reply message from various possible fields
+    final replyMessage = campaign['influencerReplyMessage'] ??
+        campaign['replyMessage'] ??
+        campaign['influencerMessage'] ??
+        '';
+
+    if (replyMessage.toString().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final brightness = Theme.of(context).brightness;
+    final isLightMode = brightness == Brightness.light;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: isLightMode
+            ? AppTheme.lightCardBackground
+            : AppTheme.border2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  // Icon for influencer message
+                  Icon(
+                    Icons.person_outline,
+                    color: isLightMode
+                        ? AppTheme.lightTextPrimaryColor
+                        : Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    AppTranslations.getString(context, 'reply_message'),
+                    style: TextStyle(
+                      color: isLightMode
+                          ? AppTheme.lightTextPrimaryColor
+                          : Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Message content
+          Text(
+            replyMessage.toString(),
+            style: TextStyle(
+              color: isLightMode
+                  ? AppTheme.lightTextPrimaryColor
+                  : Colors.white,
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSalonMessageCard() {
+    final campaign = campaignData;
+    final status = campaign['status']?.toString().toLowerCase() ?? '';
+
+    String message = '';
+    String titleKey = 'salon_message';
+
+    // Get the reply message
+    if (status == 'rejected') {
+      message = campaign['replyMessage'] ?? '';
+      print('📋 === SALON MESSAGE CARD ===');
+      print('📋 Status: $status');
+      print('📋 Reply Message: $message');
+      print('📋 === END SALON MESSAGE CARD ===');
+    }
+
+    if (message.toString().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final brightness = Theme.of(context).brightness;
+    final isLightMode = brightness == Brightness.light;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: isLightMode
+            ? LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppTheme.lightCardBackground,
+                  AppTheme.lightCardBackground,
+                ],
+                stops: const [0.0, 1.0],
+              )
+            : LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF1F1E1E), // Dark gray at top
+                  const Color(0xFF1F1E1E), // Dark gray continues
+                ],
+                stops: const [0.0, 1.0],
+              ),
+        border: Border.all(
+          color: isLightMode ? Colors.grey[300]! : Colors.grey[800]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title and close icon
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppTranslations.getString(context, titleKey),
+                style: TextStyle(
+                  color: isLightMode ? Colors.black : Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Icon(
+                LucideIcons.badgeX,
+                size: 16,
+                color: isLightMode ? Colors.black : Colors.white,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Message content
+          Text(
+            message.toString(),
+            style: TextStyle(
+              color: isLightMode ? Colors.black : Colors.white,
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refuseMessageController.dispose();
+    _replyMessageController.dispose();
+    super.dispose();
   }
 }

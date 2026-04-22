@@ -96,6 +96,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       final status = campaign['status'] ?? 'pending';
       final searchText = _searchController.text.toLowerCase().trim();
 
+      // Always exclude deleted campaigns (case-insensitive, trim whitespace)
+      final statusLower = status.toString().toLowerCase().trim();
+      if (statusLower == 'deleted') {
+        return false;
+      }
+
       // Apply search filter first
       bool matchesSearch = true;
       if (searchText.isNotEmpty) {
@@ -132,10 +138,6 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         case 'finished':
           // Show campaigns with finished status
           matchesFilter = status == 'finished';
-          break;
-        case 'deleted':
-          // Show campaigns with deleted status
-          matchesFilter = status == 'deleted';
           break;
         default:
           matchesFilter = true;
@@ -337,11 +339,6 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         'key': 'finished',
         'label': AppTranslations.getString(context, 'finished'),
         'icon': LucideIcons.checkCircle
-      },
-      {
-        'key': 'canceled',
-        'label': AppTranslations.getString(context, 'deleted'),
-        'icon': LucideIcons.trash2
       },
     ];
 

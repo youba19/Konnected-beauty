@@ -18,9 +18,13 @@ class AcceptCampaign extends CampaignActionsEvent {
 
 class RejectCampaign extends CampaignActionsEvent {
   final String campaignId;
+  final String? replyMessage;
 
-  const RejectCampaign({required this.campaignId});
+  const RejectCampaign({
+    required this.campaignId,
+    this.replyMessage,
+  });
 
   @override
-  List<Object> get props => [campaignId];
+  List<Object> get props => [campaignId, replyMessage ?? ''];
 }

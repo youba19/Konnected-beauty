@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/influencer_auth_service.dart';
+import '../../services/api/stripe_service.dart';
 import '../../services/storage/token_storage_service.dart';
 
 // Events
@@ -70,6 +71,12 @@ class SubmitProfileInfo extends InfluencerRegistrationEvent {}
 
 class SubmitSocials extends InfluencerRegistrationEvent {}
 
+class StartStripeOnboarding extends InfluencerRegistrationEvent {}
+
+class CompleteStripeOnboarding extends InfluencerRegistrationEvent {}
+
+class SkipStripeOnboarding extends InfluencerRegistrationEvent {}
+
 class ResetRegistration extends InfluencerRegistrationEvent {}
 
 // States
@@ -108,6 +115,11 @@ class InfluencerRegistrationState {
   final String tiktok;
   final String youtube;
 
+  // Stripe
+  final String? stripeOnboardingUrl;
+  final String? stripeAccountId;
+  final bool isStripeOnboarded;
+
   const InfluencerRegistrationState({
     required this.currentStep,
     required this.isLoading,
@@ -134,6 +146,9 @@ class InfluencerRegistrationState {
     required this.instagram,
     required this.tiktok,
     required this.youtube,
+    this.stripeOnboardingUrl,
+    this.stripeAccountId,
+    this.isStripeOnboarded = false,
   });
 }
 
@@ -168,6 +183,9 @@ class InfluencerRegistrationSuccess extends InfluencerRegistrationState {
           instagram: state.instagram,
           tiktok: state.tiktok,
           youtube: state.youtube,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 }
 
@@ -197,6 +215,9 @@ class InfluencerRegistrationInitial extends InfluencerRegistrationState {
           instagram: '',
           tiktok: '',
           youtube: '',
+          stripeOnboardingUrl: null,
+          stripeAccountId: null,
+          isStripeOnboarded: false,
         );
 }
 
@@ -226,6 +247,9 @@ class InfluencerRegistrationLoading extends InfluencerRegistrationState {
           instagram: state.instagram,
           tiktok: state.tiktok,
           youtube: state.youtube,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 }
 
@@ -257,6 +281,9 @@ class InfluencerRegistrationError extends InfluencerRegistrationState {
           instagram: state.instagram,
           tiktok: state.tiktok,
           youtube: state.youtube,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 }
 
@@ -305,6 +332,9 @@ class InfluencerRegistrationBloc
     on<SubmitSignup>(_onSubmitSignup);
     on<SubmitProfileInfo>(_onSubmitProfileInfo);
     on<SubmitSocials>(_onSubmitSocials);
+    on<StartStripeOnboarding>(_onStartStripeOnboarding);
+    on<CompleteStripeOnboarding>(_onCompleteStripeOnboarding);
+    on<SkipStripeOnboarding>(_onSkipStripeOnboarding);
     on<ResetRegistration>(_onResetRegistration);
   }
 
@@ -321,6 +351,8 @@ class InfluencerRegistrationBloc
     final isEmailValid = _isValidEmail(event.email);
     final isPhoneValid = event.phone.trim().isNotEmpty;
     final isPasswordValid = event.password.length >= 6;
+    
+    print('🔍 Bloc: Email validation for "${event.email}": $isEmailValid');
 
     emit(InfluencerRegistrationState(
       currentStep: state.currentStep,
@@ -899,6 +931,9 @@ class InfluencerRegistrationBloc
           instagram: state.instagram,
           tiktok: state.tiktok,
           youtube: state.youtube,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 
         // Show success notification with appropriate message
@@ -1016,10 +1051,36 @@ class InfluencerRegistrationBloc
                   .toLowerCase()
                   .contains('successfully') ==
               true) {
-        // Socials submission successful, registration complete
-        print('✅ Socials added successfully!');
-        emit(InfluencerRegistrationSuccess(state,
-            successMessage: 'socials_added_success'));
+        // Socials submission successful, move to Stripe step (step 4)
+        print('✅ Socials added successfully! Moving to Stripe step.');
+        emit(InfluencerRegistrationState(
+          currentStep: 4, // Move to Stripe onboarding step
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          pseudo: state.pseudo,
+          bio: state.bio,
+          zone: state.zone,
+          profilePicture: state.profilePicture,
+          isPseudoValid: state.isPseudoValid,
+          isBioValid: state.isBioValid,
+          isZoneValid: state.isZoneValid,
+          instagram: state.instagram,
+          tiktok: state.tiktok,
+          youtube: state.youtube,
+          stripeOnboardingUrl: null,
+          stripeAccountId: null,
+          isStripeOnboarded: false,
+        ));
       } else {
         // Socials submission failed
         print('❌ Socials submission failed: ${response['message']}');
@@ -1115,12 +1176,112 @@ class InfluencerRegistrationBloc
     // TODO: Implement final registration submission
   }
 
+  void _onStartStripeOnboarding(StartStripeOnboarding event,
+      Emitter<InfluencerRegistrationState> emit) async {
+    emit(InfluencerRegistrationLoading(state));
+
+    try {
+      final result = await StripeService.createOnboardingLink();
+
+      if (result['success']) {
+        final data = result['data'] as Map<String, dynamic>?;
+        final onboardingUrl = data?['onboardingUrl'] as String?;
+        final accountId = data?['accountId'] as String?;
+
+        emit(InfluencerRegistrationState(
+          currentStep: state.currentStep,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          pseudo: state.pseudo,
+          bio: state.bio,
+          zone: state.zone,
+          profilePicture: state.profilePicture,
+          isPseudoValid: state.isPseudoValid,
+          isBioValid: state.isBioValid,
+          isZoneValid: state.isZoneValid,
+          instagram: state.instagram,
+          tiktok: state.tiktok,
+          youtube: state.youtube,
+          stripeOnboardingUrl: onboardingUrl,
+          stripeAccountId: accountId,
+          isStripeOnboarded: false,
+        ));
+      } else {
+        emit(InfluencerRegistrationError(state,
+            result['message'] ?? 'Failed to create Stripe onboarding link'));
+      }
+    } catch (e) {
+      emit(
+          InfluencerRegistrationError(state, 'Network error: ${e.toString()}'));
+    }
+  }
+
+  void _onCompleteStripeOnboarding(CompleteStripeOnboarding event,
+      Emitter<InfluencerRegistrationState> emit) async {
+    emit(InfluencerRegistrationLoading(state));
+
+    // Mark as onboarded and proceed to success
+    emit(InfluencerRegistrationSuccess(
+      InfluencerRegistrationState(
+        currentStep: state.currentStep,
+        isLoading: false,
+        name: state.name,
+        email: state.email,
+        phone: state.phone,
+        password: state.password,
+        isNameValid: state.isNameValid,
+        isEmailValid: state.isEmailValid,
+        isPhoneValid: state.isPhoneValid,
+        isPasswordValid: state.isPasswordValid,
+        otp: state.otp,
+        isOtpValid: state.isOtpValid,
+        isOtpError: state.isOtpError,
+        pseudo: state.pseudo,
+        bio: state.bio,
+        zone: state.zone,
+        profilePicture: state.profilePicture,
+        isPseudoValid: state.isPseudoValid,
+        isBioValid: state.isBioValid,
+        isZoneValid: state.isZoneValid,
+        instagram: state.instagram,
+        tiktok: state.tiktok,
+        youtube: state.youtube,
+        stripeOnboardingUrl: state.stripeOnboardingUrl,
+        stripeAccountId: state.stripeAccountId,
+        isStripeOnboarded: true,
+      ),
+      successMessage: 'Account created successfully!',
+    ));
+  }
+
+  void _onSkipStripeOnboarding(SkipStripeOnboarding event,
+      Emitter<InfluencerRegistrationState> emit) async {
+    // Allow user to skip Stripe onboarding and proceed to success
+    emit(InfluencerRegistrationSuccess(
+      state,
+      successMessage: 'Account created successfully!',
+    ));
+  }
+
   void _onResetRegistration(
       ResetRegistration event, Emitter<InfluencerRegistrationState> emit) {
     emit(const InfluencerRegistrationInitial());
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    // Accept emails in format: something@something.something
+    // Allows hyphens in domain and TLD, and TLDs of any length (e.g., .paris, .photography)
+    // Note: Hyphen must be at the end of character class to be treated as literal
+    return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]+$').hasMatch(email);
   }
 }

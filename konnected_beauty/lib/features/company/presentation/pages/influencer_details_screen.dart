@@ -964,10 +964,18 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                           // Commission influencer
                           Row(
                             children: [
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.white,
-                                size: 20,
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -994,10 +1002,18 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                           // Commission Kbeauty
                           Row(
                             children: [
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.white,
-                                size: 20,
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1011,7 +1027,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                               ),
                               const Spacer(),
                               const Text(
-                                '3%',
+                                '5%',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -1019,6 +1035,16 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Optional collaboration info
+                          Text(
+                            AppTranslations.getString(
+                                context, 'optional_collaboration_info'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -1033,7 +1059,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _messageController,
-                            maxLines: 4,
+                            maxLines: 2,
                             decoration: InputDecoration(
                               hintText: AppTranslations.getString(
                                   context, 'message_placeholder'),
@@ -1069,57 +1095,85 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                               return null;
                             },
                           ),
+                          const SizedBox(height: 16),
+                          // Message constraint info
+                          Text(
+                            AppTranslations.getString(
+                                context, 'message_constraint_info'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
                           const SizedBox(height: 24),
                           // Create Campaign & Invite Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed:
-                                  _isLoading ? null : _createCampaignAndInvite,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                                Colors.black),
-                                      ),
-                                    )
-                                  : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            AppTranslations.getString(context,
-                                                'create_campaign_invite'),
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        const Icon(
-                                          LucideIcons.tag,
-                                          size: 18,
-                                        ),
-                                      ],
+                          Builder(
+                            builder: (context) {
+                              final brightness = Theme.of(context).brightness;
+                              final isLightMode =
+                                  brightness == Brightness.light;
+                              return SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : _createCampaignAndInvite,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isLightMode
+                                        ? Colors.black
+                                        : Colors.white,
+                                    foregroundColor: isLightMode
+                                        ? Colors.white
+                                        : Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
-                            ),
+                                  ),
+                                  child: _isLoading
+                                      ? SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    isLightMode
+                                                        ? Colors.white
+                                                        : Colors.black),
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                AppTranslations.getString(
+                                                    context,
+                                                    'create_campaign_invite'),
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Icon(
+                                              LucideIcons.tag,
+                                              size: 18,
+                                              color: isLightMode
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(height: 12),
                           // Cancel Button

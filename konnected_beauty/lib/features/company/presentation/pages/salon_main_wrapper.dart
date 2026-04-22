@@ -127,10 +127,13 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    return Container(
-      decoration: brightness == Brightness.dark
-          ? const BoxDecoration(
+    // Force dark mode for salon - always use dark theme
+    return Theme(
+      data: ThemeData.dark(),
+      child: Builder(
+        builder: (context) {
+          return Container(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
@@ -139,51 +142,52 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
                   Color(0xFF1F1E1E),
                 ],
               ),
-            )
-          : BoxDecoration(
-              color: AppTheme.getScaffoldBackground(brightness),
             ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Builder(
-          builder: (context) {
-            print('🏗️ === INDEXED STACK BUILD ===');
-            print('🏗️ Selected Index: $selectedIndex');
-            print('🏗️ Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Builder(
+                builder: (context) {
+                  print('🏗️ === INDEXED STACK BUILD ===');
+                  print('🏗️ Selected Index: $selectedIndex');
+                  print(
+                      '🏗️ Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
 
-            // Force rebuild of the InfluencersScreen when index changes to 3
-            if (selectedIndex == 3) {
-              print('🎯 === FORCING INFLUENCERS SCREEN REBUILD ===');
-              return const InfluencersScreen();
-            }
+                  // Force rebuild of the InfluencersScreen when index changes to 3
+                  if (selectedIndex == 3) {
+                    print('🎯 === FORCING INFLUENCERS SCREEN REBUILD ===');
+                    return const InfluencersScreen();
+                  }
 
-            return IndexedStack(
-              index: selectedIndex,
-              children: [
-                // Services Tab
-                SalonHomeScreen(
-                  showDeleteSuccess: _showDeleteSuccess,
-                ),
-                // Campaigns Tab
-                CampaignsScreen(
-                  onNavigateToInfluencers: () {
-                    setState(() {
-                      selectedIndex = 3; // Navigate to Influencers tab
-                    });
-                  },
-                ),
-                // Wallet Tab
-                const SalonWalletScreen(),
-                // Influencers Tab
-                const InfluencersScreen(),
-                // Settings Tab
-                const SalonSettingsScreen(),
-              ],
-            );
-          },
-        ),
-        bottomNavigationBar: _buildBottomNavigation(),
-        floatingActionButton: _buildFloatingActionButton(),
+                  return IndexedStack(
+                    index: selectedIndex,
+                    children: [
+                      // Services Tab
+                      SalonHomeScreen(
+                        showDeleteSuccess: _showDeleteSuccess,
+                      ),
+                      // Campaigns Tab
+                      CampaignsScreen(
+                        onNavigateToInfluencers: () {
+                          setState(() {
+                            selectedIndex = 3; // Navigate to Influencers tab
+                          });
+                        },
+                      ),
+                      // Wallet Tab
+                      const SalonWalletScreen(),
+                      // Influencers Tab
+                      const InfluencersScreen(),
+                      // Settings Tab
+                      const SalonSettingsScreen(),
+                    ],
+                  );
+                },
+              ),
+              bottomNavigationBar: _buildBottomNavigation(),
+              floatingActionButton: _buildFloatingActionButton(),
+            ),
+          );
+        },
       ),
     );
   }
@@ -255,18 +259,20 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
           ),
           const SizedBox(height: 3),
           Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? AppTheme.textPrimaryColor
-                    : AppTheme.navBartextColor,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? AppTheme.textPrimaryColor
+                      : AppTheme.navBartextColor,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
               ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ),
         ],

@@ -303,7 +303,7 @@ class InfluencerAuthService {
               '🔑 Access Token in response: ${accessToken != null ? "Present" : "Missing"}');
           print(
               '🔄 Refresh Token in response: ${refreshToken != null ? "Present" : "Missing"}');
-        } else {
+      } else {
           print('⚠️ No data field in OTP response');
         }
 
@@ -677,8 +677,8 @@ class InfluencerAuthService {
   static Future<Map<String, dynamic>> addSocials({
     required List<Map<String, String>> socials,
   }) async {
-    print('🔐 === ADDING SOCIALS ===');
-    print('📱 Socials: $socials');
+      print('🔐 === ADDING SOCIALS ===');
+      print('📱 Socials: $socials');
     print('🔗 URL: $baseUrl/influencer/add-socials');
 
     try {
@@ -1278,6 +1278,52 @@ class InfluencerAuthService {
     }
   }
 
+  /// Logout influencer using HTTP interceptor for automatic token management
+  static Future<Map<String, dynamic>> logout() async {
+    try {
+      print('🚪 === INFLUENCER LOGOUT REQUEST ===');
+      print('🔗 URL: $baseUrl/influencer-auth/logout');
+
+      // Use HTTP interceptor to automatically handle token refresh
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/influencer-auth/logout',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Logout successful');
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Logout successful',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        print('❌ Logout failed');
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Logout failed',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in logout: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'statusCode': 0,
+      };
+    }
+  }
+
   /// Change influencer password using HTTP interceptor for automatic token management
   static Future<Map<String, dynamic>> changePassword({
     required String oldPassword,
@@ -1304,13 +1350,13 @@ class InfluencerAuthService {
             'Authorization': 'Bearer $accessToken',
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-          },
-          body: jsonEncode({
+        },
+        body: jsonEncode({
             'oldPassword': oldPassword,
             'newPassword': newPassword,
             'confirmPassword': confirmPassword,
-          }),
-        );
+        }),
+      );
       });
 
       print('📡 Response Status: ${response.statusCode}');
