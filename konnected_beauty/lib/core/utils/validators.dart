@@ -1,6 +1,44 @@
 import 'package:flutter/material.dart';
 import '../translations/app_translations.dart';
 
+// Domain utility functions
+class DomainUtils {
+  // Domain keys (stored in backend) mapped to their translation keys
+  static const List<String> domainKeys = [
+    'domain_centre_beaute',
+    'domain_salon_coiffure',
+    'domain_onglerie_manucure',
+    'domain_maquillage_cils',
+    'domain_massage_relaxation',
+    'domain_sport_fitness',
+    'domain_tatouage_piercing',
+    'domain_photographe_videaste',
+    'domain_centres_specialises',
+  ];
+
+  // Get translated text from domain key (for displaying)
+  static String getDomainTextFromKey(String? domainKey, BuildContext context) {
+    if (domainKey == null || domainKey.isEmpty) return '';
+    // If it's already a translation key, translate it
+    if (domainKeys.contains(domainKey)) {
+      return AppTranslations.getString(context, domainKey);
+    }
+    // If it's already translated text, return as is (for backward compatibility)
+    return domainKey;
+  }
+
+  // Get domain key from translated text (for filtering/searching)
+  static String? getDomainKeyFromText(String? translatedText, BuildContext context) {
+    if (translatedText == null || translatedText.isEmpty) return null;
+    for (final key in domainKeys) {
+      if (AppTranslations.getString(context, key) == translatedText) {
+        return key;
+      }
+    }
+    return null;
+  }
+}
+
 class Validators {
   // Name validation
   static String? validateName(String? value, BuildContext context) {
@@ -21,7 +59,10 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return AppTranslations.getString(context, 'please_enter_email');
     }
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+    // Accept emails in format: something@something.something
+    // Allows hyphens in domain and TLD, and TLDs of any length (e.g., .paris, .photography)
+    // Note: Hyphen must be at the end of character class to be treated as literal
+    if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]+$').hasMatch(value.trim())) {
       return AppTranslations.getString(context, 'please_enter_valid_email');
     }
     return null;

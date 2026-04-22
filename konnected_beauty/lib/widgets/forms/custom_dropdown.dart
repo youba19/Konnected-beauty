@@ -8,6 +8,8 @@ class CustomDropdown extends StatelessWidget {
   final String? selectedValue;
   final Function(String?) onChanged;
   final bool compact;
+  final Color? textColor;
+  final Color? borderColor;
 
   const CustomDropdown({
     super.key,
@@ -17,13 +19,23 @@ class CustomDropdown extends StatelessWidget {
     this.selectedValue,
     required this.onChanged,
     this.compact = false,
+    this.textColor,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final double labelFont = compact ? 12 : 16;
     final double spacing = compact ? 2 : 8;
     final double innerHeight = compact ? 34 : 40;
+    final brightness = Theme.of(context).brightness;
+    final isLightMode = brightness == Brightness.light;
+
+    // Use provided colors or default based on theme
+    final effectiveTextColor =
+        textColor ?? (isLightMode ? Colors.black : Colors.white);
+    final effectiveBorderColor =
+        borderColor ?? (isLightMode ? Colors.black : Colors.white);
+    final hintColor = isLightMode ? Colors.black54 : Colors.white70;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,8 +43,8 @@ class CustomDropdown extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: labelFont,
+            color: effectiveTextColor,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -42,9 +54,12 @@ class CustomDropdown extends StatelessWidget {
           padding:
               EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 4 : 8),
           decoration: BoxDecoration(
-            color: AppTheme.transparentBackground,
-            border: Border.all(color: AppTheme.borderColor, width: 1),
-            borderRadius: BorderRadius.circular(12),
+            color: isLightMode ? Colors.white : AppTheme.transparentBackground,
+            border: Border.all(
+              color: effectiveBorderColor,
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: SizedBox(
             height: innerHeight,
@@ -55,29 +70,36 @@ class CustomDropdown extends StatelessWidget {
               hint: Text(
                 selectedValue ?? placeholder,
                 style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: compact ? 12 : 14,
+                  color: hintColor,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               underline: const SizedBox.shrink(),
               isExpanded: true,
-              dropdownColor: AppTheme.primaryColor,
+              dropdownColor: isLightMode ? Colors.white : AppTheme.primaryColor,
               menuMaxHeight: compact ? 250 : 300,
-              style: const TextStyle(
-                color: AppTheme.textSecondaryColor,
+              style: TextStyle(
+                color: effectiveTextColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
-              icon: const Icon(
+              icon: Icon(
                 Icons.keyboard_arrow_down,
-                color: AppTheme.textPrimaryColor,
+                color: effectiveTextColor,
               ),
               iconSize: compact ? 18 : 20,
               items: items.map((String item) {
                 return DropdownMenuItem<String>(
                   value: item,
-                  child: Text(item),
+                  child: Text(
+                    item,
+                    style: TextStyle(
+                      color: effectiveTextColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 );
               }).toList(),
               onChanged: onChanged,

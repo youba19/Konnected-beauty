@@ -12,7 +12,6 @@ import 'influencer_language_screen.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
-import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 
 class InfluencerProfileScreen extends StatefulWidget {
@@ -852,18 +851,20 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
           ),
           SizedBox(height: 4),
           Flexible(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected
-                    ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
-                    : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected
+                      ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
+                      : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                maxLines: 2,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ),
         ],
@@ -1016,6 +1017,21 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
         },
       );
 
+      // Call logout API endpoint using HttpInterceptor
+      print('🚪 Calling logout API endpoint...');
+      final logoutResult = await InfluencerAuthService.logout();
+
+      print('📊 Logout API result: $logoutResult');
+
+      // Even if API call fails, proceed with local logout
+      // (user might be offline or token already expired)
+      if (logoutResult['success'] == true) {
+        print('✅ Logout API call successful');
+      } else {
+        print('⚠️ Logout API call failed, but proceeding with local logout');
+        print('⚠️ Error: ${logoutResult['message']}');
+      }
+
       // Clear all tokens and user data
       await TokenStorageService.clearAuthData();
 
@@ -1044,14 +1060,29 @@ class _InfluencerProfileScreenState extends State<InfluencerProfileScreen> {
         Navigator.of(context).pop();
       }
 
-      // Show error message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: ${e.toString()}'),
-            backgroundColor: AppTheme.statusRed,
-          ),
-        );
+      // Even if logout API fails, proceed with local logout
+      print('⚠️ Logout API error, but proceeding with local logout: $e');
+      try {
+        await TokenStorageService.clearAuthData();
+        if (context.mounted) {
+          context.read<AuthBloc>().add(Logout());
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const WelcomeScreen(),
+            ),
+            (route) => false,
+          );
+        }
+      } catch (localError) {
+        // Show error message only if local logout also fails
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: ${localError.toString()}'),
+              backgroundColor: AppTheme.statusRed,
+            ),
+          );
+        }
       }
     }
   }

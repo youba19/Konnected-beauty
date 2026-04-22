@@ -14,9 +14,9 @@ import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'welcome_screen.dart';
-import '../../../company/presentation/pages/salon_home_screen.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
-import '../../../company/presentation/pages/salon_main_wrapper.dart';
+import 'stripe_onboarding_webview_screen.dart';
+import 'registration_success_screen.dart';
 
 class SaloonRegistrationScreen extends StatefulWidget {
   const SaloonRegistrationScreen({super.key});
@@ -37,6 +37,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
   late TextEditingController saloonNameController;
   late TextEditingController saloonAddressController;
   late TextEditingController saloonDomainController;
+  late TextEditingController saloonWebsiteController;
   late TextEditingController saloonDescriptionController;
 
   // Form keys for validation
@@ -51,6 +52,8 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
       GlobalKey<FormFieldState>();
   final GlobalKey<FormFieldState> saloonDomainFormKey =
       GlobalKey<FormFieldState>();
+  final GlobalKey<FormFieldState> saloonWebsiteFormKey =
+      GlobalKey<FormFieldState>();
   final GlobalKey<FormFieldState> saloonDescriptionFormKey =
       GlobalKey<FormFieldState>();
 
@@ -59,6 +62,11 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
 
   // Timer for debouncing description updates
   Timer? _descriptionDebounceTimer;
+
+  // Flag to prevent multiple Stripe WebView openings
+  bool _stripeWebViewOpened = false;
+  // Flag to track if automatic opening has already happened (prevents auto-reopening after return)
+  bool _hasAutoOpenedOnce = false;
 
   // Time options for dropdown
   final List<String> timeOptions = [
@@ -108,6 +116,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     saloonNameController = TextEditingController();
     saloonAddressController = TextEditingController();
     saloonDomainController = TextEditingController();
+    saloonWebsiteController = TextEditingController();
     saloonDescriptionController = TextEditingController();
 
     // TEMPORARY: Start directly at salon profile step for testing
@@ -182,6 +191,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             saloonName: saloonNameController.text,
             saloonAddress: saloonAddressController.text,
             saloonDomain: saloonDomainController.text,
+            saloonWebsite: saloonWebsiteController.text,
           ));
     });
 
@@ -190,14 +200,18 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
             saloonName: saloonNameController.text,
             saloonAddress: saloonAddressController.text,
             saloonDomain: saloonDomainController.text,
+            saloonWebsite: saloonWebsiteController.text,
           ));
     });
 
-    saloonDomainController.addListener(() {
+    // Domain dropdown doesn't need a listener since we update bloc directly on change
+
+    saloonWebsiteController.addListener(() {
       context.read<SaloonRegistrationBloc>().add(UpdateSalonInfo(
             saloonName: saloonNameController.text,
             saloonAddress: saloonAddressController.text,
             saloonDomain: saloonDomainController.text,
+            saloonWebsite: saloonWebsiteController.text,
           ));
     });
   }
@@ -238,6 +252,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     saloonNameController.dispose();
     saloonAddressController.dispose();
     saloonDomainController.dispose();
+    saloonWebsiteController.dispose();
     saloonDescriptionController.dispose();
     super.dispose();
   }
@@ -296,20 +311,22 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
         body: SafeArea(
           child: BlocListener<SaloonRegistrationBloc, SaloonRegistrationState>(
             listener: (context, state) {
-              // On full success: navigate to Salon Home and show top green banner
+              // On full success: navigate to success screen first, then to salon home
               if (state is SaloonRegistrationSuccess) {
-                _showSuccessNotification(state.successMessage);
-                // Navigate to Salon Main Wrapper after a short delay to preserve bottom navigation
-                Future.delayed(const Duration(milliseconds: 500), () {
+                // Navigate to success screen first, then to salon home
+                Future.delayed(const Duration(milliseconds: 300), () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (context) => const SalonMainWrapper(),
+                      builder: (context) => const RegistrationSuccessScreen(
+                        userRole: 'salon',
+                      ),
                     ),
                     (route) => false,
                   );
                 });
                 return;
               }
+
               // Handle error messages (but not success messages that are handled by top banner)
               if (state.errorMessage != null &&
                   state.errorMessage!.isNotEmpty &&
@@ -333,33 +350,25 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header
-                          _buildHeader(),
-                          const SizedBox(height: 20),
+                          // Header (hide for Stripe step)
+                          if (state.currentStep != 4) ...[
+                            _buildHeader(),
+                            const SizedBox(height: 20),
+                          ],
 
                           // Content
                           Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                return SingleChildScrollView(
-                                  physics: const BouncingScrollPhysics(),
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      minHeight: constraints.maxHeight,
-                                    ),
-                                    child: IntrinsicHeight(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          _buildStepContent(context, state),
-                                          const SizedBox(height: 10),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                crossAxisAlignment: state.currentStep == 4
+                                    ? CrossAxisAlignment.center
+                                    : CrossAxisAlignment.start,
+                                children: [
+                                  _buildStepContent(context, state),
+                                  const SizedBox(height: 10),
+                                ],
+                              ),
                             ),
                           ),
 
@@ -414,6 +423,9 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
         case 3:
           print('Building Salon Profile step');
           return _buildSaloonProfileStep(context, state);
+        case 4:
+          print('Building Stripe Onboarding step');
+          return _buildStripeOnboardingStep(context, state);
         default:
           print('Building default step');
           return const SizedBox.shrink();
@@ -541,138 +553,149 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
 
   Widget _buildOtpVerificationStep(
       BuildContext context, SaloonRegistrationState state) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.shield,
-                color: AppTheme.textPrimaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                AppTranslations.getString(context, 'phone_verification'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Success message for signup
-
-          CustomTextField(
-            label: AppTranslations.getString(context, 'verification_code'),
-            placeholder: AppTranslations.getString(context, 'otp_placeholder'),
-            controller: otpController,
-            keyboardType: TextInputType.number,
-            isError: state.isOtpError,
-            errorMessage: state.isOtpError
-                ? AppTranslations.getString(context, 'wrong_code')
-                : null,
-            maxLength: 6,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-            ],
-            validator: (value) => Validators.validateOtp(value, context),
-            autovalidateMode: true,
-            formFieldKey: otpFormKey,
-          ),
-          const SizedBox(height: 5),
-          GestureDetector(
-            onTap: () {
-              context.read<SaloonRegistrationBloc>().add(ResendOtp());
-            },
-            child: Text(
-              AppTranslations.getString(context, 'resend_code'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              LucideIcons.shield,
+              color: AppTheme.textPrimaryColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              AppTranslations.getString(context, 'phone_verification'),
               style: const TextStyle(
                 color: AppTheme.textPrimaryColor,
-                fontSize: 16,
-                decoration: TextDecoration.underline,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Success message for signup
+
+        CustomTextField(
+          label: AppTranslations.getString(context, 'verification_code'),
+          placeholder: AppTranslations.getString(context, 'otp_placeholder'),
+          controller: otpController,
+          keyboardType: TextInputType.number,
+          isError: state.isOtpError,
+          errorMessage: state.isOtpError
+              ? AppTranslations.getString(context, 'wrong_code')
+              : null,
+          maxLength: 6,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          validator: (value) => Validators.validateOtp(value, context),
+          autovalidateMode: true,
+          formFieldKey: otpFormKey,
+        ),
+        const SizedBox(height: 5),
+        GestureDetector(
+          onTap: () {
+            context.read<SaloonRegistrationBloc>().add(ResendOtp());
+          },
+          child: Text(
+            AppTranslations.getString(context, 'resend_code'),
+            style: const TextStyle(
+              color: AppTheme.textPrimaryColor,
+              fontSize: 16,
+              decoration: TextDecoration.underline,
+            ),
           ),
-          const SizedBox(
-            height: 10,
-          )
-          // Add extra space for keyboard
-        ],
-      ),
+        ),
+        const SizedBox(
+          height: 10,
+        )
+        // Add extra space for keyboard
+      ],
     );
   }
 
   Widget _buildSaloonInformationStep(
       BuildContext context, SaloonRegistrationState state) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.building2,
-                color: AppTheme.textPrimaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  AppTranslations.getString(context, 'salon_information'),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              LucideIcons.building2,
+              color: AppTheme.textPrimaryColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                AppTranslations.getString(context, 'salon_information'),
+                style: const TextStyle(
+                  color: AppTheme.textPrimaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'salon_name'),
-            placeholder:
-                AppTranslations.getString(context, 'salon_name_placeholder'),
-            controller: saloonNameController,
-            validator: (value) => Validators.validateSalonName(value, context),
-            autovalidateMode: true,
-            formFieldKey: saloonNameFormKey,
-          ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'salon_address'),
-            placeholder:
-                AppTranslations.getString(context, 'salon_address_placeholder'),
-            controller: saloonAddressController,
-            keyboardType: TextInputType.streetAddress,
-            validator: (value) =>
-                Validators.validateSalonAddress(value, context),
-            autovalidateMode: true,
-            formFieldKey: saloonAddressFormKey,
-          ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'activity_domain'),
-            placeholder: AppTranslations.getString(
-                context, 'activity_domain_placeholder'),
-            controller: saloonDomainController,
-            keyboardType: TextInputType.text,
-            validator: (value) =>
-                Validators.validateSalonDomain(value, context),
-            autovalidateMode: true,
-            formFieldKey: saloonDomainFormKey,
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        CustomTextField(
+          label: AppTranslations.getString(context, 'salon_name'),
+          placeholder:
+              AppTranslations.getString(context, 'salon_name_placeholder'),
+          controller: saloonNameController,
+          validator: (value) => Validators.validateSalonName(value, context),
+          autovalidateMode: true,
+          formFieldKey: saloonNameFormKey,
+        ),
+        const SizedBox(height: 20),
+        CustomTextField(
+          label: AppTranslations.getString(context, 'salon_address'),
+          placeholder:
+              AppTranslations.getString(context, 'salon_address_placeholder'),
+          controller: saloonAddressController,
+          keyboardType: TextInputType.streetAddress,
+          validator: (value) => Validators.validateSalonAddress(value, context),
+          autovalidateMode: true,
+          formFieldKey: saloonAddressFormKey,
+        ),
+        const SizedBox(height: 20),
+        _buildDomainDropdown(context),
+        const SizedBox(height: 20),
+        CustomTextField(
+          label: AppTranslations.getString(context, 'establishment_website'),
+          placeholder: AppTranslations.getString(
+              context, 'establishment_website_placeholder'),
+          controller: saloonWebsiteController,
+          keyboardType: TextInputType.url,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return null; // Website is optional
+            }
+            // Basic URL validation - more permissive to handle complex URLs
+            try {
+              final uri = Uri.parse(value);
+              if (!uri.hasScheme || (!uri.scheme.startsWith('http'))) {
+                return 'Veuillez entrer une URL valide commençant par http:// ou https://';
+              }
+              if (uri.host.isEmpty) {
+                return 'Veuillez entrer une URL valide';
+              }
+            } catch (e) {
+              return 'Veuillez entrer une URL valide (ex: https://example.com)';
+            }
+            return null;
+          },
+          autovalidateMode: true,
+          formFieldKey: saloonWebsiteFormKey,
+        ),
+        const SizedBox(height: 10),
+      ],
     );
   }
 
@@ -879,6 +902,203 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
     );
   }
 
+  Widget _buildStripeOnboardingStep(
+      BuildContext context, SaloonRegistrationState state) {
+    // Don't automatically start - wait for user to click button
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Title: "Link your Stripe"
+        Text(
+          AppTranslations.getString(context, 'link_your_stripe'),
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Description text
+        Text(
+          AppTranslations.getString(context, 'stripe_onboarding_description'),
+          style: const TextStyle(
+            color: AppTheme.textSecondaryColor,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 100),
+        // Logos: Konected and Stripe - centered
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  SizedBox(width: 100),
+                  // Konected Logo
+                  Image.asset(
+                    'assets/images/Konected beauty - Logo white.png',
+                    height: 60,
+                    fit: BoxFit.contain,
+                  ),
+                ],
+              ),
+
+              // Link icon (rotated -180 degrees)
+              Transform.rotate(
+                angle: -3.14159, // -180 degrees in radians
+                child: Icon(
+                  LucideIcons.link,
+                  color: AppTheme.textSecondaryColor,
+                  size: 24,
+                ),
+              ),
+              // Stripe logo and text
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Stripe logo (stylized "S")
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Shadow/background "S"
+                    ], // Main "S"
+                  ),
+                  // "stripe" text in blue
+                  Text(
+                    'stripe',
+                    style: TextStyle(
+                      fontSize: 50,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF635BFF), // Stripe blue
+                      letterSpacing: -0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(width: 50),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectStripeButton(
+      BuildContext context, SaloonRegistrationState state) {
+    final isLoading = state.isLoading;
+    final hasUrl = state.stripeOnboardingUrl != null;
+
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: (isLoading || (hasUrl && _stripeWebViewOpened))
+            ? null
+            : () {
+                if (hasUrl) {
+                  // URL exists, open WebView manually (when user clicks after returning)
+                  _stripeWebViewOpened = true;
+                  final url = state.stripeOnboardingUrl!;
+                  print(
+                      '🌐 Manually opening Stripe onboarding URL in WebView: $url');
+                  Navigator.of(context)
+                      .push(
+                    MaterialPageRoute(
+                      builder: (context) => StripeOnboardingWebViewScreen(
+                        onboardingUrl: url,
+                        accountId: state.stripeAccountId,
+                        onSuccess: () {
+                          print('✅ Stripe onboarding completed and verified');
+                          context
+                              .read<SaloonRegistrationBloc>()
+                              .add(CompleteStripeOnboarding());
+                        },
+                        onFailure: () {
+                          print('❌ Stripe onboarding had issues');
+                          context
+                              .read<SaloonRegistrationBloc>()
+                              .add(SkipStripeOnboarding());
+                        },
+                      ),
+                    ),
+                  )
+                      .then((_) {
+                    // Reset flag when user returns from WebView - button becomes clickable again
+                    _stripeWebViewOpened = false;
+                    print(
+                        '🔄 Reset _stripeWebViewOpened flag - button is clickable again');
+                  });
+                } else {
+                  // URL doesn't exist, generate it
+                  print('🔄 Starting Stripe onboarding to generate link...');
+                  context
+                      .read<SaloonRegistrationBloc>()
+                      .add(StartStripeOnboarding());
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: isLoading
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppTranslations.getString(context, 'connect_with_stripe'),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Stripe "S" icon (black)
+                  Text(
+                    'S',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppTranslations.getString(context, 'connect_with_stripe'),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
   Widget _buildWhiteButton({
     required String text,
     required VoidCallback onPressed,
@@ -891,7 +1111,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
-          foregroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.black,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           shape: RoundedRectangleBorder(
@@ -904,8 +1124,7 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                 width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                 ),
               )
             : leadingIcon != null
@@ -915,23 +1134,17 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                       Text(
                         text,
                         style: const TextStyle(
-                          color: AppTheme.primaryColor,
+                          color: Colors.black,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        leadingIcon,
-                        color: AppTheme.primaryColor,
-                        size: 20,
                       ),
                     ],
                   )
                 : Text(
                     text,
                     style: const TextStyle(
-                      color: AppTheme.primaryColor,
+                      color: Colors.black,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -950,11 +1163,24 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
               ? () {}
               : () {
                   print('Continue button pressed for step 0');
+                  print('📧 Email: ${emailController.text}');
+                  print(
+                      '📧 Email validation: ${_isValidEmail(emailController.text)}');
+                  print(
+                      '📧 Form validation: ${emailFormKey.currentState?.validate()}');
                   // First trigger validation to show inline errors
                   _triggerValidationAndUpdateUI();
 
                   // Check if we can proceed after validation
-                  if (_canProceedToNextStep(state)) {
+                  final canProceed = _canProceedToNextStep(state);
+                  print('✅ Can proceed: $canProceed');
+                  print('  - Name: ${nameController.text.isNotEmpty}');
+                  print(
+                      '  - Email: ${emailController.text.isNotEmpty} && ${_isValidEmail(emailController.text)}');
+                  print('  - Phone: ${phoneController.text.isNotEmpty}');
+                  print('  - Password: ${passwordController.text.isNotEmpty}');
+
+                  if (canProceed) {
                     // Auto-convert 06 or 07 to +33 before sending
                     String phoneValue = phoneController.text.trim();
                     if (phoneValue.startsWith('06') ||
@@ -1030,6 +1256,53 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
                 },
           isLoading: state.isLoading,
         );
+      case 4:
+        // Single "Connect with Stripe" button
+        // Automatically open WebView when URL is ready (only once, never again after return)
+        if (state.stripeOnboardingUrl != null &&
+            !state.isLoading &&
+            !_stripeWebViewOpened &&
+            !_hasAutoOpenedOnce) {
+          _stripeWebViewOpened = true;
+          _hasAutoOpenedOnce = true; // Mark that auto-opening has happened
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && state.stripeOnboardingUrl != null) {
+              final url = state.stripeOnboardingUrl!;
+              print('🌐 Auto-opening Stripe onboarding URL in WebView: $url');
+              final registrationContext = context;
+              Navigator.of(context)
+                  .push(
+                MaterialPageRoute(
+                  builder: (context) => StripeOnboardingWebViewScreen(
+                    onboardingUrl: url,
+                    accountId: state.stripeAccountId,
+                    onSuccess: () {
+                      print('✅ Stripe onboarding completed and verified');
+                      registrationContext
+                          .read<SaloonRegistrationBloc>()
+                          .add(CompleteStripeOnboarding());
+                    },
+                    onFailure: () {
+                      print('❌ Stripe onboarding had issues');
+                      registrationContext
+                          .read<SaloonRegistrationBloc>()
+                          .add(SkipStripeOnboarding());
+                    },
+                  ),
+                ),
+              )
+                  .then((_) {
+                // Reset flag when user returns from WebView - button becomes clickable again
+                // But don't reset _hasAutoOpenedOnce to prevent automatic reopening
+                _stripeWebViewOpened = false;
+                print(
+                    '🔄 Reset _stripeWebViewOpened flag - button is clickable again (manual only)');
+              });
+            }
+          });
+        }
+
+        return _buildConnectStripeButton(context, state);
       default:
         return const SizedBox.shrink();
     }
@@ -1072,7 +1345,14 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
       case 2:
         saloonNameFormKey.currentState?.validate();
         saloonAddressFormKey.currentState?.validate();
-        saloonDomainFormKey.currentState?.validate();
+        // Validate domain dropdown
+        if (saloonDomainController.text.isEmpty) {
+          _domainError =
+              AppTranslations.getString(context, 'activity_domain_required');
+        } else {
+          _domainError = null;
+        }
+        setState(() {}); // Update UI to show validation errors
         break;
       case 3:
         saloonDescriptionFormKey.currentState?.validate();
@@ -1100,12 +1380,93 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    // Accept emails in format: something@something.something
+    // Allows hyphens in domain and TLD, and TLDs of any length (e.g., .paris, .photography)
+    // Note: Hyphen must be at the end of character class to be treated as literal
+    return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]+$').hasMatch(email);
   }
 
   bool _isValidPhone(String phone) {
     String cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     return RegExp(r'^[0-9]{10}$').hasMatch(cleanPhone);
+  }
+
+  // Domain keys (stored in backend) mapped to their translation keys
+  static const List<String> _domainKeys = [
+    'domain_centre_beaute',
+    'domain_salon_coiffure',
+    'domain_onglerie_manucure',
+    'domain_maquillage_cils',
+    'domain_massage_relaxation',
+    'domain_sport_fitness',
+    'domain_tatouage_piercing',
+    'domain_photographe_videaste',
+    'domain_centres_specialises',
+  ];
+
+  List<String> _getDomainOptions(BuildContext context) {
+    return DomainUtils.domainKeys
+        .map((key) => AppTranslations.getString(context, key))
+        .toList();
+  }
+
+  String? _domainError;
+
+  Widget _buildDomainDropdown(BuildContext context) {
+    return BlocBuilder<SaloonRegistrationBloc, SaloonRegistrationState>(
+      builder: (context, state) {
+        final domainOptions = _getDomainOptions(context);
+        final selectedDomain = saloonDomainController.text.isNotEmpty
+            ? saloonDomainController.text
+            : null;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CustomDropdown(
+              label: AppTranslations.getString(context, 'activity_domain'),
+              placeholder: AppTranslations.getString(
+                  context, 'activity_domain_placeholder'),
+              items: domainOptions,
+              selectedValue: selectedDomain,
+              onChanged: (String? value) {
+                if (value != null) {
+                  // Store the translated text in controller for display
+                  saloonDomainController.text = value;
+                  _domainError = null; // Clear error when domain is selected
+
+                  // Get the domain key (for storing in backend)
+                  final domainKey =
+                      DomainUtils.getDomainKeyFromText(value, context);
+
+                  // Update bloc with domain key (not translated text)
+                  context.read<SaloonRegistrationBloc>().add(UpdateSalonInfo(
+                        saloonName: saloonNameController.text,
+                        saloonAddress: saloonAddressController.text,
+                        saloonDomain: domainKey ??
+                            value, // Fallback to value if key not found
+                        saloonWebsite: saloonWebsiteController.text,
+                      ));
+                  setState(() {});
+                }
+              },
+            ),
+            // Show validation error if needed
+            if (_domainError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 16.0),
+                child: Text(
+                  _domainError!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildStepper(BuildContext context, SaloonRegistrationState state) {
@@ -1122,6 +1483,12 @@ class _SaloonRegistrationScreenState extends State<SaloonRegistrationScreen>
           const SizedBox(width: 8),
           _buildStepIndicator(
               context, 2, state.currentStep >= 2, state.currentStep == 2),
+          const SizedBox(width: 8),
+          _buildStepIndicator(
+              context, 3, state.currentStep >= 3, state.currentStep == 3),
+          const SizedBox(width: 8),
+          _buildStepIndicator(
+              context, 4, state.currentStep >= 4, state.currentStep == 4),
         ],
       ),
     );

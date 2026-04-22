@@ -11,6 +11,7 @@ import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/services/storage/token_storage_service.dart';
 import '../../../../core/services/api/salon_profile_service.dart';
+import '../../../../core/services/api/salon_auth_service.dart';
 import 'salon_profile_details_screen.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../auth/presentation/pages/welcome_screen.dart';
@@ -846,6 +847,21 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
         },
       );
 
+      // Call logout API endpoint using HttpInterceptor
+      print('🚪 Calling logout API endpoint...');
+      final logoutResult = await SalonAuthService.logout();
+
+      print('📊 Logout API result: $logoutResult');
+
+      // Even if API call fails, proceed with local logout
+      // (user might be offline or token already expired)
+      if (logoutResult['success'] == true) {
+        print('✅ Logout API call successful');
+      } else {
+        print('⚠️ Logout API call failed, but proceeding with local logout');
+        print('⚠️ Error: ${logoutResult['message']}');
+      }
+
       // Clear all tokens and user data
       await TokenStorageService.clearAuthData();
 
@@ -874,14 +890,29 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
         Navigator.of(context).pop();
       }
 
-      // Show error message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // Even if logout API fails, proceed with local logout
+      print('⚠️ Logout API error, but proceeding with local logout: $e');
+      try {
+        await TokenStorageService.clearAuthData();
+        if (context.mounted) {
+          context.read<AuthBloc>().add(Logout());
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const WelcomeScreen(),
+            ),
+            (route) => false,
+          );
+        }
+      } catch (localError) {
+        // Show error message only if local logout also fails
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logout failed: ${localError.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

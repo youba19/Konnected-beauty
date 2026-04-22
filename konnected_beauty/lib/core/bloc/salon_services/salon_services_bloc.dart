@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/salon_services_service.dart';
 import '../../services/api/salon_auth_service.dart';
@@ -34,11 +35,13 @@ class CreateSalonService extends SalonServicesEvent {
   final String name;
   final int price;
   final String description;
+  final List<File>? pictures;
 
   CreateSalonService({
     required this.name,
     required this.price,
     required this.description,
+    this.pictures,
   });
 }
 
@@ -47,12 +50,14 @@ class UpdateSalonService extends SalonServicesEvent {
   final String? name;
   final int? price;
   final String? description;
+  final List<File>? pictures;
 
   UpdateSalonService({
     required this.serviceId,
     this.name,
     this.price,
     this.description,
+    this.pictures,
   });
 }
 
@@ -641,6 +646,7 @@ class SalonServicesBloc extends Bloc<SalonServicesEvent, SalonServicesState> {
         name: event.name,
         price: event.price,
         description: event.description,
+        pictures: event.pictures,
       );
 
       if (result['success']) {
@@ -679,6 +685,7 @@ class SalonServicesBloc extends Bloc<SalonServicesEvent, SalonServicesState> {
                 name: event.name,
                 price: event.price,
                 description: event.description,
+                pictures: event.pictures,
               );
 
               if (retryResult['success']) {
@@ -724,6 +731,7 @@ class SalonServicesBloc extends Bloc<SalonServicesEvent, SalonServicesState> {
         name: event.name,
         price: event.price,
         description: event.description,
+        pictures: event.pictures,
       );
 
       if (result['success']) {
@@ -763,6 +771,7 @@ class SalonServicesBloc extends Bloc<SalonServicesEvent, SalonServicesState> {
                 name: event.name,
                 price: event.price,
                 description: event.description,
+                pictures: event.pictures,
               );
 
               if (retryResult['success']) {

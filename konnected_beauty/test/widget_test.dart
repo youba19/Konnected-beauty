@@ -14,8 +14,8 @@ import 'package:konnected_beauty/main.dart';
 void main() {
   testWidgets('Welcome screen smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester
-        .pumpWidget(KonnectedBeautyApp(initialBrightness: Brightness.light));
+    await tester.pumpWidget(KonnectedBeautyApp(
+        initialBrightness: Brightness.light, hasSeenOnboarding: false));
 
     // Verify that welcome screen loads
     expect(find.text('Bienvenue sur Konected'), findsOneWidget);

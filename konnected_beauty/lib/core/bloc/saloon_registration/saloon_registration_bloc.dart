@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../services/api/salon_auth_service.dart';
+import '../../services/api/stripe_service.dart';
 import '../../services/storage/token_storage_service.dart';
 
 // Events
@@ -39,10 +40,12 @@ class UpdateSalonInfo extends SaloonRegistrationEvent {
   final String saloonName;
   final String saloonAddress;
   final String saloonDomain;
+  final String saloonWebsite;
   UpdateSalonInfo({
     required this.saloonName,
     required this.saloonAddress,
     required this.saloonDomain,
+    required this.saloonWebsite,
   });
 }
 
@@ -88,6 +91,12 @@ class SubmitSalonInfo extends SaloonRegistrationEvent {}
 
 class SubmitSalonProfile extends SaloonRegistrationEvent {}
 
+class StartStripeOnboarding extends SaloonRegistrationEvent {}
+
+class CompleteStripeOnboarding extends SaloonRegistrationEvent {}
+
+class SkipStripeOnboarding extends SaloonRegistrationEvent {}
+
 class ResetRegistration extends SaloonRegistrationEvent {}
 
 // States
@@ -117,9 +126,11 @@ class SaloonRegistrationState {
   final String saloonName;
   final String saloonAddress;
   final String saloonDomain;
+  final String saloonWebsite;
   final bool isSaloonNameValid;
   final bool isSaloonAddressValid;
   final bool isSaloonDomainValid;
+  final bool isSaloonWebsiteValid;
 
   // Salon Profile
   final String description;
@@ -127,6 +138,11 @@ class SaloonRegistrationState {
   final String closingHour;
   final List<File> uploadedImages;
   final List<String> timeOptions;
+
+  // Stripe Onboarding
+  final String? stripeOnboardingUrl;
+  final String? stripeAccountId;
+  final bool isStripeOnboarded;
 
   const SaloonRegistrationState({
     required this.currentStep,
@@ -147,14 +163,19 @@ class SaloonRegistrationState {
     required this.saloonName,
     required this.saloonAddress,
     required this.saloonDomain,
+      required this.saloonWebsite,
     required this.isSaloonNameValid,
     required this.isSaloonAddressValid,
     required this.isSaloonDomainValid,
+    required this.isSaloonWebsiteValid,
     required this.description,
     required this.openHour,
     required this.closingHour,
     required this.uploadedImages,
     required this.timeOptions,
+      this.stripeOnboardingUrl,
+      this.stripeAccountId,
+      this.isStripeOnboarded = false,
   });
 }
 
@@ -182,14 +203,19 @@ class SaloonRegistrationSuccess extends SaloonRegistrationState {
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
           uploadedImages: state.uploadedImages,
           timeOptions: state.timeOptions,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 }
 
@@ -212,9 +238,11 @@ class SaloonRegistrationInitial extends SaloonRegistrationState {
           saloonName: '',
           saloonAddress: '',
           saloonDomain: '',
+          saloonWebsite: '',
           isSaloonNameValid: false,
           isSaloonAddressValid: false,
           isSaloonDomainValid: false,
+          isSaloonWebsiteValid: true,
           description: '',
           openHour: '',
           closingHour: '',
@@ -253,6 +281,9 @@ class SaloonRegistrationInitial extends SaloonRegistrationState {
             '23:00',
             '23:30',
           ],
+          stripeOnboardingUrl: null,
+          stripeAccountId: null,
+          isStripeOnboarded: false,
         );
 }
 
@@ -275,14 +306,19 @@ class SaloonRegistrationLoading extends SaloonRegistrationState {
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
           uploadedImages: state.uploadedImages,
           timeOptions: state.timeOptions,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 }
 
@@ -306,14 +342,19 @@ class SaloonRegistrationError extends SaloonRegistrationState {
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
           uploadedImages: state.uploadedImages,
           timeOptions: state.timeOptions,
+          stripeOnboardingUrl: state.stripeOnboardingUrl,
+          stripeAccountId: state.stripeAccountId,
+          isStripeOnboarded: state.isStripeOnboarded,
         );
 }
 
@@ -340,6 +381,9 @@ class SaloonRegistrationBloc
     on<SubmitSignup>(_onSubmitSignup);
     on<SubmitSalonInfo>(_onSubmitSalonInfo);
     on<SubmitSalonProfile>(_onSubmitSalonProfile);
+    on<StartStripeOnboarding>(_onStartStripeOnboarding);
+    on<CompleteStripeOnboarding>(_onCompleteStripeOnboarding);
+    on<SkipStripeOnboarding>(_onSkipStripeOnboarding);
     on<ResetRegistration>(_onResetRegistration);
   }
 
@@ -349,6 +393,8 @@ class SaloonRegistrationBloc
     final isEmailValid = _isValidEmail(event.email);
     final isPhoneValid = event.phone.trim().isNotEmpty;
     final isPasswordValid = event.password.length >= 6;
+    
+    print('🔍 Bloc: Email validation for "${event.email}": $isEmailValid');
 
     emit(SaloonRegistrationState(
       currentStep: state.currentStep,
@@ -367,9 +413,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: state.description,
       openHour: state.openHour,
       closingHour: state.closingHour,
@@ -397,9 +445,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: state.description,
       openHour: event.openHour,
       closingHour: state.closingHour,
@@ -427,9 +477,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: state.description,
       openHour: state.openHour,
       closingHour: event.closingHour,
@@ -458,9 +510,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: state.description,
       openHour: state.openHour,
       closingHour: state.closingHour,
@@ -474,6 +528,9 @@ class SaloonRegistrationBloc
     final isSaloonNameValid = event.saloonName.trim().isNotEmpty;
     final isSaloonAddressValid = event.saloonAddress.trim().isNotEmpty;
     final isSaloonDomainValid = event.saloonDomain.trim().isNotEmpty;
+    // Website is optional, so it's valid if empty or if it's a valid URL
+    final isSaloonWebsiteValid = event.saloonWebsite.trim().isEmpty ||
+        _isValidUrl(event.saloonWebsite.trim());
 
     emit(SaloonRegistrationState(
       currentStep: state.currentStep,
@@ -492,9 +549,11 @@ class SaloonRegistrationBloc
       saloonName: event.saloonName,
       saloonAddress: event.saloonAddress,
       saloonDomain: event.saloonDomain,
+      saloonWebsite: event.saloonWebsite,
       isSaloonNameValid: isSaloonNameValid,
       isSaloonAddressValid: isSaloonAddressValid,
       isSaloonDomainValid: isSaloonDomainValid,
+      isSaloonWebsiteValid: isSaloonWebsiteValid,
       description: state.description,
       openHour: state.openHour,
       closingHour: state.closingHour,
@@ -526,9 +585,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: event.description,
       openHour: event.openHour,
       closingHour: event.closingHour,
@@ -588,9 +649,11 @@ class SaloonRegistrationBloc
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
@@ -627,9 +690,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: state.description,
       openHour: state.openHour,
       closingHour: state.closingHour,
@@ -705,9 +770,11 @@ class SaloonRegistrationBloc
               saloonName: state.saloonName,
               saloonAddress: state.saloonAddress,
               saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
               isSaloonNameValid: state.isSaloonNameValid,
               isSaloonAddressValid: state.isSaloonAddressValid,
               isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
               description: state.description,
               openHour: state.openHour,
               closingHour: state.closingHour,
@@ -743,9 +810,11 @@ class SaloonRegistrationBloc
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
@@ -777,9 +846,11 @@ class SaloonRegistrationBloc
         saloonName: state.saloonName,
         saloonAddress: state.saloonAddress,
         saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
         isSaloonNameValid: state.isSaloonNameValid,
         isSaloonAddressValid: state.isSaloonAddressValid,
         isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
         description: state.description,
         openHour: state.openHour,
         closingHour: state.closingHour,
@@ -808,9 +879,11 @@ class SaloonRegistrationBloc
       saloonName: state.saloonName,
       saloonAddress: state.saloonAddress,
       saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
       isSaloonNameValid: state.isSaloonNameValid,
       isSaloonAddressValid: state.isSaloonAddressValid,
       isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
       description: state.description,
       openHour: state.openHour,
       closingHour: state.closingHour,
@@ -883,9 +956,11 @@ class SaloonRegistrationBloc
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
@@ -935,9 +1010,11 @@ class SaloonRegistrationBloc
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
@@ -1017,9 +1094,11 @@ class SaloonRegistrationBloc
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
@@ -1050,6 +1129,9 @@ class SaloonRegistrationBloc
     print('📧 Name: ${state.saloonName}');
     print('📍 Address: ${state.saloonAddress}');
     print('🏷️ Domain: ${state.saloonDomain}');
+    print('🌐 Website: ${state.saloonWebsite}');
+    print('🌐 Website (trimmed): ${state.saloonWebsite.trim()}');
+    print('🌐 Website (isEmpty): ${state.saloonWebsite.trim().isEmpty}');
 
     // Validate required fields
     if (state.saloonName.isEmpty ||
@@ -1079,6 +1161,9 @@ class SaloonRegistrationBloc
         name: state.saloonName,
         address: state.saloonAddress,
         domain: state.saloonDomain,
+        website: state.saloonWebsite.trim().isNotEmpty
+            ? state.saloonWebsite.trim()
+            : null,
         accessToken: accessToken,
       );
 
@@ -1106,9 +1191,11 @@ class SaloonRegistrationBloc
           saloonName: state.saloonName,
           saloonAddress: state.saloonAddress,
           saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
           isSaloonNameValid: state.isSaloonNameValid,
           isSaloonAddressValid: state.isSaloonAddressValid,
           isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
           description: state.description,
           openHour: state.openHour,
           closingHour: state.closingHour,
@@ -1213,9 +1300,37 @@ class SaloonRegistrationBloc
           print('❌ Error handling tokens: $e');
         }
 
-        emit(SaloonRegistrationSuccess(
-          state,
-          successMessage: result['message'] ?? 'Account created successfully',
+        // Proceed to Stripe onboarding step (step 4) instead of success
+        emit(SaloonRegistrationState(
+          currentStep: 4,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+          stripeOnboardingUrl: null,
+          stripeAccountId: null,
+          isStripeOnboarded: false,
         ));
       } else {
         // Salon profile addition failed
@@ -1225,6 +1340,109 @@ class SaloonRegistrationBloc
     } catch (e) {
       emit(SaloonRegistrationError(state, 'Network error: ${e.toString()}'));
     }
+  }
+
+  void _onStartStripeOnboarding(
+      StartStripeOnboarding event, Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    try {
+      final result = await StripeService.createOnboardingLink();
+
+      if (result['success']) {
+        final data = result['data'] as Map<String, dynamic>?;
+        final onboardingUrl = data?['onboardingUrl'] as String?;
+        final accountId = data?['accountId'] as String?;
+
+        emit(SaloonRegistrationState(
+          currentStep: state.currentStep,
+          isLoading: false,
+          name: state.name,
+          email: state.email,
+          phone: state.phone,
+          password: state.password,
+          isNameValid: state.isNameValid,
+          isEmailValid: state.isEmailValid,
+          isPhoneValid: state.isPhoneValid,
+          isPasswordValid: state.isPasswordValid,
+          otp: state.otp,
+          isOtpValid: state.isOtpValid,
+          isOtpError: state.isOtpError,
+          saloonName: state.saloonName,
+          saloonAddress: state.saloonAddress,
+          saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
+          isSaloonNameValid: state.isSaloonNameValid,
+          isSaloonAddressValid: state.isSaloonAddressValid,
+          isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
+          description: state.description,
+          openHour: state.openHour,
+          closingHour: state.closingHour,
+          uploadedImages: state.uploadedImages,
+          timeOptions: state.timeOptions,
+          stripeOnboardingUrl: onboardingUrl,
+          stripeAccountId: accountId,
+          isStripeOnboarded: false,
+        ));
+      } else {
+        emit(SaloonRegistrationError(
+            state, result['message'] ?? 'Failed to create Stripe onboarding link'));
+      }
+    } catch (e) {
+      emit(SaloonRegistrationError(
+          state, 'Network error: ${e.toString()}'));
+    }
+  }
+
+  void _onCompleteStripeOnboarding(CompleteStripeOnboarding event,
+      Emitter<SaloonRegistrationState> emit) async {
+    emit(SaloonRegistrationLoading(state));
+
+    // Mark as onboarded and proceed to success
+    emit(SaloonRegistrationSuccess(
+      SaloonRegistrationState(
+        currentStep: state.currentStep,
+        isLoading: false,
+        name: state.name,
+        email: state.email,
+        phone: state.phone,
+        password: state.password,
+        isNameValid: state.isNameValid,
+        isEmailValid: state.isEmailValid,
+        isPhoneValid: state.isPhoneValid,
+        isPasswordValid: state.isPasswordValid,
+        otp: state.otp,
+        isOtpValid: state.isOtpValid,
+        isOtpError: state.isOtpError,
+        saloonName: state.saloonName,
+        saloonAddress: state.saloonAddress,
+        saloonDomain: state.saloonDomain,
+          saloonWebsite: state.saloonWebsite,
+        isSaloonNameValid: state.isSaloonNameValid,
+        isSaloonAddressValid: state.isSaloonAddressValid,
+        isSaloonDomainValid: state.isSaloonDomainValid,
+          isSaloonWebsiteValid: state.isSaloonWebsiteValid,
+        description: state.description,
+        openHour: state.openHour,
+        closingHour: state.closingHour,
+        uploadedImages: state.uploadedImages,
+        timeOptions: state.timeOptions,
+        stripeOnboardingUrl: state.stripeOnboardingUrl,
+        stripeAccountId: state.stripeAccountId,
+        isStripeOnboarded: true,
+      ),
+      successMessage: 'Account created successfully!',
+    ));
+  }
+
+  void _onSkipStripeOnboarding(SkipStripeOnboarding event,
+      Emitter<SaloonRegistrationState> emit) async {
+    // Allow user to skip Stripe onboarding and proceed to success
+    emit(SaloonRegistrationSuccess(
+      state,
+      successMessage: 'Account created successfully!',
+    ));
   }
 
   void _onResetRegistration(
@@ -1251,7 +1469,17 @@ class SaloonRegistrationBloc
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    // Accept emails in format: something@something.something
+    // Allows hyphens in domain and TLD, and TLDs of any length (e.g., .paris, .photography)
+    // Note: Hyphen must be at the end of character class to be treated as literal
+    return RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]+$').hasMatch(email);
+  }
+
+  bool _isValidUrl(String url) {
+    final urlPattern = RegExp(
+      r'^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$',
+    );
+    return urlPattern.hasMatch(url);
   }
 
   List<String> get timeOptions => [

@@ -55,6 +55,7 @@ class SalonDetailsService {
           'name': salonInfo?['name'] ?? salonName ?? 'Salon Name',
           'domain': salonInfo?['domain'] ?? salonDomain ?? 'salon.domain',
           'address': salonInfo?['address'] ?? salonAddress ?? 'Salon Address',
+          'website': salonInfo?['website'],
           'openingHour': salonProfile?['openingHour'],
           'closingHour': salonProfile?['closingHour'],
           'description': salonProfile?['description'] ??
@@ -71,6 +72,7 @@ class SalonDetailsService {
         print('📊 Name: ${processedSalonDetails['name']}');
         print('📊 Domain: ${processedSalonDetails['domain']}');
         print('📊 Address: ${processedSalonDetails['address']}');
+        print('📊 Website: ${processedSalonDetails['website'] ?? 'N/A'}');
         print('📊 Description: ${processedSalonDetails['description']}');
         print('📊 Pictures Count: ${pictures.length}');
         print('📊 Services Count: ${services.length}');

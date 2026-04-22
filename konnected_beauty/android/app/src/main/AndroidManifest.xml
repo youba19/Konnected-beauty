@@ -33,13 +33,20 @@
     <!-- Additional metadata for Google Play API 35 compliance -->
     <meta-data android:name="android.max_aspect" android:value="2.4" />
     <meta-data android:name="android.app.supports_size_changes" android:value="true" />
+    <!-- Support for 16KB page size memory (required for API 35) -->
+    <meta-data android:name="android.app.lib_name" android:value="flutter" />
+    <!-- Explicitly declare support for 16KB page size memory -->
+    <!-- Note: This requires that all native libraries (.so files) are compiled with 16KB alignment -->
+    <!-- Flutter engine and plugins must be compatible with 16KB page size -->
+    <!-- Declare support for 16KB page size memory -->
+    <supports-screens android:anyDensity="true" />
     <application
         android:label="Konected"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true"
-        android:targetSdkVersion="34">
+        android:targetSdkVersion="35">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -61,6 +68,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Deep link for Stripe redirect -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="konectedbeauty" />
             </intent-filter>
         </activity>
         
@@ -89,6 +103,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- Firebase Analytics configuration -->
+        <!-- Ad ID collection disabled - app only uses notifications -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

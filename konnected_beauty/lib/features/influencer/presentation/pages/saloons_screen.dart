@@ -9,6 +9,8 @@ import '../../../../core/bloc/saloons/saloons_state.dart';
 import '../../../../core/bloc/salon_details/salon_details_bloc.dart';
 import 'salon_details_screen.dart';
 import '../../../../widgets/common/motivational_banner.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../widgets/forms/custom_dropdown.dart';
 
 class SaloonsScreen extends StatefulWidget {
   const SaloonsScreen({super.key});
@@ -21,6 +23,8 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
+  String? _selectedDomainFilter; // Selected domain for filtering
+  String _nameSearchQuery = ''; // Name search query for client-side filtering
 
   @override
   void initState() {
@@ -74,12 +78,198 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   }
 
   void _onSearchChanged(String value) {
-    // Debounce search
+    // Update name search query for client-side filtering
+    setState(() {
+      _nameSearchQuery = value.toLowerCase().trim();
+    });
+
+    // Debounce - reload salons with domain filter, then filter by name client-side
     Future.delayed(const Duration(milliseconds: 500), () {
       if (_searchController.text == value) {
-        context.read<SaloonsBloc>().add(SearchSaloons(value));
+        // Reload with domain filter (if any), name filtering is done client-side
+        final domainKey = _selectedDomainFilter != null
+            ? DomainUtils.getDomainKeyFromText(_selectedDomainFilter!, context)
+            : null;
+        context.read<SaloonsBloc>().add(LoadSaloons(
+              search: domainKey,
+              page: 1,
+              limit: 50,
+            ));
       }
     });
+  }
+
+  void _onDomainFilterChanged(String? value) {
+    setState(() {
+      _selectedDomainFilter = value;
+    });
+
+    // Convert selected domain text to domain key for API
+    final domainKey =
+        value != null ? DomainUtils.getDomainKeyFromText(value, context) : null;
+
+    // Don't clear search - keep search text and apply domain filter
+    // Load salons with domain filter (search by name is handled separately)
+    context.read<SaloonsBloc>().add(LoadSaloons(
+          search: domainKey,
+          page: 1,
+          limit: 50,
+        ));
+  }
+
+  void _showDomainFilterMenu(BuildContext context) {
+    String? tempSelectedDomain = _selectedDomainFilter;
+
+    final brightness = Theme.of(context).brightness;
+    final isLightMode = brightness == Brightness.light;
+    final textColor = isLightMode ? Colors.black : Colors.white;
+    final borderColor = isLightMode ? Colors.black : Colors.white;
+    final backgroundColor =
+        isLightMode ? Colors.white : AppTheme.getCardBackground(brightness);
+    final buttonBgColor = isLightMode ? Colors.black : Colors.white;
+    final buttonTextColor = isLightMode ? Colors.white : Colors.black;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: backgroundColor,
+      enableDrag: true,
+      isDismissible: true,
+      builder: (bottomSheetContext) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final domainOptions = DomainUtils.domainKeys
+              .map((key) => AppTranslations.getString(context, key))
+              .toList();
+          final allDomainsText =
+              AppTranslations.getString(context, 'all_domains');
+          final allOptions = [allDomainsText, ...domainOptions];
+
+          return Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: borderColor.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Title
+                  Text(
+                    AppTranslations.getString(context, 'filter_by_domain'),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Domain Dropdown
+                  CustomDropdown(
+                    label:
+                        AppTranslations.getString(context, 'activity_domain'),
+                    placeholder: allDomainsText,
+                    items: allOptions,
+                    selectedValue: tempSelectedDomain,
+                    onChanged: (String? value) {
+                      setModalState(() {
+                        tempSelectedDomain = value;
+                      });
+                    },
+                    textColor: textColor,
+                    borderColor: borderColor,
+                  ),
+                  const SizedBox(height: 32),
+                  // Buttons Row
+                  Row(
+                    children: [
+                      // Cancel Button
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(
+                              color: borderColor,
+                              width: 1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            AppTranslations.getString(context, 'cancel'),
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Filter Button
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            if (tempSelectedDomain == allDomainsText ||
+                                tempSelectedDomain == null) {
+                              // Clear filter
+                              _onDomainFilterChanged(null);
+                            } else {
+                              // Apply filter
+                              _onDomainFilterChanged(tempSelectedDomain);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: buttonBgColor,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            AppTranslations.getString(context, 'filter'),
+                            style: TextStyle(
+                              color: buttonTextColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -177,42 +367,76 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
             ),
           ),
           SizedBox(height: 16),
-          // Search bar
-          Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? AppTheme.transparentBackground
-                  : AppTheme.textWhite54,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: AppTheme.getTextPrimaryColor(
-                      Theme.of(context).brightness)),
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              style: AppTheme.applyPoppins(TextStyle(
-                  color: AppTheme.getTextPrimaryColor(
-                      Theme.of(context).brightness))),
-              decoration: InputDecoration(
-                hintText:
-                    AppTranslations.getString(context, 'search_placeholder'),
-                hintStyle: AppTheme.applyPoppins(TextStyle(
-                    color: AppTheme.getTextSecondaryColor(
-                        Theme.of(context).brightness))),
-                suffixIcon: Icon(
-                  Icons.search,
-                  color: AppTheme.getTextSecondaryColor(
-                      Theme.of(context).brightness),
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+          // Search bar and Filter button row
+          Row(
+            children: [
+              // Search bar (takes most of the space)
+              Expanded(
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.transparentBackground
+                        : AppTheme.textWhite54,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness)),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    style: AppTheme.applyPoppins(TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness))),
+                    decoration: InputDecoration(
+                      hintText: AppTranslations.getString(
+                          context, 'search_placeholder'),
+                      hintStyle: AppTheme.applyPoppins(TextStyle(
+                          color: AppTheme.getTextSecondaryColor(
+                              Theme.of(context).brightness))),
+                      suffixIcon: Icon(
+                        Icons.search,
+                        color: AppTheme.getTextSecondaryColor(
+                            Theme.of(context).brightness),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              SizedBox(width: 12),
+              // Filter button
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.transparentBackground
+                      : AppTheme.textWhite54,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness)),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _showDomainFilterMenu(context),
+                    child: Icon(
+                      Icons.filter_list,
+                      color: AppTheme.getTextPrimaryColor(
+                          Theme.of(context).brightness),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 16),
           MotivationalBanner(
@@ -224,10 +448,22 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   }
 
   Widget _buildSaloonsList(SaloonsLoaded state) {
+    // Filter salons by name if search query exists
+    final filteredSaloons = _nameSearchQuery.isEmpty
+        ? state.saloons
+        : state.saloons.where((salon) {
+            final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
+            final name = (salonInfo['name'] as String? ?? '').toLowerCase();
+            return name.contains(_nameSearchQuery);
+          }).toList();
+
     return RefreshIndicator(
       onRefresh: () async {
+        final domainKey = _selectedDomainFilter != null
+            ? DomainUtils.getDomainKeyFromText(_selectedDomainFilter!, context)
+            : null;
         context.read<SaloonsBloc>().add(RefreshSaloons(
-              search: state.currentSearch,
+              search: domainKey,
               limit: 50,
             ));
       },
@@ -235,38 +471,94 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(child: _buildHeader()),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index == state.saloons.length) {
-                  if (state.hasMore) {
-                    return SizedBox(height: 32);
+          if (filteredSaloons.isEmpty && _nameSearchQuery.isNotEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search_off,
+                        size: 64,
+                        color: AppTheme.getTextSecondaryColor(
+                            Theme.of(context).brightness),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        AppTranslations.getString(context, 'no_saloons_found'),
+                        style: AppTheme.applyPoppins(TextStyle(
+                          color: AppTheme.getTextPrimaryColor(
+                              Theme.of(context).brightness),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == filteredSaloons.length) {
+                    if (state.hasMore && _nameSearchQuery.isEmpty) {
+                      return SizedBox(height: 32);
+                    }
+                    return _buildListFooter(
+                      loaded: filteredSaloons.length,
+                      total: _nameSearchQuery.isEmpty
+                          ? state.total
+                          : filteredSaloons.length,
+                    );
                   }
-                  return _buildListFooter(
-                    loaded: state.saloons.length,
-                    total: state.total,
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: _buildSaloonCard(filteredSaloons[index]),
+                      ),
+                      if (index < filteredSaloons.length - 1)
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          indent: 16,
+                          endIndent: 16,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.border2
+                              : AppTheme.lightBannerBackground,
+                        ),
+                    ],
                   );
-                }
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: _buildSaloonCard(state.saloons[index]),
-                );
-              },
-              childCount: state.saloons.length + 1,
+                },
+                childCount: filteredSaloons.length + 1,
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildSaloonsListWithLoading(SaloonsLoadingMore state) {
+    // Filter salons by name if search query exists
+    final filteredSaloons = _nameSearchQuery.isEmpty
+        ? state.saloons
+        : state.saloons.where((salon) {
+            final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
+            final name = (salonInfo['name'] as String? ?? '').toLowerCase();
+            return name.contains(_nameSearchQuery);
+          }).toList();
+
     return RefreshIndicator(
       onRefresh: () async {
+        final domainKey = _selectedDomainFilter != null
+            ? DomainUtils.getDomainKeyFromText(_selectedDomainFilter!, context)
+            : null;
         context.read<SaloonsBloc>().add(RefreshSaloons(
-              search: _searchController.text.isEmpty
-                  ? null
-                  : _searchController.text,
+              search: domainKey,
               limit: 50,
             ));
       },
@@ -277,7 +569,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                if (index == state.saloons.length) {
+                if (index == filteredSaloons.length) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
@@ -287,12 +579,26 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                     ),
                   );
                 }
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: _buildSaloonCard(state.saloons[index]),
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: _buildSaloonCard(filteredSaloons[index]),
+                    ),
+                    if (index < filteredSaloons.length - 1)
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppTheme.border2
+                            : AppTheme.lightBannerBackground,
+                      ),
+                  ],
                 );
               },
-              childCount: state.saloons.length + 1,
+              childCount: filteredSaloons.length + 1,
             ),
           ),
         ],
@@ -340,8 +646,12 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
     final name = salonInfo['name'] as String? ??
         AppTranslations.getString(context, 'saloon_name_default');
-    final domain = salonInfo['domain'] as String? ??
-        AppTranslations.getString(context, 'saloon_domain_default');
+    final address = salonInfo['address'] as String?;
+    // Get domain and translate it if it's a key
+    final domainRaw = salonInfo['domain'] as String?;
+    final domain = domainRaw != null && domainRaw.isNotEmpty
+        ? DomainUtils.getDomainTextFromKey(domainRaw, context)
+        : AppTranslations.getString(context, 'saloon_domain_default');
     final description = salonProfile['description'] as String? ?? '';
 
     // Extract pictures from salonProfile
@@ -351,13 +661,6 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         .where((url) => url.isNotEmpty)
         .toList();
 
-    // Extract services from API response
-    final servicesData = saloon['services'] as List<dynamic>? ?? [];
-    final services = servicesData
-        .map((service) => service['name'] as String? ?? 'Unknown Service')
-        .toList();
-
-    final serviceCount = services.length;
     final salonId = saloon['id'] as String?;
 
     return GestureDetector(
@@ -380,7 +683,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(top: 16),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.dark
               ? AppTheme.transparentBackground
@@ -391,24 +694,8 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Images row (horizontally scrollable)
-            SizedBox(
-              height: 120,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: pictures.length > 0 ? pictures.length : 3,
-                separatorBuilder: (context, index) => SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  return SizedBox(
-                    width: 129, // Fixed width for each image
-                    child: _buildSalonImage(
-                      index < pictures.length ? pictures[index] : null,
-                      index: index,
-                    ),
-                  );
-                },
-              ),
-            ),
+            // Images row (horizontally scrollable, full width) with indicators
+            _buildImageCarousel(pictures),
             SizedBox(height: 12),
 
             // Saloon name (large, bold white text)
@@ -422,6 +709,35 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               )),
             ),
             SizedBox(height: 8),
+
+            // Address (white in dark mode, black in light mode)
+            if (address != null && address.isNotEmpty)
+              Row(
+                children: [
+                  Icon(
+                    LucideIcons.mapPin,
+                    size: 16,
+                    color: AppTheme.greenPrimary,
+                  ),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      address,
+                      style: AppTheme.applyPoppins(TextStyle(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppTheme.lightTextPrimaryColor
+                            : AppTheme.getTextPrimaryColor(
+                                Theme.of(context).brightness),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      )),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            if (address != null && address.isNotEmpty) SizedBox(height: 8),
 
             // Description (max 1 line)
             if (description.isNotEmpty)
@@ -441,111 +757,81 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               ),
             if (description.isNotEmpty) SizedBox(height: 8),
 
-            // Domain and service count row
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    domain,
-                    style: AppTheme.applyPoppins(TextStyle(
-                      color: AppTheme.getTextPrimaryColor(
-                          Theme.of(context).brightness),
-                      fontSize: 14,
-                    )),
-                  ),
-                ),
-                // Service count with icon
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$serviceCount',
-                      style: AppTheme.applyPoppins(TextStyle(
-                        color: AppTheme.getTextPrimaryColor(
-                            Theme.of(context).brightness),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      )),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      LucideIcons.zap,
-                      color: AppTheme.getTextPrimaryColor(
-                          Theme.of(context).brightness),
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ],
+            // Domain
+            Text(
+              domain,
+              style: AppTheme.applyPoppins(TextStyle(
+                color:
+                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+                fontSize: 14,
+              )),
             ),
-            SizedBox(height: 12),
-
-            // Service tags (dark grey rounded rectangles) - horizontally scrollable
-            if (services.isNotEmpty)
-              SizedBox(
-                height: 32,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: services.length,
-                  separatorBuilder: (context, index) => SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final serviceName = services[index];
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.getCardBackground(Theme.of(context)
-                            .brightness), // Dark grey background
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        serviceName,
-                        style: AppTheme.applyPoppins(TextStyle(
-                          color: AppTheme.getTextPrimaryColor(
-                              Theme.of(context).brightness),
-                          fontSize: 12,
-                        )),
-                      ),
-                    );
-                  },
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildImageCarousel(List<String> pictures) {
+    if (pictures.isEmpty) {
+      // Show placeholder if no images
+      return SizedBox(
+        height: 174,
+        child: _buildSalonImage(null, index: 0),
+      );
+    }
+
+    // If only one image, no need for carousel
+    if (pictures.length == 1) {
+      final screenWidth = MediaQuery.of(context).size.width;
+      final cardWidth = screenWidth - 32 - 32;
+      return Column(
+        children: [
+          SizedBox(
+            height: 174,
+            child: SizedBox(
+              width: cardWidth,
+              child: _buildSalonImage(pictures[0], index: 0),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Multiple images - use PageView with indicators
+    return _SalonImageCarousel(
+      pictures: pictures,
+      onImageTap: () {
+        // Handle image tap if needed
+      },
+    );
+  }
+
   Widget _buildSalonImage(String? imageUrl, {required int index}) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       child: imageUrl != null && imageUrl.isNotEmpty
           ? Image.network(
               imageUrl,
-              height: 120,
-              width: 129,
+              height: 200,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
-                  height: 120,
-                  width: 129,
+                  height: 200,
                   color:
                       AppTheme.getCardBackground(Theme.of(context).brightness),
                   child: Icon(
                     Icons.image_outlined,
                     color: AppTheme.getTextSecondaryColor(
                         Theme.of(context).brightness),
-                    size: 30,
+                    size: 40,
                   ),
                 );
               },
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
                 return Container(
-                  height: 120,
-                  width: 129,
+                  height: 200,
                   color:
                       AppTheme.getCardBackground(Theme.of(context).brightness),
                   child: Center(
@@ -562,14 +848,13 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               },
             )
           : Container(
-              height: 120,
-              width: 129,
+              height: 200,
               color: AppTheme.getCardBackground(Theme.of(context).brightness),
               child: Icon(
                 Icons.image_outlined,
                 color: AppTheme.getTextSecondaryColor(
                     Theme.of(context).brightness),
-                size: 30,
+                size: 40,
               ),
             ),
     );
@@ -711,6 +996,154 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
           child: child,
         ),
       ],
+    );
+  }
+}
+
+// Image carousel widget with page indicators
+class _SalonImageCarousel extends StatefulWidget {
+  final List<String> pictures;
+  final VoidCallback? onImageTap;
+
+  const _SalonImageCarousel({
+    required this.pictures,
+    this.onImageTap,
+  });
+
+  @override
+  State<_SalonImageCarousel> createState() => _SalonImageCarouselState();
+}
+
+class _SalonImageCarouselState extends State<_SalonImageCarousel> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth =
+        screenWidth - 32 - 32; // Screen width - padding - card padding
+
+    return SizedBox(
+      height: 174,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemCount: widget.pictures.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index < widget.pictures.length - 1 ? 12 : 0,
+                ),
+                child: SizedBox(
+                  width: cardWidth,
+                  child: _buildCarouselImage(widget.pictures[index], index),
+                ),
+              );
+            },
+          ),
+          // Page indicators overlay at the bottom of the image
+          if (widget.pictures.length > 1)
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: _buildPageIndicators(widget.pictures.length),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarouselImage(String imageUrl, int index) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: imageUrl.isNotEmpty
+          ? Image.network(
+              imageUrl,
+              height: 174,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 174,
+                  color:
+                      AppTheme.getCardBackground(Theme.of(context).brightness),
+                  child: Icon(
+                    Icons.image_outlined,
+                    color: AppTheme.getTextSecondaryColor(
+                        Theme.of(context).brightness),
+                    size: 40,
+                  ),
+                );
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 174,
+                  color:
+                      AppTheme.getCardBackground(Theme.of(context).brightness),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                      strokeWidth: 2,
+                      color: AppTheme.accentColor,
+                    ),
+                  ),
+                );
+              },
+            )
+          : Container(
+              height: 174,
+              color: AppTheme.getCardBackground(Theme.of(context).brightness),
+              child: Icon(
+                Icons.image_outlined,
+                color: AppTheme.getTextSecondaryColor(
+                    Theme.of(context).brightness),
+                size: 40,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildPageIndicators(int totalPages) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        totalPages,
+        (index) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: _currentPage == index ? 8 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(3),
+            color: _currentPage == index
+                ? AppTheme.greenPrimary
+                : Colors.white.withOpacity(0.5),
+          ),
+        ),
+      ),
     );
   }
 }

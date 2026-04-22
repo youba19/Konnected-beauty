@@ -10,6 +10,7 @@ import 'dart:io';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_info/salon_info_bloc.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
@@ -27,9 +28,13 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
   final _salonNameController = TextEditingController();
   final _salonAddressController = TextEditingController();
   final _activityDomainController = TextEditingController();
+  final _salonWebsiteController = TextEditingController();
   final _openingHourController = TextEditingController();
   final _closingHourController = TextEditingController();
   final _salonDescriptionController = TextEditingController();
+
+  // Domain error for validation
+  String? _domainError;
 
   // Picture handling
   final List<File> _uploadedImages = [];
@@ -360,10 +365,16 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     print('🏷️  Setting Salon Name: ${salonInfo['name'] ?? 'N/A'}');
     print('📍 Setting Salon Address: ${salonInfo['address'] ?? 'N/A'}');
     print('🏢 Setting Activity Domain: ${salonInfo['domain'] ?? 'N/A'}');
+    print('🌐 Setting Salon Website: ${salonInfo['website'] ?? 'N/A'}');
 
     _salonNameController.text = salonInfo['name'] ?? '';
     _salonAddressController.text = salonInfo['address'] ?? '';
-    _activityDomainController.text = salonInfo['domain'] ?? '';
+    // Convert domain key to translated text for display
+    final domainKey = salonInfo['domain'] as String?;
+    _activityDomainController.text = domainKey != null && domainKey.isNotEmpty
+        ? DomainUtils.getDomainTextFromKey(domainKey, context)
+        : '';
+    _salonWebsiteController.text = salonInfo['website'] ?? '';
 
     // Salon Profile API: /salon/salon-profile
     if (salonProfile != null) {
@@ -818,81 +829,85 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Color(0xFF1F1E1E),
-              Color(0xFF3B3B3B),
-            ],
+    // Force dark mode for salon - wrap in Theme with dark brightness
+    return Theme(
+      data: ThemeData.dark(),
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                Color(0xFF1F1E1E),
+                Color(0xFF3B3B3B),
+              ],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: GestureDetector(
-            onTap: () {
-              // Close keyboard when tapping outside text fields
-              FocusScope.of(context).unfocus();
-            },
-            child: BlocConsumer<SalonInfoBloc, SalonInfoState>(
-              listener: (context, state) {
-                if (state is SalonInfoLoaded) {
-                  // Schedule the async operation
-                  WidgetsBinding.instance.addPostFrameCallback((_) async {
-                    await _populateControllers(
-                        state.salonInfo, state.salonProfile);
-                  });
-                } else if (state is SalonInfoUpdated) {
-                  // Show one summary notification for all updates
-                  TopNotificationService.showSuccess(
-                    context: context,
-                    message: "Salon information updated successfully",
-                  );
-                  _refreshImageLists(); // Refresh image lists after successful update
-
-                  // Navigate back to settings screen after successful update
-                  Navigator.of(context).pop();
-                } else if (state is SalonProfileUpdated) {
-                  // Don't show notification for profile update - already shown for info update
-                  print(
-                      '✅ Profile update completed - notification already shown');
-                  _refreshImageLists(); // Refresh image lists after successful update
-                } else if (state is SalonInfoError) {
-                  TopNotificationService.showError(
-                    context: context,
-                    message: state.error,
-                  );
-                }
+          child: SafeArea(
+            child: GestureDetector(
+              onTap: () {
+                // Close keyboard when tapping outside text fields
+                FocusScope.of(context).unfocus();
               },
-              builder: (context, state) {
-                if (state is SalonInfoLoading) {
-                  return _buildShimmerContent();
-                }
+              child: BlocConsumer<SalonInfoBloc, SalonInfoState>(
+                listener: (context, state) {
+                  if (state is SalonInfoLoaded) {
+                    // Schedule the async operation
+                    WidgetsBinding.instance.addPostFrameCallback((_) async {
+                      await _populateControllers(
+                          state.salonInfo, state.salonProfile);
+                    });
+                  } else if (state is SalonInfoUpdated) {
+                    // Show one summary notification for all updates
+                    TopNotificationService.showSuccess(
+                      context: context,
+                      message: "Salon information updated successfully",
+                    );
+                    _refreshImageLists(); // Refresh image lists after successful update
 
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.only(
-                    left: 24.0,
-                    top: 24.0,
-                    right: 24.0,
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 24),
-                      _buildSalonInformationSection(),
-                      const SizedBox(height: 40),
-                      _buildSaveButton(),
-                      const SizedBox(height: 16),
-                      const SizedBox(height: 50),
-                    ],
-                  ),
-                );
-              },
+                    // Navigate back to settings screen after successful update
+                    Navigator.of(context).pop();
+                  } else if (state is SalonProfileUpdated) {
+                    // Don't show notification for profile update - already shown for info update
+                    print(
+                        '✅ Profile update completed - notification already shown');
+                    _refreshImageLists(); // Refresh image lists after successful update
+                  } else if (state is SalonInfoError) {
+                    TopNotificationService.showError(
+                      context: context,
+                      message: state.error,
+                    );
+                  }
+                },
+                builder: (context, state) {
+                  if (state is SalonInfoLoading) {
+                    return _buildShimmerContent();
+                  }
+
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      left: 24.0,
+                      top: 24.0,
+                      right: 24.0,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(),
+                        const SizedBox(height: 24),
+                        _buildSalonInformationSection(),
+                        const SizedBox(height: 40),
+                        _buildSaveButton(),
+                        const SizedBox(height: 16),
+                        const SizedBox(height: 50),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -959,12 +974,17 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
         ),
         const SizedBox(height: 20),
 
-        // Activity Domain
+        // Activity Domain (Dropdown)
+        _buildDomainDropdown(context),
+        const SizedBox(height: 20),
+
+        // Establishment Website
         CustomTextField(
-          label: AppTranslations.getString(context, 'activity_domain'),
-          placeholder:
-              AppTranslations.getString(context, 'activity_domain_placeholder'),
-          controller: _activityDomainController,
+          label: AppTranslations.getString(context, 'establishment_website'),
+          placeholder: AppTranslations.getString(
+              context, 'establishment_website_placeholder'),
+          controller: _salonWebsiteController,
+          keyboardType: TextInputType.url,
         ),
         const SizedBox(height: 20),
 
@@ -1077,6 +1097,52 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     );
   }
 
+  List<String> _getDomainOptions(BuildContext context) {
+    return DomainUtils.domainKeys
+        .map((key) => AppTranslations.getString(context, key))
+        .toList();
+  }
+
+  Widget _buildDomainDropdown(BuildContext context) {
+    final domainOptions = _getDomainOptions(context);
+    final selectedDomain = _activityDomainController.text.isNotEmpty
+        ? _activityDomainController.text
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomDropdown(
+          label: AppTranslations.getString(context, 'activity_domain'),
+          placeholder: AppTranslations.getString(
+              context, 'activity_domain_placeholder'),
+          items: domainOptions,
+          selectedValue: selectedDomain,
+          onChanged: (String? value) {
+            if (value != null) {
+              // Store the translated text in controller for display
+              _activityDomainController.text = value;
+              _domainError = null; // Clear error when domain is selected
+              setState(() {});
+            }
+          },
+        ),
+        // Show validation error if needed
+        if (_domainError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0, left: 16.0),
+            child: Text(
+              _domainError!,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Future<void> _saveSalonInformation() async {
     // Validate inputs
     if (_salonNameController.text.trim().isEmpty) {
@@ -1096,6 +1162,9 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     }
 
     if (_activityDomainController.text.trim().isEmpty) {
+      setState(() {
+        _domainError = AppTranslations.getString(context, 'activity_domain_required');
+      });
       TopNotificationService.showError(
         context: context,
         message: AppTranslations.getString(context, 'activity_domain_required'),
@@ -1148,10 +1217,15 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     print('🖼️ Images Count: ${_uploadedImages.length}');
 
     // Update salon info (name, address, domain)
+    // Convert translated domain text to domain key for storage
+    final domainText = _activityDomainController.text.trim();
+    final domainKey = DomainUtils.getDomainKeyFromText(domainText, context) ?? domainText;
+    
     context.read<SalonInfoBloc>().add(UpdateSalonInfo(
           name: _salonNameController.text.trim(),
           address: _salonAddressController.text.trim(),
-          domain: _activityDomainController.text.trim(),
+          domain: domainKey,
+          website: _salonWebsiteController.text.trim(),
         ));
 
     // Update salon profile (opening hours, description, pictures)

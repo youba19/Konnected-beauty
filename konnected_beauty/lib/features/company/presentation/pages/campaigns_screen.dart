@@ -111,7 +111,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Filter Campaigns',
+                      AppTranslations.getString(context, 'filter_campaigns'),
                       style: const TextStyle(
                         color: AppTheme.textPrimaryColor,
                         fontSize: 20,
@@ -131,7 +131,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
                 // Status Filter
                 Text(
-                  'Campaign Status',
+                  AppTranslations.getString(context, 'campaign_status'),
                   style: const TextStyle(
                     color: AppTheme.textPrimaryColor,
                     fontSize: 16,
@@ -240,7 +240,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                             ),
                           ),
                         ),
-                        child: const Text('Clear'),
+                        child:
+                            Text(AppTranslations.getString(context, 'clear')),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -258,7 +259,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Apply'),
+                        child:
+                            Text(AppTranslations.getString(context, 'apply')),
                       ),
                     ),
                   ],
@@ -314,12 +316,18 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
   List<Map<String, dynamic>> _filterCampaigns(
       List<Map<String, dynamic>> campaigns) {
+    // First, filter out deleted campaigns (case-insensitive, trim whitespace)
+    final nonDeletedCampaigns = campaigns.where((campaign) {
+      final status = campaign['status']?.toString().toLowerCase().trim() ?? '';
+      return status != 'deleted' && status.isNotEmpty;
+    }).toList();
+
     if (_currentSearch.isEmpty) {
-      return campaigns;
+      return nonDeletedCampaigns;
     }
 
     final searchLower = _currentSearch.toLowerCase();
-    return campaigns.where((campaign) {
+    return nonDeletedCampaigns.where((campaign) {
       // Search in influencer pseudo
       final influencer = campaign['influencer']?['profile'] ?? {};
       final pseudo = influencer['pseudo'] ?? '';
@@ -563,7 +571,76 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Test Button (temporary for debugging)
+          // QR Code Scan Widget
+          _buildQRScanWidget(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQRScanWidget() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF646464),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          // QR Code Icon
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppTheme.transparentBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              LucideIcons.qrCode,
+              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              size: 36,
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Text Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      AppTranslations.getString(
+                          context, 'scan_reservations_qr_title'),
+                      style: AppTheme.applyPoppins(TextStyle(
+                        color: AppTheme.getTextPrimaryColor(
+                            Theme.of(context).brightness),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      )),
+                      maxLines: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppTranslations.getString(
+                      context, 'scan_reservations_qr_subtitle'),
+                  style: AppTheme.applyPoppins(TextStyle(
+                    color: AppTheme.getTextSecondaryColor(
+                        Theme.of(context).brightness),
+                    fontSize: 13,
+                  )),
+                  maxLines: 2,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -702,7 +779,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Text(
+                const Text(
                   'No more campaigns available',
                   style: TextStyle(
                     color: AppTheme.textSecondaryColor,
@@ -712,7 +789,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'All campaigns loaded (${filteredCampaigns.length}/${state.total})',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppTheme.textSecondaryColor,
                     fontSize: 12,
                   ),
@@ -920,16 +997,16 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             Row(
               children: [
                 CircleAvatar(
-                  radius: 16,
+                  radius: 28,
                   backgroundColor: Colors.grey,
                   backgroundImage: profilePicture != null
                       ? NetworkImage(profilePicture)
                       : null,
                   child: profilePicture == null
-                      ? const Icon(Icons.person, color: Colors.white, size: 18)
+                      ? const Icon(Icons.person, color: Colors.white, size: 32)
                       : null,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     '@$pseudo',

@@ -193,11 +193,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 // Welcome Section
                 _buildWelcomeSection(),
 
-                const SizedBox(height: 15), // Increased spacing
-
-                // Language Section
-                _buildLanguageSection(),
-
                 const SizedBox(height: 10), // Increased spacing
               ],
             ),

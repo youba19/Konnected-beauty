@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
@@ -28,6 +30,11 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       GlobalKey<FormFieldState>();
   final GlobalKey<FormFieldState> serviceDescriptionFormKey =
       GlobalKey<FormFieldState>();
+
+  // Picture handling
+  final List<File> _selectedPictures = [];
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoadingPictures = false;
 
   @override
   void initState() {
@@ -64,6 +71,44 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImages() async {
+    try {
+      setState(() {
+        _isLoadingPictures = true;
+      });
+
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          _selectedPictures
+              .addAll(pickedFiles.map((xFile) => File(xFile.path)));
+        });
+        print('📸 Images picked: ${_selectedPictures.length}');
+      }
+    } catch (e) {
+      print('❌ Error picking images: $e');
+      TopNotificationService.showError(
+        context: context,
+        message: 'Failed to pick images: $e',
+      );
+    } finally {
+      setState(() {
+        _isLoadingPictures = false;
+      });
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedPictures.removeAt(index);
+    });
+  }
+
   void _createService() {
     // First trigger validation to show inline errors
     serviceNameFormKey.currentState?.validate();
@@ -93,13 +138,17 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
             name: serviceNameController.text,
             price: price,
             description: serviceDescriptionController.text,
+            pictures: _selectedPictures.isNotEmpty ? _selectedPictures : null,
           ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<SalonServicesBloc, SalonServicesState>(
+    // Force dark mode for salon - wrap in Theme with dark brightness
+    return Theme(
+      data: ThemeData.dark(),
+      child: BlocListener<SalonServicesBloc, SalonServicesState>(
         listener: (context, state) {
           if (state is SalonServiceCreated) {
             // Debug: Print the service data to see what's available
@@ -228,10 +277,15 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
 
                       const SizedBox(height: 20),
 
+                      // Service Pictures Field
+                      _buildPicturesSection(),
+
+                      const SizedBox(height: 20),
+
                       // Service Price Field
                       CustomTextField(
                         label:
-                            AppTranslations.getString(context, 'service_price'),
+                            '${AppTranslations.getString(context, 'service_price')} (TTC)',
                         placeholder: AppTranslations.getString(
                             context, 'enter_service_price'),
                         controller: servicePriceController,
@@ -323,7 +377,9 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
               ),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   Widget _buildHeader() {
@@ -406,6 +462,120 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPicturesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Service Pictures',
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Upload Button
+        GestureDetector(
+          onTap: _isLoadingPictures ? null : _pickImages,
+          child: Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: _isLoadingPictures
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.image,
+                          color: AppTheme.textPrimaryColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Upload Pictures',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        // Selected Images Preview
+        if (_selectedPictures.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: List.generate(_selectedPictures.length, (index) {
+              return Stack(
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        _selectedPictures[index],
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _removeImage(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ],
+      ],
     );
   }
 }

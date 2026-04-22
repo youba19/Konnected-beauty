@@ -365,14 +365,31 @@ class SalonAuthService {
     required String name,
     required String address,
     required String domain,
+    String? website,
     required String accessToken, // Use token directly from login response
   }) async {
     try {
-      final requestBody = {
+      final requestBody = <String, dynamic>{
         'name': name,
         'address': address,
         'domain': domain,
       };
+      if (website != null && website.trim().isNotEmpty) {
+        // Ensure the website is a valid URL format
+        try {
+          final uri = Uri.parse(website.trim());
+          if (uri.hasScheme && uri.host.isNotEmpty) {
+            requestBody['website'] = uri.toString();
+            print('🌐 Website added to request: ${uri.toString()}');
+          } else {
+            print('⚠️ Website is not a valid URL, skipping');
+          }
+        } catch (e) {
+          print('⚠️ Error parsing website URL: $e, skipping');
+        }
+      } else {
+        print('🌐 No website provided or website is empty');
+      }
 
       print('🏢 === ADD SALON INFO REQUEST ===');
       print('🔗 URL: $baseUrl$addSalonInfoEndpoint');
@@ -477,113 +494,104 @@ class SalonAuthService {
       print('🔍 Preparing multipart request for add profile');
       print('🔍 Pictures count: ${pictures.length}');
 
-      // Check if token is expired and refresh if needed
-      if (await TokenStorageService.isAccessTokenExpired()) {
-        print('⚠️ Access token is expired, attempting to refresh...');
-        final storedRefreshToken = await TokenStorageService.getRefreshToken();
-        if (storedRefreshToken != null) {
-          final refreshResult =
-              await refreshToken(refreshToken: storedRefreshToken);
-          if (refreshResult['success']) {
-            print('✅ Token refreshed successfully');
-            // Save the new access token
-            final newAccessToken = refreshResult['data']['access_token'];
-            await TokenStorageService.saveAccessToken(newAccessToken);
-            print('💾 New access token saved');
-          } else {
-            print('❌ Token refresh failed: ${refreshResult['message']}');
-          }
-        } else {
-          print('❌ No refresh token available');
-        }
-      }
+      // Helper function to build multipart request
+      Future<http.MultipartRequest> _buildMultipartRequest() async {
+        final accessToken = await TokenStorageService.getAccessToken();
+        final uri = Uri.parse('$baseUrl$addSalonProfileEndpoint');
+        final request = http.MultipartRequest('POST', uri);
 
-      // Get access token from storage
-      final accessToken = await TokenStorageService.getAccessToken();
+        // Set Authorization header
+        if (accessToken != null && accessToken.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $accessToken';
+        }
+
+        // Add text fields
+        request.fields['openingHour'] = openingHour;
+        request.fields['closingHour'] = closingHour;
+        request.fields['description'] = description;
+
+        // Attach files as 'pictures'[] (array)
+        for (int i = 0; i < pictures.length; i++) {
+          final path = pictures[i];
+          try {
+            final file = File(path);
+            if (await file.exists()) {
+              final stream = http.ByteStream(file.openRead());
+              final length = await file.length();
+              final filename = path.split('/').last;
+
+              // Validate file type - only allow image files
+              final validExtensions = [
+                '.jpg',
+                '.jpeg',
+                '.png',
+                '.gif',
+                '.webp'
+              ];
+              final fileExtension = filename.toLowerCase();
+              final isValidImage =
+                  validExtensions.any((ext) => fileExtension.endsWith(ext));
+
+              if (!isValidImage) {
+                print(
+                    '❌ Invalid file type: $filename. Only JPG, PNG, GIF, WEBP are allowed.');
+                print('❌ File extension: $fileExtension');
+                continue; // Skip this file
+              }
+
+              // Ensure filename has proper extension
+              String finalFilename = filename;
+              if (!fileExtension.contains('.')) {
+                // If no extension, assume it's JPEG
+                finalFilename = '$filename.jpg';
+                print(
+                    '⚠️ No file extension found, assuming JPEG: $finalFilename');
+              }
+
+              // Determine MIME type based on file extension
+              String mimeType = 'image/jpeg'; // default
+              if (fileExtension.endsWith('.png')) {
+                mimeType = 'image/png';
+              } else if (fileExtension.endsWith('.jpg') ||
+                  fileExtension.endsWith('.jpeg')) {
+                mimeType = 'image/jpeg';
+              } else if (fileExtension.endsWith('.gif')) {
+                mimeType = 'image/gif';
+              } else if (fileExtension.endsWith('.webp')) {
+                mimeType = 'image/webp';
+              }
+
+              print('📁 File: $filename, MIME: $mimeType, Size: $length bytes');
+
+              final multipartFile = http.MultipartFile(
+                'pictures',
+                stream,
+                length,
+                filename: finalFilename,
+                contentType: MediaType.parse(mimeType),
+              );
+              request.files.add(multipartFile);
+            } else {
+              print('⚠️ File not found, skipping: $path');
+            }
+          } catch (e) {
+            print('⚠️ Error attaching file "$path": $e');
+          }
+        }
+
+        return request;
+      }
 
       print('🏢 === ADD SALON PROFILE REQUEST ===');
-      print('🔑 Access Token: ${accessToken != null ? 'Present' : 'Missing'}');
 
-      final uri = Uri.parse('$baseUrl$addSalonProfileEndpoint');
-      final request = http.MultipartRequest('POST', uri);
-
-      // Only set Authorization here; let http set Content-Type with boundary
-      if (accessToken != null && accessToken.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $accessToken';
-      }
-
-      // Add text fields
-      request.fields['openingHour'] = openingHour;
-      request.fields['closingHour'] = closingHour;
-      request.fields['description'] = description;
-
-      // Attach files as 'pictures'[] (array)
-      for (int i = 0; i < pictures.length; i++) {
-        final path = pictures[i];
-        try {
-          final file = File(path);
-          if (await file.exists()) {
-            final stream = http.ByteStream(file.openRead());
-            final length = await file.length();
-            final filename = path.split('/').last;
-
-            // Validate file type - only allow image files
-            final validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-            final fileExtension = filename.toLowerCase();
-            final isValidImage =
-                validExtensions.any((ext) => fileExtension.endsWith(ext));
-
-            if (!isValidImage) {
-              print(
-                  '❌ Invalid file type: $filename. Only JPG, PNG, GIF, WEBP are allowed.');
-              print('❌ File extension: $fileExtension');
-              continue; // Skip this file
-            }
-
-            // Ensure filename has proper extension
-            String finalFilename = filename;
-            if (!fileExtension.contains('.')) {
-              // If no extension, assume it's JPEG
-              finalFilename = '$filename.jpg';
-              print(
-                  '⚠️ No file extension found, assuming JPEG: $finalFilename');
-            }
-
-            // Determine MIME type based on file extension
-            String mimeType = 'image/jpeg'; // default
-            if (fileExtension.endsWith('.png')) {
-              mimeType = 'image/png';
-            } else if (fileExtension.endsWith('.jpg') ||
-                fileExtension.endsWith('.jpeg')) {
-              mimeType = 'image/jpeg';
-            } else if (fileExtension.endsWith('.gif')) {
-              mimeType = 'image/gif';
-            } else if (fileExtension.endsWith('.webp')) {
-              mimeType = 'image/webp';
-            }
-
-            print('📁 File: $filename, MIME: $mimeType, Size: $length bytes');
-
-            final multipartFile = http.MultipartFile(
-              'pictures',
-              stream,
-              length,
-              filename: finalFilename,
-              contentType: MediaType.parse(mimeType),
-            );
-            request.files.add(multipartFile);
-          } else {
-            print('⚠️ File not found, skipping: $path');
-          }
-        } catch (e) {
-          print('⚠️ Error attaching file "$path": $e');
-        }
-      }
-
-      print(
-          '📤 Sending multipart request with ${request.fields.length} fields and ${request.files.length} files');
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
+      // Use interceptRequest to handle token refresh automatically
+      final response = await HttpInterceptor.interceptRequest(() async {
+        final request = await _buildMultipartRequest();
+        print(
+            '📤 Sending multipart request with ${request.fields.length} fields and ${request.files.length} files');
+        final streamed = await request.send();
+        return await http.Response.fromStream(streamed);
+      });
 
       print('📡 Response Status Code: ${response.statusCode}');
       print('📄 Response Body: ${response.body}');
@@ -1577,6 +1585,52 @@ class SalonAuthService {
         'success': false,
         'message': 'Network error: ${e.toString()}',
         'error': e.toString(),
+      };
+    }
+  }
+
+  /// Logout salon using HTTP interceptor for automatic token management
+  static Future<Map<String, dynamic>> logout() async {
+    try {
+      print('🚪 === SALON LOGOUT REQUEST ===');
+      print('🔗 URL: $baseUrl/salon-auth/logout');
+
+      // Use HTTP interceptor to automatically handle token refresh
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'POST',
+        endpoint: '/salon-auth/logout',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('📡 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Logout successful');
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Logout successful',
+          'statusCode': response.statusCode,
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        print('❌ Logout failed');
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Logout failed',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in logout: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+        'statusCode': 0,
       };
     }
   }

@@ -41,6 +41,7 @@ class SalonInfoService {
           print('🏷️  Name: ${data['name'] ?? 'N/A'}');
           print('📍 Address: ${data['address'] ?? 'N/A'}');
           print('🏢 Domain: ${data['domain'] ?? 'N/A'}');
+          print('🌐 Website: ${data['website'] ?? 'N/A'}');
           print('🆔 ID: ${data['id'] ?? 'N/A'}');
           print('📅 Created: ${data['createdAt'] ?? 'N/A'}');
           print('📅 Updated: ${data['updatedAt'] ?? 'N/A'}');
@@ -142,6 +143,7 @@ class SalonInfoService {
     String? name,
     String? address,
     String? domain,
+    String? website,
   }) async {
     try {
       print('🔍 === UPDATING SALON INFO ===');
@@ -152,6 +154,8 @@ class SalonInfoService {
       if (address != null && address.isNotEmpty)
         requestBody['address'] = address;
       if (domain != null && domain.isNotEmpty) requestBody['domain'] = domain;
+      if (website != null && website.isNotEmpty)
+        requestBody['website'] = website;
 
       print('📤 Request Body: $requestBody');
 

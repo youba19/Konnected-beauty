@@ -101,20 +101,26 @@ class QRScanService {
       print('🌐 Status Code: ${response.statusCode}');
       print('🌐 Response Body: ${response.body}');
 
-      if (response.statusCode == 200) {
+      // Success: 200 (isSettled) or 201 (order completed, transfers scheduled)
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
-        print('✅ QR Scan successful');
+        print('✅ QR Scan successful (${response.statusCode})');
         print('📦 Response Data: $responseData');
 
         // Check if the response contains orderId in the data
         if (responseData['data'] != null &&
             responseData['data']['orderId'] != null) {
-          print('📦 Order ID found: ${responseData['data']['orderId']}');
+          final data = responseData['data'] as Map<String, dynamic>;
+          print('📦 Order ID found: ${data['orderId']}');
+          if (data['availableDate'] != null) {
+            print('📦 Available date: ${data['availableDate']}');
+          }
           return {
             'success': true,
             'message':
                 responseData['message'] ?? 'Voucher scanned successfully',
-            'data': responseData['data'],
+            'statusCode': response.statusCode,
+            'data': data,
           };
         } else {
           print('❌ No orderId found in response data');

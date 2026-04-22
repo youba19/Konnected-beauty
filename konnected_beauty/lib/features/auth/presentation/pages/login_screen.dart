@@ -159,6 +159,23 @@ class _LoginScreenState extends State<LoginScreen> {
           _navigateToSalonProfileScreen();
           break;
 
+        case 'salon-profile-added':
+          print('✅ MATCHED: salon-profile-added case');
+          print('📍 Navigating to: Stripe Payment Setup (Registration Step 4)');
+          _navigateToStripeScreen();
+          break;
+
+        case 'pending':
+          print('✅ MATCHED: pending case');
+          print('📍 Navigating to: Salon Main Wrapper (Home)');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const SalonMainWrapper(),
+            ),
+            (route) => false, // Remove all previous routes
+          );
+          break;
+
         default:
           print('❌ NO MATCH: default case');
           print('📍 Navigating to: Salon Main Wrapper (default case)');
@@ -169,6 +186,9 @@ class _LoginScreenState extends State<LoginScreen> {
           print('   - "otp": ${normalizedStatus == "otp"}');
           print(
               '   - "salon-info-added": ${normalizedStatus == "salon-info-added"}');
+          print(
+              '   - "salon-profile-added": ${normalizedStatus == "salon-profile-added"}');
+          print('   - "pending": ${normalizedStatus == "pending"}');
           // Navigate to salon main wrapper for other statuses to preserve bottom navigation
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
@@ -226,6 +246,12 @@ class _LoginScreenState extends State<LoginScreen> {
           _navigateToInfluencerSocialsScreen();
           break;
 
+        case 'socials-added':
+          print('✅ MATCHED: socials-added case');
+          print('📍 Navigating to: Stripe Payment Setup (Registration Step 4)');
+          _navigateToInfluencerStripeScreen();
+          break;
+
         case 'pending':
           print('✅ MATCHED: pending case');
           print(
@@ -275,6 +301,17 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<SaloonRegistrationBloc>().add(GoToStep(3));
   }
 
+  void _navigateToStripeScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const SaloonRegistrationScreen(),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+    // Set the step directly to 4 (Stripe Payment Setup)
+    context.read<SaloonRegistrationBloc>().add(GoToStep(4));
+  }
+
   void _navigateToInfluencerProfileScreen() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
@@ -309,6 +346,16 @@ class _LoginScreenState extends State<LoginScreen> {
       MaterialPageRoute(
         builder: (context) =>
             const InfluencerRegistrationScreen(initialStep: 1),
+      ),
+      (route) => false, // Remove all previous routes
+    );
+  }
+
+  void _navigateToInfluencerStripeScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) =>
+            const InfluencerRegistrationScreen(initialStep: 4),
       ),
       (route) => false, // Remove all previous routes
     );

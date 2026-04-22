@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/salon_auth_service.dart';
 import '../../services/api/influencer_auth_service.dart';
+import '../../services/api/http_interceptor.dart';
 import '../../services/storage/token_storage_service.dart';
+import '../../services/firebase_notification_service.dart';
 
 // Events
 abstract class LoginEvent {}
@@ -225,6 +227,12 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           role: event.role.name,
         );
 
+        // Register FCM token for notifications (non-blocking)
+        _registerFCMTokenAfterLogin(event.role.name).catchError((error) {
+          print('⚠️ Failed to register FCM token after login: $error');
+          // Don't block login success if FCM registration fails
+        });
+
         // Use the direct status from API response
         emit(LoginSuccess(state, userStatus: directStatus.toString()));
       } else {
@@ -239,6 +247,46 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       }
     } catch (e) {
       emit(LoginError(state, 'Network error: ${e.toString()}'));
+    }
+  }
+
+  /// Register FCM token after successful login
+  Future<void> _registerFCMTokenAfterLogin(String userRole) async {
+    try {
+      print('📱 === REGISTERING FCM TOKEN AFTER LOGIN ===');
+
+      // Get FCM token from FirebaseNotificationService
+      final notificationService = FirebaseNotificationService();
+      String? fcmToken = notificationService.fcmToken;
+
+      // If token is not available, try to retrieve it
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('⏳ FCM token not available, attempting to retrieve...');
+        fcmToken = await notificationService.retrieveFCMToken();
+      }
+
+      if (fcmToken == null || fcmToken.isEmpty) {
+        print('⚠️ FCM token is not available yet, skipping registration');
+        print('ℹ️ Token will be registered when it becomes available');
+        return;
+      }
+
+      print('✅ FCM token available: ${fcmToken.substring(0, 20)}...');
+
+      // Register token using HttpInterceptor
+      final result = await HttpInterceptor.registerFCMToken(
+        token: fcmToken,
+        userRole: userRole,
+      );
+
+      if (result['success'] == true) {
+        print('✅ FCM token registered successfully after login');
+      } else {
+        print('❌ Failed to register FCM token: ${result['message']}');
+      }
+    } catch (e) {
+      print('❌ Error registering FCM token after login: $e');
+      // Don't throw - this is a non-critical operation
     }
   }
 }

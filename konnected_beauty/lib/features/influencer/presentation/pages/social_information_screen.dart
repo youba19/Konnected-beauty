@@ -320,13 +320,28 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
     required String label,
     required TextEditingController controller,
   }) {
+    final brightness = Theme.of(context).brightness;
+    final isLightMode = brightness == Brightness.light;
+    final textColor = isLightMode 
+        ? AppTheme.lightTextPrimaryColor 
+        : AppTheme.getTextPrimaryColor(brightness);
+    final borderColor = isLightMode 
+        ? AppTheme.lightTextPrimaryColor 
+        : AppTheme.getTextPrimaryColor(brightness);
+    final hintColor = isLightMode 
+        ? AppTheme.lightTextSecondaryColor 
+        : AppTheme.textWhite54;
+    final fillColor = isLightMode 
+        ? AppTheme.lightCardBackground 
+        : Colors.transparent;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+            color: textColor,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
@@ -334,16 +349,16 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
         SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
+            color: fillColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color:
-                    AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+                color: borderColor,
                 width: 1),
           ),
           child: TextField(
             controller: controller,
             style: TextStyle(
-              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              color: textColor,
               fontSize: 16,
             ),
             decoration: InputDecoration(
@@ -352,9 +367,7 @@ class _SocialInformationScreenState extends State<SocialInformationScreen> {
               border: InputBorder.none,
               hintText: 'Enter link',
               hintStyle: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppTheme.transparentBackground
-                    : AppTheme.textWhite54,
+                color: hintColor,
                 fontSize: 16,
               ),
             ),

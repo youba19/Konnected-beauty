@@ -244,6 +244,33 @@ class HttpInterceptor {
       print('🔗 Expected Format: status=pending&page=1&limit=100 (in body)');
       print('🔗 Actual URL: $uri');
 
+      // Log request headers for GET requests with query parameters (like reports filter)
+      if (method == 'GET' &&
+          queryParameters != null &&
+          queryParameters.isNotEmpty) {
+        print('═══════════════════════════════════════════════════════');
+        print('📤 === REQUEST DETAILS (GET with Query Params) ===');
+        print('═══════════════════════════════════════════════════════');
+        print('🔗 Method: $method');
+        print('🔗 Endpoint: $endpoint');
+        print('🔗 Full URL: $uri');
+        print('📋 Request Headers:');
+        requestHeaders.forEach((key, value) {
+          if (key == 'Authorization') {
+            print('   • $key: ${value.substring(0, 20)}...');
+          } else {
+            print('   • $key: $value');
+          }
+        });
+        print('📋 Query Parameters:');
+        queryParameters.forEach((key, value) {
+          print('   • $key: $value');
+        });
+        print('📋 Query String: ${uri.query}');
+        print('═══════════════════════════════════════════════════════');
+        print('');
+      }
+
       // Convert body based on content type
       Object? requestBody = body;
       if (body is Map<String, dynamic>) {
@@ -283,5 +310,79 @@ class HttpInterceptor {
           throw ArgumentError('Unsupported HTTP method: $method');
       }
     });
+  }
+
+  /// Register FCM token for notifications
+  /// This should be called after successful login
+  static Future<Map<String, dynamic>> registerFCMToken({
+    required String token,
+    required String userRole,
+  }) async {
+    try {
+      print('📱 === REGISTERING FCM TOKEN ===');
+      print('👤 User Role: $userRole');
+      print('🔑 FCM Token: ${token.substring(0, 20)}...');
+
+      // Determine which endpoint to use based on user role
+      String endpoint;
+      if (userRole == 'influencer') {
+        endpoint = '/influencer-notification/register-token';
+      } else if (userRole == 'saloon' || userRole == 'salon') {
+        endpoint = '/salon-notification/register-token';
+      } else {
+        return {
+          'success': false,
+          'message': 'Invalid user role: $userRole',
+        };
+      }
+
+      print('🔗 Endpoint: $endpoint');
+
+      // Make the request using authenticatedRequest
+      final response = await authenticatedRequest(
+        method: 'POST',
+        endpoint: endpoint,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: {
+          'token': token,
+        },
+      );
+
+      print('📊 Response status: ${response.statusCode}');
+      print('📊 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+          final responseData = jsonDecode(response.body);
+          print('✅ FCM token registered successfully');
+          return {
+            'success': true,
+            'message': 'FCM token registered successfully',
+            'data': responseData,
+          };
+        } catch (e) {
+          print('⚠️ Could not parse response, but status is success');
+          return {
+            'success': true,
+            'message': 'FCM token registered successfully',
+          };
+        }
+      } else {
+        print('❌ Failed to register FCM token: ${response.statusCode}');
+        return {
+          'success': false,
+          'message': 'Failed to register FCM token',
+          'statusCode': response.statusCode,
+        };
+      }
+    } catch (e) {
+      print('❌ Error registering FCM token: $e');
+      return {
+        'success': false,
+        'message': 'Error registering FCM token: ${e.toString()}',
+      };
+    }
   }
 }

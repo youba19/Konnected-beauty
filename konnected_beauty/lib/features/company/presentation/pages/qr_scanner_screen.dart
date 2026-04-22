@@ -45,6 +45,54 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     await _ultraForceCameraAccess();
   }
 
+  /// Shows the scan result dialog with the API response message and optional availableDate.
+  Future<void> _showScanResultDialog({
+    required String message,
+    String? availableDate,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          backgroundColor: AppTheme.primaryColor,
+          title: Text(
+            message,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+          content: availableDate != null && availableDate.isNotEmpty
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${AppTranslations.getString(context, "qr_scan_available_date")}: $availableDate',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                )
+              : null,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                'OK',
+                style: const TextStyle(
+                  color: AppTheme.greenColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     controller?.dispose();
@@ -79,12 +127,34 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       final result = await QRScanService.scanVoucher(qrCode);
 
       if (result['success'] == true) {
-        // Show success message
+        // Map API response to design messages: 200 → "Success", 201 → "Order completed and transfers scheduled"
+        final statusCode = result['statusCode'] as int?;
+        final apiMessage = result['message'] as String?;
+        String displayMessage;
+        if (statusCode == 201 ||
+            (apiMessage != null &&
+                apiMessage.toLowerCase().contains('transfers scheduled'))) {
+          displayMessage = AppTranslations.getString(
+              context, 'qr_scan_response_order_completed');
+        } else {
+          displayMessage = AppTranslations.getString(
+              context, 'qr_scan_response_success');
+        }
+
+        final data = result['data'] as Map<String, dynamic>?;
+        final availableDate = data?['availableDate'];
+
+        // Show response in a dialog (message + optional availableDate), then navigate
+        if (mounted) {
+          await _showScanResultDialog(
+            message: displayMessage,
+            availableDate: availableDate?.toString(),
+          );
+        }
+
         TopNotificationService.showSuccess(
           context: context,
-          message: result['message'] ??
-              AppTranslations.getString(
-                  context, 'voucher_scanned_successfully'),
+          message: displayMessage,
         );
 
         // Navigate to order details if we have orderId
@@ -93,7 +163,6 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           print('🔍 QR Scan successful, orderId: $orderId');
 
           if (mounted) {
-            // Create a minimal order object with just the ID for navigation
             final orderData = {'id': orderId};
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(

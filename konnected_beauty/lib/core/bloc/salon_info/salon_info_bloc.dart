@@ -18,11 +18,13 @@ class UpdateSalonInfo extends SalonInfoEvent {
   final String? name;
   final String? address;
   final String? domain;
+  final String? website;
 
   const UpdateSalonInfo({
     this.name,
     this.address,
     this.domain,
+    this.website,
   });
 }
 
@@ -112,6 +114,7 @@ class SalonInfoBloc extends Bloc<SalonInfoEvent, SalonInfoState> {
         print('🏷️  Name: ${data['name'] ?? 'N/A'}');
         print('📍 Address: ${data['address'] ?? 'N/A'}');
         print('🏢 Domain: ${data['domain'] ?? 'N/A'}');
+        print('🌐 Website: ${data['website'] ?? 'N/A'}');
         print('📱 === END BLOC LOG ===');
 
         emit(SalonInfoLoaded(
@@ -207,6 +210,7 @@ class SalonInfoBloc extends Bloc<SalonInfoEvent, SalonInfoState> {
         name: event.name,
         address: event.address,
         domain: event.domain,
+        website: event.website,
       );
 
       if (result['success'] == true) {

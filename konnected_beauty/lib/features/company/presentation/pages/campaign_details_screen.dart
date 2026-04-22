@@ -31,6 +31,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   bool _isLoading = true;
   late ConfettiController _confettiController;
   Map<String, dynamic>? _freshCampaignData;
+  final TextEditingController _refuseMessageController =
+      TextEditingController();
+  final TextEditingController _replyMessageController = TextEditingController();
 
   @override
   void initState() {
@@ -126,6 +129,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   @override
   void dispose() {
     _confettiController.dispose();
+    _refuseMessageController.dispose();
+    _replyMessageController.dispose();
     super.dispose();
   }
 
@@ -134,96 +139,117 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     return BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
         return Scaffold(
+            backgroundColor:
+                const Color(0xFF1F1E1E), // Set scaffold background color
             body: Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Color(0xFF1F1E1E), // Bottom color (darker)
-                    Color(0xFF3B3B3B), // Top color (lighter)
-                  ],
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Color(0xFF1F1E1E), // Bottom color (darker)
+                          Color(0xFF3B3B3B), // Top color (lighter)
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(),
-
-                    // Campaign Information
-                    Expanded(
-                      child: _isLoading
-                          ? _buildShimmerContent()
-                          : SingleChildScrollView(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildCampaignWithSection(),
-                                  const SizedBox(height: 24),
-                                  _buildCreatedAtSection(),
-                                  const SizedBox(height: 24),
-                                  _buildPromotionSection(),
-                                  const SizedBox(height: 24),
-                                  _buildClicksSection(),
-                                  const SizedBox(height: 24),
-                                  _buildCompletedOrdersSection(),
-                                  const SizedBox(height: 24),
-                                  _buildViewOrdersButton(),
-                                  const SizedBox(height: 24),
-                                  _buildTotalSection(),
-                                  const SizedBox(height: 20),
-                                  _buildActionButtons(),
-                                ],
+                SafeArea(
+                  child: _isLoading
+                      ? _buildShimmerContent()
+                      : Column(
+                          children: [
+                            // Header
+                            _buildHeader(),
+                            // Campaign Information (Scrollable)
+                            Expanded(
+                              child: SingleChildScrollView(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildCampaignWithSection(),
+                                      const SizedBox(height: 24),
+                                      // Show reply message if it exists
+                                      if (_shouldShowReplyMessage())
+                                        _buildReplyMessageCard(),
+                                      if (_shouldShowReplyMessage())
+                                        const SizedBox(height: 24),
+                                      // Show influencer message card if campaign is rejected by influencer
+                                      if (_shouldShowInfluencerMessage())
+                                        _buildInfluencerMessageCard(),
+                                      if (_shouldShowInfluencerMessage())
+                                        const SizedBox(height: 24),
+                                      _buildCreatedAtSection(),
+                                      const SizedBox(height: 24),
+                                      _buildPromotionSection(),
+                                      const SizedBox(height: 24),
+                                      _buildClicksSection(),
+                                      const SizedBox(height: 24),
+                                      _buildCompletedOrdersSection(),
+                                      const SizedBox(height: 24),
+                                      _buildViewOrdersButton(),
+                                      const SizedBox(height: 24),
+                                      _buildTotalSection(),
+                                      const SizedBox(height: 20),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                    ),
-                  ],
+                            // Action Buttons (Fixed at bottom)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: _buildActionButtons(),
+                            ),
+                          ],
+                        ),
                 ),
-              ),
-            ),
-            // Confetti Animation
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirection: 1.57, // Downward direction
-                blastDirectionality: BlastDirectionality.explosive,
-                shouldLoop: false,
-                colors: const [
-                  Colors.yellow,
-                  Colors.blue,
-                  Colors.green,
-                  Colors.purple,
-                  Colors.orange,
-                  Colors.pink,
-                  Colors.brown,
-                  Colors.lightBlue,
-                  Colors.red,
-                ],
-                createParticlePath: (size) {
-                  // Create various shapes for confetti
-                  final random = (DateTime.now().millisecondsSinceEpoch % 4);
-                  switch (random) {
-                    case 0:
-                      return drawStar(size);
-                    case 1:
-                      return drawCircle(size);
-                    case 2:
-                      return drawSquare(size);
-                    case 3:
-                      return drawTriangle(size);
-                    default:
-                      return drawCircle(size);
-                  }
-                },
-              ),
-            ),
-          ],
-        ));
+                // Confetti Animation
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: ConfettiWidget(
+                    confettiController: _confettiController,
+                    blastDirection: 1.57, // Downward direction
+                    blastDirectionality: BlastDirectionality.explosive,
+                    shouldLoop: false,
+                    colors: const [
+                      Colors.yellow,
+                      Colors.blue,
+                      Colors.green,
+                      Colors.purple,
+                      Colors.orange,
+                      Colors.pink,
+                      Colors.brown,
+                      Colors.lightBlue,
+                      Colors.red,
+                    ],
+                    createParticlePath: (size) {
+                      // Create various shapes for confetti
+                      final random =
+                          (DateTime.now().millisecondsSinceEpoch % 4);
+                      switch (random) {
+                        case 0:
+                          return drawStar(size);
+                        case 1:
+                          return drawCircle(size);
+                        case 2:
+                          return drawSquare(size);
+                        case 3:
+                          return drawTriangle(size);
+                        default:
+                          return drawCircle(size);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ));
       },
     );
   }
@@ -675,9 +701,47 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     } else if (status == 'pending') {
       // Check if influencer initiated the campaign
       if (initiator == 'influencer') {
-        // Show accept/refuse buttons when influencer invited salon
+        // Show reply/accept/refuse buttons when influencer invited salon
         return Column(
           children: [
+            // Reply Button (FIRST)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => _showReplyDialog(),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white, width: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        AppTranslations.getString(context, 'reply'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.reply,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             // Accept Campaign Button
             SizedBox(
               width: double.infinity,
@@ -1069,55 +1133,94 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   void _showRefuseCampaignDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            AppTranslations.getString(context, 'refuse_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppTheme.secondaryColor,
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          content: Text(
-            AppTranslations.getString(context, 'refuse_campaign_confirmation'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text(
-                AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Main question
+                Text(
+                  AppTranslations.getString(
+                      context, 'are_you_sure_refuse_campaign'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _performRefuseCampaign();
-              },
-              child: Text(
-                AppTranslations.getString(context, 'confirm'),
-                style: const TextStyle(
-                  color: AppTheme.greenColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                const SizedBox(height: 16),
+                // Warning message
+                Text(
+                  AppTranslations.getString(context, 'no_going_back_warning'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 24),
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Cancel button
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white, width: 1),
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(context, 'cancel'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Yes, Refuse button
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        _performRefuseCampaign();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red, width: 1),
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(context, 'yes_refuse'),
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -1145,7 +1248,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         ),
       );
 
-      final result = await InfluencersService.refuseCampaign(
+      final result = await InfluencersService.refuseInfluencerInvite(
         campaignId: campaignId,
       );
 
@@ -1161,10 +1264,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               AppTranslations.getString(context, 'campaign_refused_success'),
         );
 
-        // Navigate back to campaigns screen
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
+        // Refresh campaign data to show the message
+        await _fetchFreshCampaignData();
       } else {
         TopNotificationService.showError(
           context: context,
@@ -1182,6 +1283,396 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         message: 'Error refusing campaign: $e',
       );
     }
+  }
+
+  void _showReplyDialog() {
+    _replyMessageController.clear(); // Clear previous message
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: AppTheme.secondaryColor,
+          insetPadding: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width,
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    AppTranslations.getString(context, 'reply'),
+                    style: const TextStyle(
+                      color: AppTheme.textPrimaryColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Message to influencer section
+                  Text(
+                    AppTranslations.getString(context, 'message_to_influencer'),
+                    style: const TextStyle(
+                      color: AppTheme.textPrimaryColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Text input field
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.scaffoldBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.border2,
+                        width: 1,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _replyMessageController,
+                      maxLines: 5,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimaryColor,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        hintText:
+                            AppTranslations.getString(context, 'write_message'),
+                        hintStyle: TextStyle(
+                          color: AppTheme.textSecondaryColor.withOpacity(0.6),
+                          fontSize: 16,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Info text
+                  Text(
+                    AppTranslations.getString(
+                        context, 'single_message_allowed'),
+                    style: TextStyle(
+                      color: AppTheme.textSecondaryColor.withOpacity(0.8),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Action buttons
+                  Column(
+                    children: [
+                      // Send Reply button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                            _performReply();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  AppTranslations.getString(
+                                      context, 'send_reply'),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.send,
+                                size: 20,
+                                color: Colors.black,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Cancel button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: AppTheme.textSecondaryColor,
+                              width: 1,
+                            ),
+                            foregroundColor: AppTheme.textPrimaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: Text(
+                            AppTranslations.getString(context, 'cancel'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _performReply() async {
+    try {
+      final campaignId = widget.campaign['id'] as String?;
+      if (campaignId == null || campaignId.isEmpty) {
+        TopNotificationService.showError(
+          context: context,
+          message: 'Campaign ID not found',
+        );
+        return;
+      }
+
+      final replyMessage = _replyMessageController.text.trim();
+      if (replyMessage.isEmpty) {
+        TopNotificationService.showError(
+          context: context,
+          message: 'Please enter a message',
+        );
+        return;
+      }
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.greenColor,
+          ),
+        ),
+      );
+
+      final result = await InfluencersService.sendReplyToInfluencerInvite(
+        campaignId: campaignId,
+        replyMessage: replyMessage,
+      );
+
+      // Hide loading indicator
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result['success'] == true) {
+        TopNotificationService.showSuccess(
+          context: context,
+          message: result['message'] ??
+              AppTranslations.getString(context, 'reply_sent_successfully'),
+        );
+
+        // Refresh campaign data to show the message
+        await _fetchFreshCampaignData();
+      } else {
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to send reply',
+        );
+      }
+    } catch (e) {
+      // Hide loading indicator if still showing
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error sending reply: $e',
+      );
+    }
+  }
+
+  bool _shouldShowReplyMessage() {
+    // Show reply message if it exists and is not already shown in influencer message card
+    final replyMessage = campaignData['replyMessage'] ?? '';
+    if (replyMessage.toString().isEmpty) {
+      return false;
+    }
+
+    // Don't show if it's already displayed in the influencer message card
+    // (when status is rejected and initiator is influencer)
+    final status = campaignData['status']?.toString().toLowerCase() ?? '';
+    final initiator = campaignData['initiator']?.toString().toLowerCase() ?? '';
+    if (status == 'rejected' && initiator == 'influencer') {
+      return false; // Already shown in influencer message card
+    }
+
+    return true;
+  }
+
+  bool _shouldShowInfluencerMessage() {
+    final status = campaignData['status']?.toString().toLowerCase() ?? '';
+    final initiator = campaignData['initiator']?.toString().toLowerCase() ?? '';
+
+    // Show message card if campaign is rejected
+    if (status == 'rejected') {
+      // If influencer initiated and salon refused, show salon's reply message
+      if (initiator == 'influencer') {
+        final salonMessage = campaignData['replyMessage'] ?? '';
+        return salonMessage.toString().isNotEmpty;
+      } else {
+        // If salon initiated and influencer refused, show influencer's message
+        final influencerMessage = campaignData['influencerReplyMessage'] ??
+            campaignData['influencerMessage'] ??
+            campaignData['message'] ??
+            '';
+        return influencerMessage.toString().isNotEmpty;
+      }
+    }
+    return false;
+  }
+
+  Widget _buildReplyMessageCard() {
+    final replyMessage = campaignData['replyMessage'] ?? '';
+
+    if (replyMessage.toString().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.border2, // Dark gray
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppTranslations.getString(context, 'reply_message'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Message content
+          Text(
+            replyMessage.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfluencerMessageCard() {
+    final status = campaignData['status']?.toString().toLowerCase() ?? '';
+    final initiator = campaignData['initiator']?.toString().toLowerCase() ?? '';
+
+    String message = '';
+    String titleKey = 'influencer_message';
+
+    // If influencer initiated and salon refused, show salon's reply message
+    if (status == 'rejected' && initiator == 'influencer') {
+      message = campaignData['replyMessage'] ?? '';
+      titleKey = 'salon_message'; // Show "Saloon message" when salon refuses
+    } else {
+      // If salon initiated and influencer refused, show influencer's message
+      message = campaignData['influencerReplyMessage'] ??
+          campaignData['influencerMessage'] ??
+          campaignData['message'] ??
+          '';
+      titleKey = 'influencer_message';
+    }
+
+    if (message.toString().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.border2, // Dark gray
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title and close icon
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppTranslations.getString(context, titleKey),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  size: 16,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Message content
+          Text(
+            message.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildProfilePicture() {
@@ -1240,40 +1731,65 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       baseColor: Colors.grey[800]!,
       highlightColor: Colors.grey[600]!,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Campaign with section shimmer
-            _buildShimmerCampaignWithSection(),
-            const SizedBox(height: 24),
+            // Header shimmer
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Campaign Information shimmer
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Campaign with section shimmer
+                  _buildShimmerCampaignWithSection(),
+                  const SizedBox(height: 24),
 
-            // Created at section shimmer
-            _buildShimmerCreatedAtSection(),
-            const SizedBox(height: 24),
+                  // Created at section shimmer
+                  _buildShimmerCreatedAtSection(),
+                  const SizedBox(height: 24),
 
-            // Promotion section shimmer
-            _buildShimmerPromotionSection(),
-            const SizedBox(height: 24),
+                  // Promotion section shimmer
+                  _buildShimmerPromotionSection(),
+                  const SizedBox(height: 24),
 
-            // Clicks section shimmer
-            _buildShimmerClicksSection(),
-            const SizedBox(height: 24),
+                  // Clicks section shimmer
+                  _buildShimmerClicksSection(),
+                  const SizedBox(height: 24),
 
-            // Completed orders section shimmer
-            _buildShimmerCompletedOrdersSection(),
-            const SizedBox(height: 24),
+                  // Completed orders section shimmer
+                  _buildShimmerCompletedOrdersSection(),
+                  const SizedBox(height: 24),
 
-            // View orders button shimmer (only for finished/ongoing campaigns)
-            _buildShimmerViewOrdersButton(),
-            const SizedBox(height: 24),
+                  // View orders button shimmer (only for finished/ongoing campaigns)
+                  _buildShimmerViewOrdersButton(),
+                  const SizedBox(height: 24),
 
-            // Total section shimmer
-            _buildShimmerTotalSection(),
-            const SizedBox(height: 20),
+                  // Total section shimmer
+                  _buildShimmerTotalSection(),
+                  const SizedBox(height: 20),
 
-            // Action buttons shimmer
-            _buildShimmerActionButtons(),
+                  // Action buttons shimmer
+                  _buildShimmerActionButtons(),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
           ],
         ),
       ),

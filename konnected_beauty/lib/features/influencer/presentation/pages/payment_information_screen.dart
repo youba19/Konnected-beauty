@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../core/services/api/influencers_service.dart';
-import '../../../../core/bloc/payment_information/payment_information_bloc.dart';
-import '../../../../core/bloc/payment_information/payment_information_event.dart';
-import '../../../../core/bloc/payment_information/payment_information_state.dart';
+import '../../../../core/services/api/stripe_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 
 class PaymentInformationScreen extends StatefulWidget {
@@ -20,102 +15,61 @@ class PaymentInformationScreen extends StatefulWidget {
 }
 
 class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
-  final TextEditingController _businessNameController = TextEditingController();
-  final TextEditingController _registryNumberController =
-      TextEditingController();
-  final TextEditingController _ibanNumberController = TextEditingController();
+  bool _isLoading = false;
 
-  bool _hasTextInAnyField = false;
-  bool _isLoading = true;
 
-  // Track original values to detect changes
-  String _originalBusinessName = '';
-  String _originalRegistryNumber = '';
-  String _originalIbanNumber = '';
+  Future<void> _openStripeDashboard() async {
+    if (_isLoading) return;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchPaymentInformation();
-  }
+    setState(() {
+      _isLoading = true;
+    });
 
-  @override
-  void dispose() {
-    _businessNameController.dispose();
-    _registryNumberController.dispose();
-    _ibanNumberController.dispose();
-    super.dispose();
-  }
-
-  void _checkIfAnyFieldHasText() {
-    final hasText = _businessNameController.text.trim().isNotEmpty ||
-        _registryNumberController.text.trim().isNotEmpty ||
-        _ibanNumberController.text.trim().isNotEmpty;
-
-    if (hasText != _hasTextInAnyField) {
-      setState(() {
-        _hasTextInAnyField = hasText;
-      });
-    }
-  }
-
-  Future<void> _fetchPaymentInformation() async {
     try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final result = await InfluencersService.getPaymentInformation();
+      print('💳 Opening Stripe dashboard...');
+      final result = await StripeService.getLoginLink();
 
       if (result['success'] == true) {
-        final data = result['data'];
+        final data = result['data'] as Map<String, dynamic>?;
+        final loginUrl = data?['loginUrl'] as String?;
 
-        // Populate the text fields with the fetched data (or empty if no data)
-        _businessNameController.text = data?['businessName'] ?? '';
-        _registryNumberController.text = data?['registryNumber'] ?? '';
-        _ibanNumberController.text = data?['IBAN'] ?? '';
-
-        // Store original values for change detection
-        _originalBusinessName = _businessNameController.text;
-        _originalRegistryNumber = _registryNumberController.text;
-        _originalIbanNumber = _ibanNumberController.text;
-
-        // Check if any field has text after populating
-        _checkIfAnyFieldHasText();
-
-        setState(() {
-          _isLoading = false;
-        });
+        if (loginUrl != null && loginUrl.isNotEmpty) {
+          print('🌐 Opening Stripe dashboard URL: $loginUrl');
+          final uri = Uri.parse(loginUrl);
+          
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+          } else {
+            print('❌ Cannot launch URL: $loginUrl');
+            TopNotificationService.showError(
+              context: context,
+              message: 'Cannot open Stripe dashboard',
+            );
+          }
+        } else {
+          print('❌ No login URL in response');
+          TopNotificationService.showError(
+            context: context,
+            message: 'Stripe dashboard link not available',
+          );
+        }
       } else {
-        // If API call fails, just show empty fields instead of error
-        _businessNameController.text = '';
-        _registryNumberController.text = '';
-        _ibanNumberController.text = '';
-
-        // Store original values for change detection
-        _originalBusinessName = _businessNameController.text;
-        _originalRegistryNumber = _registryNumberController.text;
-        _originalIbanNumber = _ibanNumberController.text;
-
-        _checkIfAnyFieldHasText();
-
-        setState(() {
-          _isLoading = false;
-        });
+        print('❌ Failed to get Stripe login link: ${result['message']}');
+        TopNotificationService.showError(
+          context: context,
+          message: result['message'] ?? 'Failed to open Stripe dashboard',
+        );
       }
     } catch (e) {
-      // If there's an error, just show empty fields instead of error state
-      _businessNameController.text = '';
-      _registryNumberController.text = '';
-      _ibanNumberController.text = '';
-
-      // Store original values for change detection
-      _originalBusinessName = _businessNameController.text;
-      _originalRegistryNumber = _registryNumberController.text;
-      _originalIbanNumber = _ibanNumberController.text;
-
-      _checkIfAnyFieldHasText();
-
+      print('❌ Error opening Stripe dashboard: $e');
+      TopNotificationService.showError(
+        context: context,
+        message: 'Error opening Stripe dashboard: ${e.toString()}',
+      );
+    } finally {
       setState(() {
         _isLoading = false;
       });
@@ -124,131 +78,73 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => PaymentInformationBloc(),
-      child: _PaymentInformationContent(
-        parentState: this,
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    if (_isLoading) {
-      return _buildShimmerContent();
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final brightness = Theme.of(context).brightness;
+    return Scaffold(
+      backgroundColor: AppTheme.getScaffoldBackground(brightness),
+      body: Stack(
         children: [
-          CustomTextField(
-            label: AppTranslations.getString(context, 'your_business_name'),
-            placeholder:
-                AppTranslations.getString(context, 'business_name_placeholder'),
-            controller: _businessNameController,
-            onChanged: (value) => _checkIfAnyFieldHasText(),
+          // TOP GREEN GLOW
+          Positioned(
+            top: -120,
+            left: -60,
+            right: -60,
+            child: IgnorePointer(
+              child: Container(
+                height: 280,
+                decoration: BoxDecoration(
+                  // soft radial green halo like the screenshot
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -0.6),
+                    radius: 0.8,
+                    colors: [
+                      AppTheme.greenPrimary.withOpacity(0.35),
+                      brightness == Brightness.dark
+                          ? AppTheme.transparentBackground
+                          : AppTheme.textWhite54,
+                    ],
+                    stops: const [0.0, 1.0],
+                  ),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'registry_number_rcs'),
-            placeholder: AppTranslations.getString(
-                context, 'registry_number_placeholder'),
-            controller: _registryNumberController,
-            onChanged: (value) => _checkIfAnyFieldHasText(),
+          // CONTENT
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: _buildContent(),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          CustomTextField(
-            label: AppTranslations.getString(context, 'iban_number'),
-            placeholder:
-                AppTranslations.getString(context, 'iban_number_placeholder'),
-            controller: _ibanNumberController,
-            onChanged: (value) => _checkIfAnyFieldHasText(),
-          ),
-          const SizedBox(height: 32),
-          _buildSaveButton(),
-          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildShimmerContent() {
-    return Shimmer.fromColors(
-      baseColor: AppTheme.getShimmerBase(Theme.of(context).brightness),
-      highlightColor:
-          AppTheme.getShimmerHighlight(Theme.of(context).brightness),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Business Name Field Shimmer
-            _buildShimmerTextField(),
-            const SizedBox(height: 20),
-
-            // Registry Number Field Shimmer
-            _buildShimmerTextField(),
-            const SizedBox(height: 20),
-
-            // IBAN Number Field Shimmer
-            _buildShimmerTextField(),
-            const SizedBox(height: 32),
-
-            // Save Button Shimmer
-            _buildShimmerButton(),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShimmerTextField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Label shimmer
-        Container(
-          height: 16,
-          width: 140,
-          decoration: BoxDecoration(
-            color: AppTheme.shimmerBaseMediumDark,
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Text field shimmer
-        Container(
-          height: 56,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppTheme.shimmerBaseMediumDark,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
-                  .withOpacity(0.3),
-              width: 1,
+  Widget _buildContent() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Stripe label
+          Text(
+            'Stripe',
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextPrimaryColor
+                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildShimmerButton() {
-    return Container(
-      height: 56,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppTheme.shimmerBaseMediumDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
-              .withOpacity(0.3),
-          width: 1,
-        ),
+          const SizedBox(height: 16),
+          // Open Stripe dashboard button
+          _buildStripeButton(),
+        ],
       ),
     );
   }
@@ -280,8 +176,7 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
                 LucideIcons.wallet,
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTheme.lightTextPrimaryColor
-                    : AppTheme.getTextPrimaryColor(
-                        Theme.of(context).brightness),
+                    : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                 size: 24,
               ),
               const SizedBox(width: 12),
@@ -290,8 +185,7 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
                 style: AppTheme.headingStyle.copyWith(
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTheme.lightTextPrimaryColor
-                      : AppTheme.getTextPrimaryColor(
-                          Theme.of(context).brightness),
+                      : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -303,199 +197,71 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
-    return BlocBuilder<PaymentInformationBloc, PaymentInformationState>(
-      builder: (context, state) {
-        final isLoading = state is PaymentInformationLoading;
-
-        return SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: isLoading ? null : () => _saveInformations(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).brightness == Brightness.light
-                  ? AppTheme.lightCardBackground
-                  : AppTheme.transparentBackground,
-              foregroundColor: Theme.of(context).brightness == Brightness.light
+  Widget _buildStripeButton() {
+    final brightness = Theme.of(context).brightness;
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _openStripeDashboard,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: brightness == Brightness.light
                   ? AppTheme.lightTextPrimaryColor
-                  : AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTheme.lightTextPrimaryColor
-                      : (_hasTextInAnyField
-                          ? AppTheme.getTextPrimaryColor(
-                              Theme.of(context).brightness)
-                          : AppTheme.getTextPrimaryColor(
-                                  Theme.of(context).brightness)
-                              .withOpacity(0.3)),
-                  width: _hasTextInAnyField ? 2 : 1,
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isLoading) ...[
-                  Builder(
-                    builder: (context) {
-                      final brightness = Theme.of(context).brightness;
-                      return SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: brightness == Brightness.light
-                              ? AppTheme.lightTextPrimaryColor
-                              : AppTheme.getTextPrimaryColor(brightness),
-                          strokeWidth: 2,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Text(
-                  isLoading
-                      ? 'Saving...'
-                      : AppTranslations.getString(context, 'save_informations'),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : (_hasTextInAnyField
-                            ? AppTheme.getTextPrimaryColor(
-                                Theme.of(context).brightness)
-                            : AppTheme.getTextPrimaryColor(
-                                    Theme.of(context).brightness)
-                                .withOpacity(0.7)),
-                  ),
-                ),
-              ],
+                  : Colors.transparent,
+              width: 1,
             ),
           ),
-        );
-      },
-    );
-  }
-
-  void _saveInformations(BuildContext context) {
-    print('💾 Saving payment information...');
-    print('Business Name: ${_businessNameController.text}');
-    print('Registry Number: ${_registryNumberController.text}');
-    print('IBAN Number: ${_ibanNumberController.text}');
-
-    // Check if there are any changes
-    if (!_hasChanges()) {
-      print('📝 No changes detected, showing message instead of API call');
-      TopNotificationService.showInfo(
-        context: context,
-        message: AppTranslations.getString(context, 'no_changes_made'),
-      );
-      return;
-    }
-
-    // Dispatch the update event to the BLoC
-    context.read<PaymentInformationBloc>().add(
-          UpdatePaymentInformation(
-            businessName: _businessNameController.text.trim(),
-            registryNumber: _registryNumberController.text.trim(),
-            iban: _ibanNumberController.text.trim(),
-          ),
-        );
-  }
-
-  void _resetButtonState() {
-    setState(() {
-      _hasTextInAnyField = false;
-    });
-
-    // Update original values to current values after successful save
-    _originalBusinessName = _businessNameController.text.trim();
-    _originalRegistryNumber = _registryNumberController.text.trim();
-    _originalIbanNumber = _ibanNumberController.text.trim();
-  }
-
-  bool _hasChanges() {
-    return _businessNameController.text.trim() != _originalBusinessName ||
-        _registryNumberController.text.trim() != _originalRegistryNumber ||
-        _ibanNumberController.text.trim() != _originalIbanNumber;
-  }
-}
-
-class _PaymentInformationContent extends StatelessWidget {
-  final _PaymentInformationScreenState parentState;
-
-  const _PaymentInformationContent({
-    required this.parentState,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<PaymentInformationBloc, PaymentInformationState>(
-      listener: (context, state) {
-        if (state is PaymentInformationSuccess) {
-          TopNotificationService.showSuccess(
-            context: context,
-            message: AppTranslations.getString(
-                context, 'payment_information_updated'),
-          );
-          // Reset the button state after successful save
-          parentState._resetButtonState();
-        } else if (state is PaymentInformationError) {
-          TopNotificationService.showError(
-            context: context,
-            message: state.message,
-          );
-        }
-      },
-      child: Scaffold(
-        backgroundColor:
-            AppTheme.getScaffoldBackground(Theme.of(context).brightness),
-        body: Stack(
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            // TOP GREEN GLOW
-            Positioned(
-              top: -120,
-              left: -60,
-              right: -60,
-              child: IgnorePointer(
-                child: Container(
-                  height: 280,
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: const Alignment(0, -0.6),
-                      radius: 0.8,
-                      colors: [
-                        AppTheme.greenPrimary.withOpacity(0.35),
-                        Theme.of(context).brightness == Brightness.dark
-                            ? AppTheme.transparentBackground
-                            : AppTheme.textWhite54,
-                      ],
-                      stops: const [0.0, 1.0],
-                    ),
+            // Stripe "S" logo
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Text(
+                  'S',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-            SafeArea(
-              child: GestureDetector(
-                onTap: () {
-                  // Close keyboard when tapping outside text fields
-                  FocusScope.of(context).unfocus();
-                },
-                child: Column(
-                  children: [
-                    parentState._buildHeader(),
-                    Expanded(
-                      child: parentState._buildContent(),
-                    ),
-                  ],
-                ),
+            const SizedBox(width: 12),
+            // Button text
+            Text(
+              _isLoading ? 'Loading...' : 'Open Stripe dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
               ),
             ),
+            if (_isLoading) ...[
+              const Spacer(),
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  color: Colors.black,
+                  strokeWidth: 2,
+                ),
+              ),
+            ],
           ],
         ),
       ),

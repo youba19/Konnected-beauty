@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -24,15 +23,14 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.transparentBackground,
-          foregroundColor: AppTheme.transparentBackground,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(
               horizontal: 12, vertical: 16), // Reduced from 20 to 12
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppTheme.textSecondaryColor),
           ),
-          elevation: 0,
+          elevation: 2,
         ),
         child: isLoading
             ? const SizedBox(
@@ -40,8 +38,7 @@ class CustomButton extends StatelessWidget {
                 width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppTheme.textPrimaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                 ),
               )
             : Row(
@@ -49,13 +46,17 @@ class CustomButton extends StatelessWidget {
                 children: [
                   Text(
                     text,
-                    style: TextStyle(color: AppTheme.textPrimaryColor),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(
                     width: 5,
                   ),
                   if (leadingIcon != null) ...[
-                    Icon(leadingIcon, size: 20),
+                    Icon(leadingIcon, color: Colors.black, size: 20),
                   ],
                 ],
               ),

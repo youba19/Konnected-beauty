@@ -89,6 +89,7 @@ class AppTranslations {
     'dark_mode': 'Mode sombre',
     'light_mode': 'Mode clair',
     'report': 'Nous contacter',
+    'reports': 'Rapports',
     'notifications': 'Notifications',
     'logout': 'Déconnexion',
     'are_you_sure_logout': 'Êtes-vous sûr de vouloir vous déconnecter ?',
@@ -106,6 +107,7 @@ class AppTranslations {
     'number_orders': 'N° Commandes',
     'from_last_month': 'Du mois dernier',
     'from_last_3_months': 'Depuis les 3 derniers mois',
+    'since': 'Depuis',
     'withdraw_history': 'Historique des retraits',
     'withdrawal_history': 'Historique des retraits',
     'view_reports': 'Voir les rapports',
@@ -263,6 +265,17 @@ class AppTranslations {
     'salon_address_placeholder': 'Entrez l\'adresse de votre établissement',
     'activity_domain': 'Domaine d\'activité du l\'établissement',
     'activity_domain_placeholder': 'Domaine d\'activité',
+    'domain_centre_beaute': 'Centre de beauté',
+    'domain_salon_coiffure': 'Salon de coiffure',
+    'domain_onglerie_manucure': 'Onglerie & Manucure',
+    'domain_maquillage_cils': 'Maquillage, Cils & Sourcils',
+    'domain_massage_relaxation': 'Massage & Relaxation',
+    'domain_sport_fitness': 'Sport & Fitness',
+    'domain_tatouage_piercing': 'Tatouage & Piercing',
+    'domain_photographe_videaste': 'Photographe & Vidéaste',
+    'domain_centres_specialises': 'Centres spécialisés',
+    'establishment_website': 'Site web de l\'établissement',
+    'establishment_website_placeholder': 'Entrez l\'URL de votre site web',
 
     // Salon Profile
     'salon_profile': 'Profil du l\'établissement',
@@ -374,12 +387,19 @@ class AppTranslations {
     'scan_qr_code': 'Scanner le code QR',
     'scan_instructions': 'Pointez la caméra vers le code QR du client',
     'scan_instructions_detail': 'Le code sera automatiquement scanné et traité',
+    'scan_reservations_qr_title': 'Scanner les réservations avec le code QR',
+    'scan_reservations_qr_subtitle':
+        'Scannez le code QR des réservations pour valider vos revenus',
     'initializing_camera': 'Initialisation de la caméra...',
     'opening_qr_scanner': 'Ouverture du scanner QR directement...',
     'open_camera_directly': 'Ouvrir la caméra directement',
     'go_back': 'Retour',
     'processing_voucher': 'Traitement du bon...',
     'voucher_scanned_successfully': 'Bon scanné avec succès',
+    'qr_scan_response_success': 'Succès',
+    'qr_scan_response_order_completed':
+        'Commande terminée et virements programmés',
+    'qr_scan_available_date': 'Date de disponibilité',
     'order_id_not_found': 'ID de commande non trouvé dans la réponse de scan',
     'failed_to_scan_voucher': 'Échec du scan du bon',
     'error_processing_qr_code':
@@ -409,6 +429,8 @@ class AppTranslations {
         'Merci de nous aider à nous assurer que nous récompensons ceux qui le méritent.',
     'filter_saloons': 'Filtrer l\'établissements',
     'filter_by_status': 'Filtrer par statut',
+    'filter_campaigns': 'Filtrer les campagnes',
+    'campaign_status': 'Statut de la campagne',
     'verified': 'Vérifié',
     'clear': 'Effacer',
     'apply': 'Appliquer',
@@ -490,22 +512,29 @@ class AppTranslations {
     'number_must_be_positive': 'Le nombre doit être positif',
 
     // Campaign Invite Dialog
-    'campaign_invite_title':
-        'Êtes-vous sûr de vouloir inviter cet ambassadeur et créer une campagne pour lui ?',
+    'campaign_invite_title': 'Créer une collaboration',
     'campaign_invite_instructions':
-        'Si oui, donnez-nous les détails nécessaires si vous avez des promotions ci-dessous.',
+        'Définissez les conditions de votre collaboration',
     'followers_promotion_value': 'Valeur de la promotion des abonnés',
     'commission_influencer': 'Commission ambassadeur',
     'commission_kbeauty': 'Commission Kbeauty',
+    'optional_collaboration_info':
+        'Offrir un soin ou accorder un tarif préférentiel à l\'ambassadeur est optionnel et peut faciliter la collaboration.',
+    'message_constraint_info':
+        'Un seul message est possible par demande de collaboration. Pour renvoyer un message, veuillez créer une nouvelle demande.',
     'select_type': 'Sélectionner le type',
     'promotion_value': 'Valeur de la promotion',
     'please_select_promotion_type':
         'Veuillez sélectionner le type de promotion',
     'please_enter_promotion_value': 'Veuillez entrer la valeur de la promotion',
     'create_campaign_invite': 'Créer une campagne et inviter',
+    'create_campaign': 'Créer une campagne.',
+    'create_campaign_description':
+        'Suggérez une collaboration et un pourcentage pour vos abonnés. L\'établissement confirmera.',
+    'commission_konnected': 'Commission Konnected',
     'campaign_created_successfully': 'Campagne créée avec succès !',
     'message_to_influencer': 'Message à l\'ambassadeur',
-    'message_placeholder': 'Écrivez votre message à l\'ambassadeur',
+    'message_placeholder': 'Ecrire un message à l\'ambassadeur',
     'please_enter_message': 'Veuillez entrer un message pour l\'ambassadeur',
     'message_min_length': 'Le message doit contenir au moins 10 caractères',
     'percentage_validation': 'Le pourcentage doit être entre 0 et 100',
@@ -518,18 +547,18 @@ class AppTranslations {
     'initializing': 'Initialisation...',
     'about': 'À propos',
     'no_bio_available': 'Aucune bio disponible',
-    'invite_for_campaign': 'Inviter pour une campagne',
-    'salon_invite_title':
-        'Êtes-vous sûr de vouloir inviter cet établissement et créer une campagne pour lui ?',
+    'invite_for_campaign': 'Inviter',
+    'salon_invite_title': 'Créer une collaboration',
     'salon_invite_instructions':
-        'Si oui, donnez-nous les détails nécessaires si vous avez des promotions ci-dessous.',
+        'Proposez une collaboration et un pourcentage pour vos abonnés. L\'établissement confirmera.',
     'your_commission': 'Votre commission',
     'offers_attractive_message':
         'Les offres autour de -15% sont souvent plus attractives et plus largement partagées.',
     'select_ambassadors_message':
         'Sélectionnez vos ambassadeurs et proposez une collaboration.',
     'message_to_salon': 'Message à l\'établissement',
-    'message_placeholder_salon': 'Écrivez votre message à l\'établissement',
+    'message_placeholder_salon':
+        'Présentez-vous et expliquez votre proposition de collaboration.',
     'information': 'Informations',
     'pseudo': 'Pseudo',
     'bio': 'Bio',
@@ -554,6 +583,8 @@ class AppTranslations {
         'Tous les établissements chargés ({loaded}/{total})',
     'saloon_name_default': 'Nom du l\'établissement',
     'saloon_domain_default': 'Domaine du l\'établissement',
+    'filter_by_domain': 'Filtrer par domaine',
+    'all_domains': 'Tous les domaines',
     'service_default': 'Service',
 
     // Salon Details Screen
@@ -628,6 +659,11 @@ class AppTranslations {
         'Êtes-vous sûr de vouloir accepter cette campagne ?',
     'confirm_refuse_campaign':
         'Êtes-vous sûr de vouloir refuser cette campagne ?',
+    'are_you_sure_refuse_campaign':
+        'Êtes-vous sûr de vouloir refuser cette campagne ?',
+    'no_going_back_warning':
+        'Il n\'y a pas de retour en arrière après avoir effectué cette action.',
+    'yes_refuse': 'Oui, Refuser',
     'confirm': 'Confirmer',
     'language': 'Langue',
     'no_orders_found': 'Aucune commande trouvée',
@@ -714,6 +750,36 @@ class AppTranslations {
         'Nous vous aiderons à activer votre compte rapidement !',
     'filter_by_zone': 'Filtrer par zone',
     'all_zones': 'Toutes les zones',
+    'salon_message': 'Message de l\'établissement',
+    'influencer_message': 'Message de l\'ambassadeur',
+    'reply_message': 'Message de réponse',
+    'reply': 'Répondre',
+    'send_reply': 'Envoyer la réponse',
+    'write_message': 'Écrivez votre message',
+    'reply_sent_successfully': 'Réponse envoyée avec succès',
+    'your_message': 'Votre message',
+    'write_message_refuse_offer':
+        'Écrivez votre message expliquant pourquoi vous avez refusé l\'offre',
+    'single_message_allowed':
+        'Un seul message est autorisé par demande de collaboration. Pour envoyer un autre message, veuillez créer une nouvelle demande.',
+    'refuse_and_send_message': 'Refuser et envoyer un message',
+    'stripe_payment_setup': 'Configuration des paiements Stripe',
+    'link_your_stripe': 'Lier votre Stripe',
+    'stripe_onboarding_description':
+        'Liez votre profil Stripe pour recevoir de l\'argent instantanément, lorsque la commande est achetée.',
+    'connect_with_stripe': 'Se connecter avec Stripe',
+    'start_stripe_onboarding': 'Commencer la configuration Stripe',
+    'open_stripe_onboarding': 'Ouvrir la configuration Stripe',
+    'complete_onboarding': 'J\'ai terminé la configuration',
+    'skip_for_now': 'Passer pour l\'instant',
+    'onboarding_link_ready': 'Lien de configuration prêt',
+    'click_button_below_to_open':
+        'Cliquez sur le bouton ci-dessous pour ouvrir la page de configuration Stripe dans votre navigateur.',
+    'registration_success': 'Inscription réussie',
+    'registration_failed': 'Échec de l\'inscription',
+    'registration_failed_message':
+        'Une erreur s\'est produite lors de la création de votre compte. Veuillez réessayer.',
+    'go_to_home': 'Aller à l\'accueil',
   };
 
   // English translations
@@ -783,6 +849,7 @@ class AppTranslations {
     'dark_mode': 'Dark Mode',
     'light_mode': 'Light Mode',
     'report': 'Contact Us',
+    'reports': 'Reports',
     'notifications': 'Notifications',
     'logout': 'Logout',
     'are_you_sure_logout': 'Are you sure you want to logout?',
@@ -801,6 +868,7 @@ class AppTranslations {
     'number_orders': 'N° Orders',
     'from_last_month': 'From last month',
     'from_last_3_months': 'From last 3 month',
+    'since': 'Since',
     'withdraw_history': 'Withdraw history',
     'withdrawal_history': 'Withdrawal history',
     'view_reports': 'View Reports',
@@ -935,6 +1003,17 @@ class AppTranslations {
     'salon_address_placeholder': 'Enter your establishment address',
     'activity_domain': 'Establishment domain of activity',
     'activity_domain_placeholder': 'Domain of activity',
+    'domain_centre_beaute': 'Beauty Center',
+    'domain_salon_coiffure': 'Hair Salon',
+    'domain_onglerie_manucure': 'Nail Art & Manicure',
+    'domain_maquillage_cils': 'Makeup, Lashes & Eyebrows',
+    'domain_massage_relaxation': 'Massage & Relaxation',
+    'domain_sport_fitness': 'Sport & Fitness',
+    'domain_tatouage_piercing': 'Tattoo & Piercing',
+    'domain_photographe_videaste': 'Photographer & Videographer',
+    'domain_centres_specialises': 'Specialized Centers',
+    'establishment_website': 'Establishment website',
+    'establishment_website_placeholder': 'Enter your website URL',
 
     // Salon Profile
     'salon_profile': 'Establishment Profile',
@@ -1043,12 +1122,19 @@ class AppTranslations {
     'scan_instructions': 'Point camera at client\'s QR code',
     'scan_instructions_detail':
         'Code will be automatically scanned and processed',
+    'scan_reservations_qr_title': 'Scan reservations with QR code',
+    'scan_reservations_qr_subtitle':
+        'Scan QR code of the reservations to validate your revenue',
     'initializing_camera': 'Initializing Camera...',
     'opening_qr_scanner': 'Opening QR scanner directly...',
     'open_camera_directly': 'Open Camera Directly',
     'go_back': 'Go Back',
     'processing_voucher': 'Processing voucher...',
     'voucher_scanned_successfully': 'Voucher scanned successfully',
+    'qr_scan_response_success': 'Success',
+    'qr_scan_response_order_completed':
+        'Order completed and transfers scheduled',
+    'qr_scan_available_date': 'Available date',
     'order_id_not_found': 'Order ID not found in scan response',
     'failed_to_scan_voucher': 'Failed to scan voucher',
     'error_processing_qr_code': 'Error processing QR code. Please try again.',
@@ -1076,6 +1162,8 @@ class AppTranslations {
         'Thank you for helping us, to make sure we rewards those who deserve it.',
     'filter_saloons': 'Filter Establishments',
     'filter_by_status': 'Filter by Status',
+    'filter_campaigns': 'Filter Campaigns',
+    'campaign_status': 'Campaign Status',
     'verified': 'Verified',
     'clear': 'Clear',
     'apply': 'Apply',
@@ -1168,22 +1256,28 @@ class AppTranslations {
     'number_must_be_positive': 'Number must be positive',
 
     // Campaign Invite Dialog
-    'campaign_invite_title':
-        'Are you sure you want to invite this influencer and create a campaign for it ?',
-    'campaign_invite_instructions':
-        'If yes, give us the details needed if you have promotions below.',
-    'followers_promotion_value': 'Followers promotion value',
-    'commission_influencer': 'Commission influencer',
+    'campaign_invite_title': 'Create a collaboration',
+    'campaign_invite_instructions': 'Define the terms of your collaboration',
+    'followers_promotion_value': 'Subscriber promotion value',
+    'commission_influencer': 'Ambassador commission',
     'commission_kbeauty': 'Commission Kbeauty',
+    'optional_collaboration_info':
+        'Offering a treatment or granting a preferential rate to the ambassador is optional and can facilitate collaboration.',
+    'message_constraint_info':
+        'Only one message is possible per collaboration request. To resend a message, please create a new request.',
     'promotion_type': 'Promotion type',
     'select_type': 'Select type',
     'promotion_value': 'Promotion value',
     'please_select_promotion_type': 'Please select promotion type',
     'please_enter_promotion_value': 'Please enter promotion value',
     'create_campaign_invite': 'Create campaign & invite',
+    'create_campaign': 'Create a campaign.',
+    'create_campaign_description':
+        'Suggest a collaboration and a percentage for your followers. The establishment will confirm.',
+    'commission_konnected': 'Commission Konnected',
     'campaign_created_successfully': 'Campaign created successfully!',
     'message_to_influencer': 'Message to ambassador',
-    'message_placeholder': 'Write your message to the influencer',
+    'message_placeholder': 'Message to ambassador',
     'please_enter_message': 'Please enter a message for the ambassador',
     'message_min_length': 'Message must be at least 10 characters long',
     'percentage_validation': 'Percentage must be between 0 and 100',
@@ -1196,18 +1290,18 @@ class AppTranslations {
     'initializing': 'Initializing...',
     'about': 'About',
     'no_bio_available': 'No bio available',
-    'invite_for_campaign': 'Invite for a campaign',
-    'salon_invite_title':
-        'Are you sure you want to invite this saloon and create a campaign for it ?',
+    'invite_for_campaign': 'Invite',
+    'salon_invite_title': 'Create a collaboration',
     'salon_invite_instructions':
-        'If yes, give us the details needed if you have promotions below.',
+        'Propose a collaboration and a percentage for your subscribers. The establishment will confirm.',
     'your_commission': 'Your Commission',
     'offers_attractive_message':
         'Offers around -15% are often more attractive and more widely shared.',
     'select_ambassadors_message':
         'Select your ambassadors and propose a collaboration',
     'message_to_salon': 'Message to salon',
-    'message_placeholder_salon': 'Write your message to the salon',
+    'message_placeholder_salon':
+        'Introduce yourself and explain your collaboration proposal.',
     'information': 'Information',
     'zone': 'Zone',
     'pseudo': 'Pseudo',
@@ -1230,6 +1324,8 @@ class AppTranslations {
     'saloons_loaded_count': 'All saloons loaded ({loaded}/{total})',
     'saloon_name_default': 'Establishment name',
     'saloon_domain_default': 'Establishment domain',
+    'filter_by_domain': 'Filter by Domain',
+    'all_domains': 'All Domains',
     'service_default': 'Service',
 
     // Salon Details Screen
@@ -1302,6 +1398,11 @@ class AppTranslations {
     'on_going_status': 'On going',
     'confirm_accept_campaign': 'Are you sure you want to accept this campaign?',
     'confirm_refuse_campaign': 'Are you sure you want to refuse this campaign?',
+    'are_you_sure_refuse_campaign':
+        'Are you sure you want to refuse this campaign?',
+    'no_going_back_warning':
+        'There is no going back after running this action.',
+    'yes_refuse': 'Yes, Refuse',
     'confirm': 'Confirm',
     'wait': 'Wait',
     'Waiting_for_Saloon': 'Waiting for Establishment',
@@ -1358,6 +1459,19 @@ class AppTranslations {
     'all': 'All',
     'pending_withdrawal_request':
         'You have a pending withdrawal request. Please wait for it to be processed.',
+    'salon_message': 'Saloon message',
+    'influencer_message': 'Ambassador message',
+    'reply_message': 'Reply message',
+    'reply': 'Reply',
+    'send_reply': 'Send Reply',
+    'write_message': 'Write your message',
+    'reply_sent_successfully': 'Reply sent successfully',
+    'your_message': 'Your message',
+    'write_message_refuse_offer':
+        'Write your message why you refused the offer',
+    'single_message_allowed':
+        'A single message is allowed per collaboration request. To send another message, please create a new request.',
+    'refuse_and_send_message': 'Refuse & Send a message',
 
     'no_withdrawal_history': 'No Withdrawal History',
     'no_withdrawal_history_message':
@@ -1384,5 +1498,22 @@ class AppTranslations {
     'end_date': 'End Date',
     'select_start_date': 'Select start date',
     'select_end_date': 'Select end date',
+    'stripe_payment_setup': 'Stripe Payment Setup',
+    'link_your_stripe': 'Link your Stripe',
+    'stripe_onboarding_description':
+        'Link your stripe profile to receive money instantly, when the order is purchased.',
+    'connect_with_stripe': 'Connect with Stripe',
+    'start_stripe_onboarding': 'Start Stripe Setup',
+    'open_stripe_onboarding': 'Open Stripe Setup',
+    'complete_onboarding': 'I\'ve Completed Setup',
+    'skip_for_now': 'Skip for Now',
+    'onboarding_link_ready': 'Onboarding Link Ready',
+    'click_button_below_to_open':
+        'Click the button below to open the Stripe setup page in your browser.',
+    'registration_success': 'Registration Successful',
+    'registration_failed': 'Registration Failed',
+    'registration_failed_message':
+        'An error occurred while creating your account. Please try again.',
+    'go_to_home': 'Go to Home',
   };
 }
