@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/api/stripe_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
+import '../../../auth/presentation/pages/stripe_onboarding_webview_screen.dart';
 
 class PaymentInformationScreen extends StatefulWidget {
   const PaymentInformationScreen({super.key});
@@ -17,8 +17,8 @@ class PaymentInformationScreen extends StatefulWidget {
 class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
   bool _isLoading = false;
 
-
-  Future<void> _openStripeDashboard() async {
+  /// Same flow as influencer registration Stripe step: POST /stripe/express/onboard + in-app WebView.
+  Future<void> _startStripeExpressOnboarding() async {
     if (_isLoading) return;
 
     setState(() {
@@ -26,53 +26,79 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
     });
 
     try {
-      print('💳 Opening Stripe dashboard...');
-      final result = await StripeService.getLoginLink();
+      print('💳 Payment info: creating Stripe Express onboarding link...');
+      final result = await StripeService.createOnboardingLink();
+
+      if (!mounted) return;
 
       if (result['success'] == true) {
         final data = result['data'] as Map<String, dynamic>?;
-        final loginUrl = data?['loginUrl'] as String?;
+        final onboardingUrl = data?['onboardingUrl'] as String?;
+        final accountId = data?['accountId'] as String?;
 
-        if (loginUrl != null && loginUrl.isNotEmpty) {
-          print('🌐 Opening Stripe dashboard URL: $loginUrl');
-          final uri = Uri.parse(loginUrl);
-          
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(
-              uri,
-              mode: LaunchMode.externalApplication,
-            );
-          } else {
-            print('❌ Cannot launch URL: $loginUrl');
-            TopNotificationService.showError(
-              context: context,
-              message: 'Cannot open Stripe dashboard',
-            );
-          }
+        if (onboardingUrl != null && onboardingUrl.isNotEmpty) {
+          final parentContext = context;
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (ctx) => StripeOnboardingWebViewScreen(
+                onboardingUrl: onboardingUrl,
+                accountId: accountId,
+                onSuccess: () {
+                  if (!parentContext.mounted) return;
+                  TopNotificationService.showSuccess(
+                    context: parentContext,
+                    message: AppTranslations.getString(
+                      parentContext,
+                      'stripe_setup_complete_success',
+                    ),
+                  );
+                },
+                onFailure: () {
+                  if (!parentContext.mounted) return;
+                  TopNotificationService.showError(
+                    context: parentContext,
+                    message: AppTranslations.getString(
+                      parentContext,
+                      'stripe_onboarding_incomplete',
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
         } else {
-          print('❌ No login URL in response');
           TopNotificationService.showError(
             context: context,
-            message: 'Stripe dashboard link not available',
+            message: AppTranslations.getString(
+              context,
+              'stripe_onboarding_link_missing',
+            ),
           );
         }
       } else {
-        print('❌ Failed to get Stripe login link: ${result['message']}');
         TopNotificationService.showError(
           context: context,
-          message: result['message'] ?? 'Failed to open Stripe dashboard',
+          message: result['message']?.toString() ??
+              AppTranslations.getString(
+                context,
+                'stripe_onboarding_link_missing',
+              ),
         );
       }
     } catch (e) {
-      print('❌ Error opening Stripe dashboard: $e');
-      TopNotificationService.showError(
-        context: context,
-        message: 'Error opening Stripe dashboard: ${e.toString()}',
-      );
+      print('❌ Error starting Stripe onboarding: $e');
+      if (mounted) {
+        TopNotificationService.showError(
+          context: context,
+          message: e.toString(),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -141,8 +167,17 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
               fontWeight: FontWeight.w400,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            AppTranslations.getString(context, 'stripe_onboarding_description'),
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTheme.lightTextSecondaryColor
+                  : AppTheme.textSecondaryColor,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(height: 16),
-          // Open Stripe dashboard button
           _buildStripeButton(),
         ],
       ),
@@ -202,7 +237,7 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _openStripeDashboard,
+        onPressed: _isLoading ? null : _startStripeExpressOnboarding,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
@@ -242,9 +277,10 @@ class _PaymentInformationScreenState extends State<PaymentInformationScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            // Button text
             Text(
-              _isLoading ? 'Loading...' : 'Open Stripe dashboard',
+              _isLoading
+                  ? AppTranslations.getString(context, 'loading')
+                  : AppTranslations.getString(context, 'connect_with_stripe'),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,

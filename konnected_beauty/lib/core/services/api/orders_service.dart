@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class OrdersService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Fetch orders for a specific campaign with filtering
   static Future<Map<String, dynamic>> getOrders({

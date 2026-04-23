@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'http_interceptor.dart';
 import '../storage/token_storage_service.dart';
+import '../../config/api_base_url.dart';
+import '../../utils/stripe_link_error.dart';
 
 class InviteSalonService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Invite salon for campaign
   static Future<Map<String, dynamic>> inviteSalon({
@@ -55,7 +57,22 @@ class InviteSalonService {
       print('📥 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
+        final responseData = json.decode(response.body) as Map<String, dynamic>;
+        // Some APIs return HTTP 200 with an error payload (e.g. statusCode 499 in body).
+        final bodyCode = StripeLinkError.parseStatusCode(responseData['statusCode']);
+        final bodyMessage = StripeLinkError.messageFrom(responseData);
+        if (bodyCode == 499 ||
+            StripeLinkError.isAccountNotLinked(bodyMessage, bodyCode)) {
+          print('❌ Invite blocked: Stripe account not linked (body)');
+          return {
+            'success': false,
+            'message': bodyMessage.isNotEmpty
+                ? bodyMessage
+                : 'Stripe account id not linked',
+            'statusCode': bodyCode ?? 499,
+            'stripeAccountNotLinked': true,
+          };
+        }
         print('✅ Invitation sent successfully');
         return {
           'success': true,
@@ -64,12 +81,19 @@ class InviteSalonService {
           'statusCode': response.statusCode,
         };
       } else {
-        final errorData = json.decode(response.body);
-        print('❌ Failed to send invitation: ${errorData['message']}');
+        final errorData =
+            json.decode(response.body) as Map<String, dynamic>;
+        final msg = StripeLinkError.messageFrom(errorData);
+        final bodyCode = StripeLinkError.parseStatusCode(errorData['statusCode']);
+        final effectiveCode = bodyCode ?? response.statusCode;
+        final stripeNotLinked = effectiveCode == 499 ||
+            StripeLinkError.isAccountNotLinked(msg, effectiveCode);
+        print('❌ Failed to send invitation: $msg');
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Failed to send invitation',
-          'statusCode': response.statusCode,
+          'message': msg.isNotEmpty ? msg : 'Failed to send invitation',
+          'statusCode': effectiveCode,
+          'stripeAccountNotLinked': stripeNotLinked,
         };
       }
     } catch (e) {

@@ -17,6 +17,7 @@ import '../../../../widgets/common/top_notification_banner.dart';
 import 'welcome_screen.dart';
 import 'stripe_onboarding_webview_screen.dart';
 import 'registration_success_screen.dart';
+import '../../../influencer/presentation/pages/influencer_home_screen.dart';
 
 class InfluencerRegistrationScreen extends StatefulWidget {
   final InfluencerRegistrationBloc? existingBloc;
@@ -581,7 +582,21 @@ class _InfluencerRegistrationScreenState
                   print('💬 Success Message: ${state.successMessage}');
                   print('🎯 Navigating to step: ${state.currentStep}');
 
-                  // Check if this is the final success (after Stripe onboarding)
+                  // Stripe skipped: go straight to influencer home
+                  if (state.successMessage == 'stripe_onboarding_skipped') {
+                    print(
+                        '🏠 === STRIPE SKIPPED - NAVIGATING TO INFLUENCER HOME ===');
+                    if (!context.mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const InfluencerHomeScreen(),
+                      ),
+                      (route) => false,
+                    );
+                    return;
+                  }
+
+                  // Final success (after Stripe onboarding completed)
                   if (state.successMessage == 'Account created successfully!') {
                     print(
                         '🎉 === REGISTRATION COMPLETE - NAVIGATING TO SUCCESS SCREEN ===');
@@ -1551,7 +1566,30 @@ class _InfluencerRegistrationScreenState
           });
         }
 
-        return _buildConnectStripeButton(context, state);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildConnectStripeButton(context, state),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: state.isLoading
+                  ? null
+                  : () {
+                      context
+                          .read<InfluencerRegistrationBloc>()
+                          .add(SkipStripeOnboarding());
+                    },
+              child: Text(
+                AppTranslations.getString(context, 'skip_for_now'),
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
       default:
         return const SizedBox.shrink();
     }

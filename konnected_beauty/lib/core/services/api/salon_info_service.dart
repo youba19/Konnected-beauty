@@ -5,9 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../storage/token_storage_service.dart';
 import 'salon_auth_service.dart';
+import '../../config/api_base_url.dart';
 
 class SalonInfoService {
-  static const String _baseUrl = 'https://server.konectedbeauty.com';
+  static String get _baseUrl => ApiBaseUrl.value;
 
   // Get salon info
   Future<Map<String, dynamic>> getSalonInfo() async {

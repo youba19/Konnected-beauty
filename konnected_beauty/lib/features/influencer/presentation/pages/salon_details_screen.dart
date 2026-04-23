@@ -14,6 +14,7 @@ import '../../../../core/bloc/invite_salon/invite_salon_event.dart';
 import '../../../../core/bloc/invite_salon/invite_salon_state.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'influencer_service_details_screen.dart';
+import 'payment_information_screen.dart';
 
 class SalonDetailsScreen extends StatefulWidget {
   final String salonId;
@@ -642,10 +643,14 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
                 context, 'invitation_sent_successfully'),
           );
         } else if (state is InviteSalonError) {
-          TopNotificationService.showError(
-            context: context,
-            message: state.message,
-          );
+          if (state.stripeAccountNotLinked) {
+            _showStripeLinkRequiredDialog(context);
+          } else {
+            TopNotificationService.showError(
+              context: context,
+              message: state.message,
+            );
+          }
         }
       },
       child: BlocBuilder<InviteSalonBloc, InviteSalonState>(
@@ -819,6 +824,142 @@ class _SalonDetailsScreenState extends State<SalonDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showStripeLinkRequiredDialog(BuildContext dialogContext) {
+    showDialog<void>(
+      context: dialogContext,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        final brightness = Theme.of(ctx).brightness;
+        final isLight = brightness == Brightness.light;
+        final surface = AppTheme.getCardBackground(brightness);
+        final titleColor = AppTheme.getTextPrimaryColor(brightness);
+        final bodyColor = AppTheme.getTextSecondaryColor(brightness);
+        final iconColor = AppTheme.getTextPrimaryColor(brightness);
+        final primaryBg = isLight
+            ? AppTheme.lightTextPrimaryColor
+            : AppTheme.accentColor;
+        final primaryFg = isLight
+            ? AppTheme.accentColor
+            : AppTheme.lightTextPrimaryColor;
+        final cancelBorder = AppTheme.getBorderColor(brightness);
+
+        return Dialog(
+          backgroundColor: surface,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isLight ? cancelBorder : Colors.transparent,
+              width: isLight ? 1 : 0,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  LucideIcons.unlink,
+                  color: iconColor,
+                  size: 40,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  AppTranslations.getString(
+                    ctx,
+                    'stripe_not_linked_invite_title',
+                  ),
+                  style: AppTheme.applyPoppins(
+                    TextStyle(
+                      color: titleColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  AppTranslations.getString(
+                    ctx,
+                    'stripe_not_linked_invite_body',
+                  ),
+                  style: AppTheme.applyPoppins(
+                    TextStyle(
+                      color: bodyColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(dialogContext).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const PaymentInformationScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBg,
+                      foregroundColor: primaryFg,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      AppTranslations.getString(ctx, 'link_stripe'),
+                      style: AppTheme.applyPoppins(
+                        TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: primaryFg,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: titleColor,
+                      side: BorderSide(color: cancelBorder, width: 1),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      AppTranslations.getString(ctx, 'cancel'),
+                      style: AppTheme.applyPoppins(
+                        TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: titleColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

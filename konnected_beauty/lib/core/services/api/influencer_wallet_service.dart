@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'http_interceptor.dart';
+import '../../config/api_base_url.dart';
 
 class InfluencerWalletService {
-  static const String baseUrl = 'https://server.konectedbeauty.com';
+  static String get baseUrl => ApiBaseUrl.value;
 
   /// Get influencer wallet balance
   static Future<Map<String, dynamic>> getBalance() async {

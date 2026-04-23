@@ -773,6 +773,17 @@ class AppTranslations {
     'complete_onboarding': 'J\'ai terminé la configuration',
     'skip_for_now': 'Passer pour l\'instant',
     'onboarding_link_ready': 'Lien de configuration prêt',
+    'stripe_setup_complete_success':
+        'Votre compte Stripe est configuré avec succès.',
+    'stripe_onboarding_incomplete':
+        'Configuration Stripe incomplète. Veuillez réessayer.',
+    'stripe_onboarding_link_missing':
+        'Lien Stripe indisponible. Veuillez réessayer.',
+    'stripe_not_linked_invite_title':
+        'Vous n\'avez pas encore lié votre compte Stripe !',
+    'stripe_not_linked_invite_body':
+        'Cette campagne sera créée après avoir lié votre compte Stripe à votre profil.',
+    'link_stripe': 'Lier Stripe',
     'click_button_below_to_open':
         'Cliquez sur le bouton ci-dessous pour ouvrir la page de configuration Stripe dans votre navigateur.',
     'registration_success': 'Inscription réussie',
@@ -1508,6 +1519,17 @@ class AppTranslations {
     'complete_onboarding': 'I\'ve Completed Setup',
     'skip_for_now': 'Skip for Now',
     'onboarding_link_ready': 'Onboarding Link Ready',
+    'stripe_setup_complete_success':
+        'Your Stripe account was set up successfully.',
+    'stripe_onboarding_incomplete':
+        'Stripe setup was not completed. Please try again.',
+    'stripe_onboarding_link_missing':
+        'Stripe link unavailable. Please try again.',
+    'stripe_not_linked_invite_title':
+        'You didn\'t link your Stripe account yet !',
+    'stripe_not_linked_invite_body':
+        'This campaign will be created after you link your Stripe account to your profile.',
+    'link_stripe': 'Link Stripe',
     'click_button_below_to_open':
         'Click the button below to open the Stripe setup page in your browser.',
     'registration_success': 'Registration Successful',
