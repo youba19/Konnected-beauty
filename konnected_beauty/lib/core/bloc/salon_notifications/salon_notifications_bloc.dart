@@ -59,6 +59,28 @@ class SalonNotificationsBloc
     on<MarkSalonNotificationAsViewed>(_onMarkNotificationAsViewed);
   }
 
+  static DateTime _notificationDate(Map<String, dynamic> notification) {
+    for (final key in const ['createdAt', 'created_at', 'updatedAt', 'updated_at']) {
+      final raw = notification[key];
+      if (raw == null) continue;
+      if (raw is DateTime) return raw;
+      if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+      if (raw is num) {
+        return DateTime.fromMillisecondsSinceEpoch(raw.toInt());
+      }
+      final parsed = DateTime.tryParse(raw.toString());
+      if (parsed != null) return parsed;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static List<Map<String, dynamic>> _sortNewestFirst(
+    List<Map<String, dynamic>> notifications,
+  ) {
+    return List<Map<String, dynamic>>.from(notifications)
+      ..sort((a, b) => _notificationDate(b).compareTo(_notificationDate(a)));
+  }
+
   Future<void> _onLoadNotifications(
     LoadSalonNotifications event,
     Emitter<SalonNotificationsState> emit,
@@ -86,22 +108,23 @@ class SalonNotificationsBloc
                 ?.map((item) => item as Map<String, dynamic>)
                 .toList() ??
             [];
+        final sortedNotifications = _sortNewestFirst(notifications);
 
         // Debug: Print full response structure
         print('🔔 === FULL API RESPONSE DEBUG ===');
         print('🔔 Complete result: $result');
-        print('🔔 Data list: $notifications');
-        if (notifications.isNotEmpty) {
-          print('🔔 First notification: ${notifications[0]}');
+        print('🔔 Data list: $sortedNotifications');
+        if (sortedNotifications.isNotEmpty) {
+          print('🔔 First notification: ${sortedNotifications[0]}');
           print(
-              '🔔 First notification keys: ${notifications[0].keys.toList()}');
+              '🔔 First notification keys: ${sortedNotifications[0].keys.toList()}');
           print(
-              '🔔 First notification operationId: ${notifications[0]['operationId']}');
+              '🔔 First notification operationId: ${sortedNotifications[0]['operationId']}');
         }
         print('🔔 === END FULL API RESPONSE DEBUG ===');
 
         emit(SalonNotificationsLoaded(
-          notifications: notifications,
+          notifications: sortedNotifications,
           currentPage: result['currentPage'] ?? 1,
           totalPages: result['totalPages'] ?? 1,
           total: result['total'] ?? 0,

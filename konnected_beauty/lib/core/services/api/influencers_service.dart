@@ -1695,4 +1695,69 @@ class InfluencersService {
       };
     }
   }
+
+  /// Update a pending campaign promotion value.
+  static Future<Map<String, dynamic>> updateCampaignPromotion({
+    required String campaignId,
+    required int promotion,
+    required String promotionType,
+    bool influencerCampaign = false,
+  }) async {
+    try {
+      print('💰 === UPDATING CAMPAIGN PROMOTION ===');
+      print('💰 Campaign ID: $campaignId');
+      print('💰 Promotion: $promotion');
+      print('💰 Promotion Type: $promotionType');
+      print('💰 Campaign Sender Type: ${influencerCampaign ? 'influencer' : 'salon'}');
+
+      final Map<String, dynamic> body = {
+        'promotion': promotion,
+      };
+
+      final response = await HttpInterceptor.authenticatedRequest(
+        method: 'PATCH',
+        endpoint: influencerCampaign
+            ? '/campaign/influencer-campaign/$campaignId/promotion'
+            : '/campaign/salon-campaign/$campaignId/promotion',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: body,
+      );
+
+      print('💰 Response Status: ${response.statusCode}');
+      print('💰 Response Body: ${response.body}');
+
+      Map<String, dynamic> responseData = {};
+      if (response.body.isNotEmpty) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          responseData = decoded;
+        }
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Campaign value updated',
+          'data': responseData['data'] ?? responseData,
+          'statusCode': response.statusCode,
+        };
+      }
+
+      return {
+        'success': false,
+        'message': responseData['message'] ?? 'Failed to update campaign value',
+        'statusCode': response.statusCode,
+      };
+    } catch (e) {
+      print('❌ Error in updateCampaignPromotion: $e');
+      return {
+        'success': false,
+        'message': 'Error updating campaign value: $e',
+        'statusCode': 500,
+      };
+    }
+  }
 }

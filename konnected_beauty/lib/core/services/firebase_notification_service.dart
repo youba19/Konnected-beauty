@@ -585,6 +585,34 @@ class FirebaseNotificationService {
     print('🔔 === END CONFIGURING MESSAGE HANDLERS ===');
   }
 
+  /// True when [message.data] identifies the sender as the logged-in user.
+  ///
+  /// Backend should not target the author’s device; this only suppresses the
+  /// **foreground** local notification when the payload includes a sender id.
+  /// (Background system notifications still require a server-side fix.)
+  Future<bool> _fcmPayloadIsFromCurrentUser(RemoteMessage message) async {
+    final data = message.data;
+    if (data.isEmpty) return false;
+
+    final raw = data['senderId'] ??
+        data['sender_id'] ??
+        data['fromUserId'] ??
+        data['from_user_id'];
+    if (raw == null || raw.toString().isEmpty) return false;
+    final senderId = raw.toString();
+
+    final userInfo = await TokenStorageService.getUserInfoFromToken();
+    if (userInfo == null) return false;
+
+    bool matches(String? v) => v != null && v.isNotEmpty && v == senderId;
+
+    if (matches(userInfo['id']?.toString())) return true;
+    if (matches(userInfo['salonId']?.toString())) return true;
+    if (matches(userInfo['influencerId']?.toString())) return true;
+
+    return false;
+  }
+
   /// Handle foreground messages (app is open)
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     print('📨 === HANDLING FOREGROUND MESSAGE ===');
@@ -594,6 +622,12 @@ class FirebaseNotificationService {
     print('📨 Data: ${message.data}');
     print('📨 Notification: ${message.notification}');
     print('📨 === END FOREGROUND MESSAGE ===');
+
+    if (await _fcmPayloadIsFromCurrentUser(message)) {
+      print(
+          'ℹ️ Skipping foreground notification: sender matches current user (see FCM data keys: senderId, sender_id, fromUserId)');
+      return;
+    }
 
     // Show local notification when app is in foreground
     try {
@@ -783,7 +817,7 @@ class FirebaseNotificationService {
 
         if (result['success'] == true) {
           print('✅ FCM token auto-registered successfully');
-        } else {
+        } else if (result['offline'] != true) {
           print('❌ Failed to auto-register FCM token: ${result['message']}');
         }
       } else {
@@ -791,7 +825,9 @@ class FirebaseNotificationService {
         print('ℹ️ Token will be registered after login');
       }
     } catch (e) {
-      print('❌ Error auto-registering FCM token: $e');
+      if (!HttpInterceptor.isTransientNetworkError(e)) {
+        print('❌ Error auto-registering FCM token: $e');
+      }
       // Don't throw - this is a background operation
     }
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
 
 class TopNotificationBanner extends StatelessWidget {
   final String message;
@@ -70,6 +69,56 @@ class TopNotificationBanner extends StatelessWidget {
 }
 
 class TopNotificationService {
+  /// Hides stack traces, HTTP client dumps, and OS error details from the top banner.
+  static String sanitizeNotificationMessage(String message) {
+    final t = message.trim();
+    if (t.isEmpty) return 'Something went wrong.';
+
+    final lower = t.toLowerCase();
+    const technicalHints = [
+      'clientexception',
+      'socketexception',
+      'httpexception',
+      'formatexception',
+      'platformexception',
+      'dart:',
+      'package:',
+      'stack trace',
+      'stacktrace',
+      '#0      ',
+      '#1      ',
+      'failed assertion',
+      'uri=http',
+      'uri: http',
+      'os error',
+      'errno =',
+      'connection failed',
+      'handshakeexception',
+      'tlsexception',
+      'certificateexception',
+    ];
+    final looksTechnical = technicalHints.any(lower.contains);
+
+    if (looksTechnical) {
+      if (lower.contains('network is unreachable') ||
+          lower.contains('network unreachable') ||
+          lower.contains('failed host lookup') ||
+          lower.contains('no address associated') ||
+          lower.contains('connection refused') ||
+          lower.contains('timed out') ||
+          lower.contains('connection reset')) {
+        return 'No internet connection. Check your network and try again.';
+      }
+      return 'Something went wrong. Please try again.';
+    }
+
+    const maxLen = 200;
+    if (t.length > maxLen) {
+      return '${t.substring(0, maxLen - 1).trimRight()}…';
+    }
+    return t;
+  }
+
   static void show({
     required BuildContext context,
     required String message,
@@ -79,10 +128,11 @@ class TopNotificationService {
     IconData? icon,
   }) {
     final overlay = Overlay.of(context);
+    final displayMessage = sanitizeNotificationMessage(message);
 
     final entry = OverlayEntry(
       builder: (context) => TopNotificationBanner(
-        message: message,
+        message: displayMessage,
         backgroundColor: backgroundColor,
         duration: duration,
         onDismiss: onDismiss,

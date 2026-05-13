@@ -1,0 +1,84 @@
+import 'dart:convert';
+
+import '../../models/campaign_chat_message.dart';
+import 'http_interceptor.dart';
+
+class CampaignMessagesService {
+  /// GET [ApiBaseUrl.value]/campaign-messages/campaign/:campaignId
+  /// Fetches all pages when the API returns [totalPages] > 1.
+  static Future<Map<String, dynamic>> getCampaignMessages({
+    required String campaignId,
+    int limit = 100,
+  }) async {
+    if (campaignId.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Campaign ID is required',
+        'data': <CampaignChatMessageItem>[],
+      };
+    }
+
+    try {
+      final all = <CampaignChatMessageItem>[];
+      var page = 1;
+      var totalPages = 1;
+
+      do {
+        final response = await HttpInterceptor.authenticatedRequest(
+          method: 'GET',
+          endpoint: '/campaign-messages/campaign/$campaignId',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          queryParameters: {
+            'page': '$page',
+            'limit': '$limit',
+          },
+        );
+
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          return {
+            'success': false,
+            'message': 'Failed to load messages (${response.statusCode})',
+            'data': all,
+            'statusCode': response.statusCode,
+          };
+        }
+
+        final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawList = responseData['data'];
+
+        final tp = responseData['totalPages'];
+        if (tp is int) {
+          totalPages = tp;
+        } else {
+          totalPages = int.tryParse(tp?.toString() ?? '1') ?? 1;
+        }
+
+        if (rawList is List) {
+          for (final e in rawList) {
+            final m = CampaignChatMessageItem.tryParse(e);
+            if (m != null) all.add(m);
+          }
+        }
+
+        page++;
+      } while (page <= totalPages && page <= 100);
+
+      return {
+        'success': true,
+        'message': 'success',
+        'data': all,
+        'total': all.length,
+        'statusCode': 200,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': e.toString(),
+        'data': <CampaignChatMessageItem>[],
+      };
+    }
+  }
+}

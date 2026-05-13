@@ -4,11 +4,10 @@ class ApiBaseUrl {
   ApiBaseUrl._();
 
   /// TEMPORARY — set to `false` when pointing back to production.
-  static const bool useDevTunnel = false;
+  static const bool useDevTunnel = true;
 
   static const String _production = 'https://server.konectedbeauty.com';
-  static const String _devTunnel =
-      'https://5326-105-235-131-197.ngrok-free.app';
+  static const String _devTunnel = 'http://147.79.118.43:3001';
 
   static String get value => useDevTunnel ? _devTunnel : _production;
 

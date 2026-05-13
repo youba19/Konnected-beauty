@@ -8,6 +8,29 @@ import '../../config/api_base_url.dart';
 class HttpInterceptor {
   static String get baseUrl => ApiBaseUrl.value;
 
+  /// Offline / transport failures where a full stack trace in logs is not useful.
+  static bool isTransientNetworkError(Object error) {
+    if (error is http.ClientException) return true;
+    final s = error.toString().toLowerCase();
+    const hints = [
+      'socketexception',
+      'network is unreachable',
+      'network unreachable',
+      'failed host lookup',
+      'connection refused',
+      'connection reset',
+      'connection timed out',
+      'timed out',
+      'connection closed',
+      'errno = 51',
+      'errno = 50',
+      'no address associated with hostname',
+      'host lookup failed',
+      'software caused connection abort',
+    ];
+    return hints.any(s.contains);
+  }
+
   /// Intercept HTTP requests and automatically handle token refresh
   static Future<http.Response> interceptRequest(
     Future<http.Response> Function() request,
@@ -60,7 +83,9 @@ class HttpInterceptor {
           '🔍 HTTP Interceptor: Retry response status: ${retryResponse.statusCode}');
       return retryResponse;
     } catch (e) {
-      print('❌ HTTP Interceptor error: $e');
+      if (!isTransientNetworkError(e)) {
+        print('❌ HTTP Interceptor error: $e');
+      }
       rethrow;
     }
   }
@@ -326,9 +351,12 @@ class HttpInterceptor {
     required String userRole,
   }) async {
     try {
+      final tokenPreview = token.length <= 16
+          ? token
+          : '${token.substring(0, 12)}...${token.substring(token.length - 8)}';
       print('📱 === REGISTERING FCM TOKEN ===');
       print('👤 User Role: $userRole');
-      print('🔑 FCM Token: ${token.substring(0, 20)}...');
+      print('🔑 FCM Token: $tokenPreview');
 
       // Determine which endpoint to use based on user role
       String endpoint;
@@ -344,6 +372,9 @@ class HttpInterceptor {
       }
 
       print('🔗 Endpoint: $endpoint');
+      print('🚀 Sending FCM token to backend...');
+      print('📤 Request: POST $endpoint');
+      print('📤 Body: {"token":"$tokenPreview"}');
 
       // Make the request using authenticatedRequest
       final response = await authenticatedRequest(
@@ -385,10 +416,15 @@ class HttpInterceptor {
         };
       }
     } catch (e) {
-      print('❌ Error registering FCM token: $e');
+      final offline = isTransientNetworkError(e);
+      if (!offline) {
+        print('❌ Error registering FCM token: $e');
+      }
       return {
         'success': false,
-        'message': 'Error registering FCM token: ${e.toString()}',
+        'message':
+            offline ? 'Network unavailable' : 'Error registering FCM token: ${e.toString()}',
+        if (offline) 'offline': true,
       };
     }
   }

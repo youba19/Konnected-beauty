@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:konnected_beauty/core/theme/app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../core/models/campaign_chat_message.dart';
 import '../../../../core/translations/app_translations.dart';
+import '../../../../widgets/common/campaign_conversation_tab.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../core/bloc/delete_campaign/delete_campaign_bloc.dart';
 import '../../../../core/bloc/delete_campaign/delete_campaign_event.dart';
@@ -14,6 +17,8 @@ import '../../../../core/bloc/campaign_actions/campaign_actions_event.dart';
 import '../../../../core/bloc/campaign_actions/campaign_actions_state.dart';
 import '../../../../core/services/api/http_interceptor.dart';
 import '../../../../core/services/api/influencers_service.dart';
+import '../../../../core/services/api/campaign_messages_service.dart';
+import '../../../../core/services/campaign_chat_socket_service.dart';
 
 class CampaignDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> campaign;
@@ -39,10 +44,21 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       TextEditingController();
   final TextEditingController _replyMessageController =
       TextEditingController();
+  int _selectedTabIndex = 0;
+  final ScrollController _detailsScrollController = ScrollController();
+  final ScrollController _conversationScrollController = ScrollController();
+  final FocusNode _replyFocusNode = FocusNode();
+  final CampaignChatSocketService _chatSocket = CampaignChatSocketService();
+  final Map<String, CampaignChatMessageItem> _liveMessagesById = {};
+  bool _campaignMessagesLoading = false;
+  bool _useApiMessagesOnly = false;
 
   @override
   void initState() {
     super.initState();
+    _replyFocusNode.addListener(_onReplyFocusChange);
+    _chatSocket.onMessage = _onSocketChatMessage;
+    _chatSocket.onError = _onSocketChatError;
     _fetchCampaignDetails();
   }
 
@@ -93,6 +109,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             _isLoadingDetails = false;
           });
 
+          if (_selectedTabIndex == 1) {
+            _scrollContentToBottom();
+          }
+
           print('✅ Campaign details fetched successfully');
           print('📋 Link: $_campaignLink');
           print('📋 Total Amount: $_totalAmount');
@@ -132,6 +152,892 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   // Helper method to get campaign data (updated from API or fallback to widget data)
   Map<String, dynamic> get campaignData {
     return _updatedCampaignData ?? widget.campaign;
+  }
+
+  void _onSocketChatMessage(CampaignChatMessageItem m) {
+    if (!mounted) return;
+    setState(() {
+      _liveMessagesById[m.id] = m;
+    });
+    if (_selectedTabIndex == 1) {
+      _scrollContentToBottom();
+    }
+  }
+
+  void _onSocketChatError(String message) {
+    if (!mounted) return;
+    TopNotificationService.showError(
+      context: context,
+      message: message,
+    );
+  }
+
+  Future<void> _fetchCampaignChatMessages(String campaignId) async {
+    if (!mounted) return;
+    setState(() => _campaignMessagesLoading = true);
+
+    final result =
+        await CampaignMessagesService.getCampaignMessages(campaignId: campaignId);
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final raw = result['data'];
+      final list = raw is List<CampaignChatMessageItem>
+          ? List<CampaignChatMessageItem>.from(raw)
+          : <CampaignChatMessageItem>[];
+
+      setState(() {
+        _campaignMessagesLoading = false;
+        _liveMessagesById
+          ..clear()
+          ..addEntries(list.map((m) => MapEntry(m.id, m)));
+        _useApiMessagesOnly = list.isNotEmpty;
+      });
+    } else {
+      setState(() {
+        _campaignMessagesLoading = false;
+        _useApiMessagesOnly = false;
+        _liveMessagesById.clear();
+      });
+      if (mounted) {
+        TopNotificationService.showError(
+          context: context,
+          message: result['message']?.toString() ?? 'Failed to load messages',
+        );
+      }
+    }
+  }
+
+  Future<void> _attachChatSocket() async {
+    final id = widget.campaign['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    await _fetchCampaignChatMessages(id);
+    if (!mounted) return;
+    await _chatSocket.connectJoin(
+      id,
+      forceRefresh: true,
+    );
+  }
+
+  List<_ConversationLine> _legacyInvitationLinesOnly() {
+    final data = campaignData;
+    final initiator =
+        (data['initiator'] ?? 'salon').toString().toLowerCase().trim();
+    final invitation = data['invitationMessage']?.toString().trim() ?? '';
+    if (invitation.isEmpty) return [];
+
+    DateTime? dt;
+    final dateRaw = data['createdAt'];
+    if (dateRaw != null && dateRaw.toString().isNotEmpty) {
+      try {
+        dt = DateTime.parse(dateRaw.toString());
+      } catch (_) {}
+    }
+    final salonSentInvitation = initiator == 'salon';
+    return [
+      _ConversationLine(
+        text: invitation,
+        isSalon: salonSentInvitation,
+        at: dt,
+      ),
+    ];
+  }
+
+  List<_ConversationLine> _conversationLines() {
+    final data = campaignData;
+    final initiator =
+        (data['initiator'] ?? 'salon').toString().toLowerCase().trim();
+    final lines = <_ConversationLine>[];
+
+    void addLine(String? text, bool isSalon, dynamic dateRaw) {
+      final t = text?.toString().trim() ?? '';
+      if (t.isEmpty) return;
+      DateTime? dt;
+      if (dateRaw != null && dateRaw.toString().isNotEmpty) {
+        try {
+          dt = DateTime.parse(dateRaw.toString());
+        } catch (_) {}
+      }
+      lines.add(_ConversationLine(text: t, isSalon: isSalon, at: dt));
+    }
+
+    final invitation = data['invitationMessage']?.toString().trim() ?? '';
+    if (invitation.isNotEmpty) {
+      final salonStarted = initiator == 'salon';
+      addLine(invitation, salonStarted, data['createdAt']);
+    }
+
+    final influencerReply =
+        data['influencerReplyMessage']?.toString().trim() ?? '';
+    if (influencerReply.isNotEmpty) {
+      addLine(influencerReply, false, data['updatedAt']);
+    }
+
+    final salonReply = data['replyMessage']?.toString().trim() ?? '';
+    if (salonReply.isNotEmpty && salonReply != invitation) {
+      addLine(salonReply, true, data['updatedAt']);
+    }
+
+    return lines;
+  }
+
+  List<_ConversationLine> _mergedConversationLines() {
+    final data = campaignData;
+    final initiator =
+        (data['initiator'] ?? 'salon').toString().toLowerCase().trim();
+    final invitation = data['invitationMessage']?.toString().trim() ?? '';
+    final inviterIsSalon = initiator == 'salon';
+
+    final List<_ConversationLine> legacy;
+    if (_useApiMessagesOnly) {
+      final inviteAlreadyInApi = invitation.isNotEmpty &&
+          _liveMessagesById.values.any(
+            (m) =>
+                m.content.trim() == invitation &&
+                (m.senderType.toLowerCase().trim() ==
+                        CampaignMessageSenderType.salon.name) ==
+                    inviterIsSalon,
+          );
+      legacy =
+          inviteAlreadyInApi ? <_ConversationLine>[] : _legacyInvitationLinesOnly();
+    } else {
+      legacy = _conversationLines();
+    }
+
+    final live = _liveMessagesById.values
+        .map(
+          (m) => _ConversationLine(
+            text: m.content,
+            isSalon: m.senderType.toLowerCase().trim() ==
+                CampaignMessageSenderType.salon.name,
+            at: m.createdAt,
+          ),
+        )
+        .toList();
+
+    final merged = [...legacy, ...live];
+    merged.sort((a, b) {
+      final ta = a.at;
+      final tb = b.at;
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return -1;
+      if (tb == null) return 1;
+      return ta.compareTo(tb);
+    });
+    return merged;
+  }
+
+  void _onReplyFocusChange() {
+    if (!_replyFocusNode.hasFocus) return;
+    if (_selectedTabIndex != 1) return;
+    void scrollAfterKeyboard() {
+      _scrollContentToBottom();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollContentToBottom();
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scrollAfterKeyboard();
+    });
+    Future.delayed(const Duration(milliseconds: 280), () {
+      if (mounted) scrollAfterKeyboard();
+    });
+  }
+
+  void _scrollContentToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      void scroll(ScrollController c) {
+        if (!c.hasClients) return;
+        c.animateTo(
+          c.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+
+      if (_selectedTabIndex == 1) {
+        scroll(_conversationScrollController);
+      } else {
+        scroll(_detailsScrollController);
+      }
+    });
+  }
+
+  bool get _canSendCampaignChat {
+    final status =
+        campaignData['status']?.toString().toLowerCase().trim() ?? '';
+    if (status.isEmpty) return false;
+
+    const closedStatuses = {
+      'finished',
+      'canceled',
+      'cancelled',
+    };
+
+    return !closedStatuses.contains(status);
+  }
+
+  int _currentPromotionValue() {
+    final value = campaignData['promotion'];
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _currentPromotionType() {
+    final type = campaignData['promotionType']?.toString().trim();
+    return (type == null || type.isEmpty) ? 'percentage' : type;
+  }
+
+  bool get _canEditCampaignValue {
+    final status =
+        campaignData['status']?.toString().toLowerCase().trim() ?? '';
+    final initiator =
+        campaignData['initiator']?.toString().toLowerCase().trim() ?? '';
+    return status == 'pending' && initiator == 'influencer';
+  }
+
+  Future<void> _showEditPromotionDialog() async {
+    final promotionType = _currentPromotionType();
+    final isPercentage = promotionType == 'percentage';
+    final controller =
+        TextEditingController(text: _currentPromotionValue().toString());
+    var isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> save() async {
+              final value = int.tryParse(controller.text.trim());
+              if (value == null || value < 0) {
+                TopNotificationService.showError(
+                  context: context,
+                  message: 'Please enter a valid campaign value',
+                );
+                return;
+              }
+              if (isPercentage && value > 100) {
+                TopNotificationService.showError(
+                  context: context,
+                  message: 'Percentage value must be between 0 and 100',
+                );
+                return;
+              }
+
+              setDialogState(() => isSaving = true);
+              final result = await InfluencersService.updateCampaignPromotion(
+                campaignId: campaignData['id']?.toString() ??
+                    widget.campaign['id']?.toString() ??
+                    '',
+                promotion: value,
+                promotionType: promotionType,
+                influencerCampaign: true,
+              );
+              if (!mounted || !dialogContext.mounted) return;
+
+              if (result['success'] == true) {
+                setState(() {
+                  widget.campaign['promotion'] = value;
+                  widget.campaign['promotionType'] = promotionType;
+                  _updatedCampaignData ??= Map<String, dynamic>.from(
+                    widget.campaign,
+                  );
+                  _updatedCampaignData!['promotion'] = value;
+                  _updatedCampaignData!['promotionType'] = promotionType;
+                });
+                Navigator.of(dialogContext).pop();
+                TopNotificationService.showSuccess(
+                  context: context,
+                  message: 'Campaign value updated',
+                );
+              } else {
+                setDialogState(() => isSaving = false);
+                TopNotificationService.showError(
+                  context: context,
+                  message:
+                      result['message']?.toString() ?? 'Failed to update value',
+                );
+              }
+            }
+
+            return Dialog(
+              backgroundColor: const Color(0xFF1F1D1D),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Edit campaign value',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Update the terms of your collaboration.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        isPercentage
+                            ? 'Followers promotion value'
+                            : 'Promotion value',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        decoration: InputDecoration(
+                          suffixText: isPercentage ? '%' : 'EUR',
+                          suffixStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: const BorderSide(
+                              color: Colors.white,
+                              width: 1.2,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: const BorderSide(
+                              color: Colors.white,
+                              width: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Row(
+                        children: [
+                          Icon(LucideIcons.percent,
+                              color: Colors.white, size: 22),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Commission influencer',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '8%',
+                            style: TextStyle(
+                              color: Colors.white,
+                            fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Row(
+                        children: [
+                          Icon(LucideIcons.percent,
+                              color: Colors.white, size: 22),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Commission Konnected',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '3%',
+                            style: TextStyle(
+                              color: Colors.white,
+                            fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      const Text(
+                        'Offering a treatment or giving the ambassador a preferential rate is optional and can make collaboration easier.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          height: 1.3,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 26),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 58,
+                        child: ElevatedButton(
+                          onPressed: isSaving ? null : save,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.white70,
+                            foregroundColor: const Color(0xFF1F1D1D),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF1F1D1D),
+                                  ),
+                                )
+                              : const Text(
+                                  'Save changes',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.of(dialogContext).pop(),
+                          style: OutlinedButton.styleFrom(
+                            side:
+                                const BorderSide(color: Colors.white, width: 1),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatConversationTimestamp(DateTime dt) {
+    final loc = Localizations.localeOf(context);
+    return DateFormat('d MMM y HH:mm', loc.toString()).format(dt);
+  }
+
+  Widget _buildConversationTabBar() {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final sel = isLight ? AppTheme.lightTextPrimaryColor : Colors.white;
+    final unsel = isLight
+        ? AppTheme.lightTextSecondaryColor
+        : Colors.white54;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildConversationTabLabel(
+              index: 0,
+              labelKey: 'tab_details',
+              selectedColor: sel,
+              unselectedColor: unsel,
+            ),
+          ),
+          Expanded(
+            child: CampaignConversationTabLabel(
+              selected: _selectedTabIndex == 1,
+              label: AppTranslations.getString(context, 'tab_conversation'),
+              selectedColor: sel,
+              unselectedColor: unsel,
+              pulseColor: AppTheme.greenPrimary,
+              onTap: () async {
+                setState(() => _selectedTabIndex = 1);
+                await _attachChatSocket();
+                _scrollContentToBottom();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationTabLabel({
+    required int index,
+    required String labelKey,
+    required Color selectedColor,
+    required Color unselectedColor,
+  }) {
+    final selected = _selectedTabIndex == index;
+    return InkWell(
+      onTap: () async {
+        if (index == 0) {
+          FocusManager.instance.primaryFocus?.unfocus();
+        }
+        setState(() => _selectedTabIndex = index);
+        if (index == 1) {
+          await _attachChatSocket();
+          _scrollContentToBottom();
+        }
+      },
+      child: Column(
+        children: [
+          Text(
+            AppTranslations.getString(context, labelKey),
+            style: TextStyle(
+              color: selected ? selectedColor : unselectedColor,
+              fontSize: 16,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 3,
+            decoration: BoxDecoration(
+              color: selected ? selectedColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationScrollBodyInfluencer() {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    if (_campaignMessagesLoading) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: isLight ? AppTheme.greenPrimary : Colors.white54,
+          ),
+        ),
+      );
+    }
+
+    final lines = _mergedConversationLines();
+    if (lines.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Text(
+          AppTranslations.getString(context, 'conversation_empty'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isLight
+                ? AppTheme.lightTextSecondaryColor
+                : Colors.white54,
+            fontSize: 15,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < lines.length; i++) ...[
+            if (lines.length >= 2 && i == lines.length - 1) ...[
+              const SizedBox(height: 8),
+              _buildNewMessageDividerInfluencer(),
+              const SizedBox(height: 16),
+            ],
+            _buildConversationBubbleInfluencer(lines[i]),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewMessageDividerInfluencer() {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final lineColor = isLight
+        ? AppTheme.lightCardBorderColor
+        : Colors.white.withValues(alpha: 0.2);
+    final textColor = isLight
+        ? AppTheme.lightTextSecondaryColor
+        : Colors.white.withValues(alpha: 0.45);
+
+    return Row(
+      children: [
+        Expanded(child: Divider(color: lineColor, height: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            AppTranslations.getString(context, 'new_message'),
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(child: Divider(color: lineColor, height: 1)),
+      ],
+    );
+  }
+
+  Widget _buildConversationBubbleInfluencer(_ConversationLine line) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final maxW = MediaQuery.of(context).size.width * 0.78;
+    final isInfluencer = !line.isSalon;
+    final bubbleBg = isLight
+        ? AppTheme.lightCardBackground
+        : const Color(0xFF3A3A3A);
+    final textColor = isLight
+        ? AppTheme.lightTextPrimaryColor
+        : Colors.white;
+    final metaColor = isLight
+        ? AppTheme.lightTextSecondaryColor
+        : Colors.white.withValues(alpha: 0.45);
+
+    return Align(
+      alignment:
+          isInfluencer ? Alignment.centerRight : Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: isInfluencer
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          if (line.at != null)
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: 6,
+                left: isInfluencer ? 0 : 4,
+                right: isInfluencer ? 4 : 0,
+              ),
+              child: Text(
+                _formatConversationTimestamp(line.at!),
+                style: TextStyle(color: metaColor, fontSize: 12),
+              ),
+            ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxW),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: bubbleBg,
+                borderRadius: BorderRadius.circular(16),
+                border: isLight
+                    ? Border.all(color: AppTheme.lightCardBorderColor)
+                    : null,
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Text(
+                  line.text,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 15,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationComposerInfluencer() {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    final bottomPad =
+        12.0 + (viewInsets.bottom > 0 ? 0.0 : viewPadding.bottom);
+
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(12, 12, 12, bottomPad),
+        child: _canSendCampaignChat
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _replyMessageController,
+                      focusNode: _replyFocusNode,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      minLines: 1,
+                      maxLines: 5,
+                      style: TextStyle(
+                        color: isLight
+                            ? AppTheme.lightTextPrimaryColor
+                            : Colors.white,
+                        fontSize: 15,
+                      ),
+                      scrollPadding: const EdgeInsets.only(bottom: 120),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: AppTranslations.getString(
+                          context,
+                          'type_a_message',
+                        ),
+                        hintStyle: TextStyle(
+                          color: isLight
+                              ? AppTheme.lightTextSecondaryColor
+                                  .withValues(alpha: 0.7)
+                              : Colors.white.withValues(alpha: 0.35),
+                        ),
+                        filled: true,
+                        fillColor: isLight
+                            ? AppTheme.lightCardBackground
+                            : const Color(0xFF2C2C2C),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isLight
+                                ? AppTheme.lightCardBorderColor
+                                : Colors.white,
+                            width: 1,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: isLight
+                                ? AppTheme.greenPrimary
+                                : Colors.white,
+                            width: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Material(
+                    color: AppTheme.greenColor,
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      onTap: _sendConversationMessage,
+                      borderRadius: BorderRadius.circular(14),
+                      child: const Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Icon(
+                          LucideIcons.send,
+                          color: Colors.black,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Padding(
+                padding: EdgeInsets.fromLTRB(0, 0, 0, bottomPad),
+                child: Text(
+                  AppTranslations.getString(
+                    context,
+                    'conversation_cannot_reply',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isLight
+                        ? AppTheme.lightTextSecondaryColor
+                        : Colors.white.withValues(alpha: 0.5),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _sendConversationMessage() async {
+    final campaignId = widget.campaign['id']?.toString();
+    if (campaignId == null || campaignId.isEmpty) {
+      TopNotificationService.showError(
+        context: context,
+        message: 'Campaign ID not found',
+      );
+      return;
+    }
+
+    final text = _replyMessageController.text.trim();
+    if (text.isEmpty) {
+      TopNotificationService.showError(
+        context: context,
+        message: 'Please enter a message',
+      );
+      return;
+    }
+
+    final sent = await _chatSocket.sendMessage(campaignId, text);
+    if (!sent || !mounted) return;
+
+    _replyMessageController.clear();
+
+    if (mounted) {
+      FocusManager.instance.primaryFocus?.unfocus();
+      _scrollContentToBottom();
+    }
   }
 
   @override
@@ -213,6 +1119,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             }
           },
           child: Scaffold(
+            resizeToAvoidBottomInset: true,
             backgroundColor:
                 AppTheme.getScaffoldBackground(Theme.of(context).brightness),
             body: Stack(
@@ -243,61 +1150,85 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                   ),
                 ),
                 SafeArea(
+                  bottom: MediaQuery.viewInsetsOf(context).bottom == 0,
                   child: Column(
                     children: [
-                      // Header
                       _buildHeader(),
-                      // Campaign Information (Scrollable)
+                      _buildConversationTabBar(),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12.0, vertical: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCampaignInfo(salonName, status, initiator),
-                                SizedBox(height: 24),
-                                // Show reply message if it exists (when influencer replied)
-                                if (_shouldShowInfluencerReplyMessage())
-                                  _buildInfluencerReplyMessageCard(),
-                                if (_shouldShowInfluencerReplyMessage())
-                              SizedBox(height: 24),
-                              // Show salon message card if campaign is rejected
-                              if (status == 'rejected' &&
-                                  _shouldShowSalonMessage())
-                                _buildSalonMessageCard(),
-                              if (status == 'rejected' &&
-                                  _shouldShowSalonMessage())
-                                SizedBox(height: 24),
-                              if (status == 'in progress') ...[
-                                _buildCreatedAndStartedAt(date),
-                                SizedBox(height: 24),
-                              ] else ...[
-                                _buildCreatedAt(date),
-                                SizedBox(height: 24),
-                              ],
-                              _buildPromotionDetails(
-                                  promotionTypeText, promotionText),
-                              SizedBox(height: 24),
-                              if (status == 'in progress') ...[
-                                _buildClicks(campaign['clicks'] ?? 0),
-                                SizedBox(height: 24),
-                                _buildCompletedOrders(
-                                    int.tryParse(_totalCompletedOrders) ?? 0),
-                                SizedBox(height: 24),
-                                _buildTotal(int.tryParse(_totalAmount) ?? 0),
-                                SizedBox(height: 24),
-                              ],
-                              _buildMessage(message),
-                              SizedBox(height: 40),
-                            ],
-                          ),
-                        ),
+                        child: _selectedTabIndex == 0
+                            ? SingleChildScrollView(
+                                controller: _detailsScrollController,
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12.0, vertical: 16.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildCampaignInfo(
+                                          salonName, status, initiator),
+                                      SizedBox(height: 24),
+                                      if (_shouldShowInfluencerReplyMessage())
+                                        _buildInfluencerReplyMessageCard(),
+                                      if (_shouldShowInfluencerReplyMessage())
+                                        SizedBox(height: 24),
+                                      if (status == 'rejected' &&
+                                          _shouldShowSalonMessage())
+                                        _buildSalonMessageCard(),
+                                      if (status == 'rejected' &&
+                                          _shouldShowSalonMessage())
+                                        SizedBox(height: 24),
+                                      if (status == 'in progress') ...[
+                                        _buildCreatedAndStartedAt(date),
+                                        SizedBox(height: 24),
+                                      ] else ...[
+                                        _buildCreatedAt(date),
+                                        SizedBox(height: 24),
+                                      ],
+                                      _buildPromotionDetails(
+                                          promotionTypeText, promotionText),
+                                      SizedBox(height: 24),
+                                      if (status == 'in progress') ...[
+                                        _buildClicks(campaign['clicks'] ?? 0),
+                                        SizedBox(height: 24),
+                                        _buildCompletedOrders(
+                                            int.tryParse(
+                                                    _totalCompletedOrders) ??
+                                                0),
+                                        SizedBox(height: 24),
+                                        _buildTotal(
+                                            int.tryParse(_totalAmount) ?? 0),
+                                        SizedBox(height: 24),
+                                      ],
+                                      _buildMessage(message),
+                                      SizedBox(height: 40),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      controller:
+                                          _conversationScrollController,
+                                      keyboardDismissBehavior:
+                                          ScrollViewKeyboardDismissBehavior
+                                              .onDrag,
+                                      child: _buildConversationScrollBodyInfluencer(),
+                                    ),
+                                  ),
+                                  _buildConversationComposerInfluencer(),
+                                ],
+                              ),
                       ),
-                      ),
-                      // Action Buttons (Fixed at bottom)
-                      _buildActionButtons(status, initiator),
+                      if (_selectedTabIndex == 0)
+                        _buildActionButtons(status, initiator),
                     ],
                   ),
                 ),
@@ -665,52 +1596,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             children: [
               if (status == 'pending') ...[
                 if (initiator == 'salon') ...[
-                  // Salon invited influencer - show Reply/Accept/Refuse buttons
-                  // Reply Button (FIRST)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: OutlinedButton(
-                      onPressed: isLoading
-                          ? null
-                          : () => _showReplyDialog(),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                            color: AppTheme.getTextPrimaryColor(
-                                Theme.of(context).brightness),
-                            width: 1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              AppTranslations.getString(context, 'reply'),
-                              style: TextStyle(
-                                color: AppTheme.getTextPrimaryColor(
-                                    Theme.of(context).brightness),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(
-                            Icons.reply,
-                            color: AppTheme.getTextPrimaryColor(
-                                Theme.of(context).brightness),
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 12),
+                  // Salon invited influencer - show Accept/Refuse buttons
                   // Accept Campaign Button
                   SizedBox(
                     width: double.infinity,
@@ -844,6 +1730,41 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                   ),
                 ] else if (initiator == 'influencer') ...[
                   // Influencer invited salon - show Delete button
+                  if (_canEditCampaignValue) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _showEditPromotionDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.greenColor,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'Edit campaign value',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(LucideIcons.pencil, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                  ],
                   SizedBox(
                     width: double.infinity,
                     height: 56,
@@ -1276,6 +2197,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     }
   }
 
+  // ignore: unused_element
   void _showReplyDialog() {
     _replyMessageController.clear(); // Clear previous message
     showDialog(
@@ -1459,9 +2381,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  void _performReply() async {
-    try {
-    final campaignId = widget.campaign['id'] as String?;
+  Future<void> _performReply() async {
+    final campaignId = widget.campaign['id']?.toString();
     if (campaignId == null || campaignId.isEmpty) {
       TopNotificationService.showError(
         context: context,
@@ -1470,62 +2391,19 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       return;
     }
 
-      final replyMessage = _replyMessageController.text.trim();
-      if (replyMessage.isEmpty) {
+    final replyMessage = _replyMessageController.text.trim();
+    if (replyMessage.isEmpty) {
       TopNotificationService.showError(
         context: context,
-          message: 'Please enter a message',
+        message: 'Please enter a message',
       );
       return;
     }
 
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.greenColor,
-          ),
-        ),
-      );
+    final sent = await _chatSocket.sendMessage(campaignId, replyMessage);
+    if (!sent || !mounted) return;
 
-      final result = await InfluencersService.sendReplyToSalonInvite(
-        campaignId: campaignId,
-        replyMessage: replyMessage,
-      );
-
-      // Hide loading indicator
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-
-      if (result['success'] == true) {
-        TopNotificationService.showSuccess(
-          context: context,
-          message: result['message'] ??
-              AppTranslations.getString(context, 'reply_sent_successfully'),
-        );
-
-        // Refresh campaign data to show the message
-        await _fetchCampaignDetails();
-      } else {
-        TopNotificationService.showError(
-          context: context,
-          message: result['message'] ?? 'Failed to send reply',
-        );
-      }
-    } catch (e) {
-      // Hide loading indicator if still showing
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-
-      TopNotificationService.showError(
-        context: context,
-        message: 'Error sending reply: $e',
-    );
-    }
+    _replyMessageController.clear();
   }
 
   void _copyLink() {
@@ -1858,8 +2736,25 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
 
   @override
   void dispose() {
+    _chatSocket.disconnect();
+    _replyFocusNode.removeListener(_onReplyFocusChange);
+    _replyFocusNode.dispose();
+    _detailsScrollController.dispose();
+    _conversationScrollController.dispose();
     _refuseMessageController.dispose();
     _replyMessageController.dispose();
     super.dispose();
   }
+}
+
+class _ConversationLine {
+  final String text;
+  final bool isSalon;
+  final DateTime? at;
+
+  _ConversationLine({
+    required this.text,
+    required this.isSalon,
+    this.at,
+  });
 }

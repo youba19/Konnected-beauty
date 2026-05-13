@@ -152,6 +152,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.getScaffoldBackground(brightness),
       resizeToAvoidBottomInset: false,
+      bottomNavigationBar: _buildBottomNavigation(),
       body: Stack(
         children: [
           // TOP GREEN GLOW
@@ -182,17 +183,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
           // CONTENT
           SafeArea(
-            child: Column(
-              children: [
-                // Content based on selected tab
-                Expanded(
-                  child: _buildContentBasedOnTab(),
-                ),
-
-                // Bottom Navigation (fixed at bottom)
-                _buildBottomNavigation(),
-              ],
-            ),
+            bottom: false,
+            child: _buildContentBasedOnTab(),
           ),
         ],
       ),
@@ -1399,7 +1391,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     final itemWidth = width / 5;
 
     return Container(
-      padding: const EdgeInsets.only(top: 8, bottom: 12),
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
       decoration: BoxDecoration(
         color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
         border: Border(
@@ -1410,7 +1402,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         ),
       ),
       child: SizedBox(
-        height: 70,
+        height: 64,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -2002,6 +1994,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   /// Build loading card
+  // ignore: unused_element
   Widget _buildLoadingCard(String message) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -4,8 +4,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/influencer_campaigns/influencer_campaign_bloc.dart';
+import '../../../../core/bloc/delete_campaign/delete_campaign_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
-import 'influencer_campaign_detail_screen.dart';
+import 'campaign_details_screen.dart';
 
 class InfluencerCampaignsScreen extends StatefulWidget {
   const InfluencerCampaignsScreen({super.key});
@@ -163,8 +164,17 @@ class _InfluencerCampaignsScreenState extends State<InfluencerCampaignsScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                InfluencerCampaignDetailScreen(campaign: campaign),
+            builder: (context) => BlocProvider(
+              create: (_) => DeleteCampaignBloc(),
+              child: CampaignDetailsScreen(
+                campaign: campaign,
+                onCampaignDeleted: () {
+                  context
+                      .read<InfluencerCampaignBloc>()
+                      .add(LoadInfluencerCampaigns());
+                },
+              ),
+            ),
           ),
         );
       },

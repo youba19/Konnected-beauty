@@ -281,11 +281,13 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
       if (result['success'] == true) {
         print('✅ FCM token registered successfully after login');
-      } else {
+      } else if (result['offline'] != true) {
         print('❌ Failed to register FCM token: ${result['message']}');
       }
     } catch (e) {
-      print('❌ Error registering FCM token after login: $e');
+      if (!HttpInterceptor.isTransientNetworkError(e)) {
+        print('❌ Error registering FCM token after login: $e');
+      }
       // Don't throw - this is a non-critical operation
     }
   }
