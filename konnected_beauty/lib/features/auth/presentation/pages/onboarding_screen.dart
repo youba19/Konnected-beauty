@@ -78,7 +78,7 @@ class OnboardingScreen extends StatelessWidget {
         // Welcome Text
         Text(
           AppTranslations.getString(context, 'welcome_title'),
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.montserrat(
             fontSize: 28,
             fontWeight: FontWeight.w600,
             color: Colors.white,
@@ -121,7 +121,7 @@ class OnboardingScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         _getLanguageDisplayText(state.locale),
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.montserrat(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -173,7 +173,7 @@ class OnboardingScreen extends StatelessWidget {
         ),
         child: Text(
           _getGetStartedText(context),
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.montserrat(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -212,7 +212,7 @@ class OnboardingScreen extends StatelessWidget {
         ),
         title: Text(
           AppTranslations.getString(context, 'choose_language'),
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.montserrat(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -225,7 +225,7 @@ class OnboardingScreen extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 'Français',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.montserrat(
                   color: Colors.white,
                   fontSize: 16,
                 ),
@@ -242,7 +242,7 @@ class OnboardingScreen extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: Text(
                 'English',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.montserrat(
                   color: Colors.white,
                   fontSize: 16,
                 ),

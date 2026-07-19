@@ -44,7 +44,7 @@ dependencies:
   # Lucide icons
   lucide_icons: ^0.257.0
   
-  # Google Fonts for Poppins
+  # Google Fonts for Montserrat
   google_fonts: ^6.1.0
   
   # Image picker for selecting images from gallery/camera

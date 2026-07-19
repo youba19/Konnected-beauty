@@ -4,7 +4,7 @@ class ApiBaseUrl {
   ApiBaseUrl._();
 
   /// TEMPORARY — set to `false` when pointing back to production.
-  static const bool useDevTunnel = true;
+  static const bool useDevTunnel = false;
 
   static const String _production = 'https://server.konectedbeauty.com';
   static const String _devTunnel = 'http://147.79.118.43:3001';

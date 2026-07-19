@@ -4,32 +4,15 @@ import '../storage/token_storage_service.dart';
 import 'influencer_auth_service.dart';
 import 'salon_auth_service.dart';
 import '../../config/api_base_url.dart';
+import '../../errors/error_mapper.dart';
+import '../logger_service.dart';
 
 class HttpInterceptor {
   static String get baseUrl => ApiBaseUrl.value;
 
   /// Offline / transport failures where a full stack trace in logs is not useful.
-  static bool isTransientNetworkError(Object error) {
-    if (error is http.ClientException) return true;
-    final s = error.toString().toLowerCase();
-    const hints = [
-      'socketexception',
-      'network is unreachable',
-      'network unreachable',
-      'failed host lookup',
-      'connection refused',
-      'connection reset',
-      'connection timed out',
-      'timed out',
-      'connection closed',
-      'errno = 51',
-      'errno = 50',
-      'no address associated with hostname',
-      'host lookup failed',
-      'software caused connection abort',
-    ];
-    return hints.any(s.contains);
-  }
+  static bool isTransientNetworkError(Object error) =>
+      ErrorMapper.isTransientNetworkError(error);
 
   /// Intercept HTTP requests and automatically handle token refresh
   static Future<http.Response> interceptRequest(
@@ -82,9 +65,9 @@ class HttpInterceptor {
       print(
           '🔍 HTTP Interceptor: Retry response status: ${retryResponse.statusCode}');
       return retryResponse;
-    } catch (e) {
+    } catch (e, st) {
       if (!isTransientNetworkError(e)) {
-        print('❌ HTTP Interceptor error: $e');
+        LoggerService.error('HTTP Interceptor error', error: e, stackTrace: st);
       }
       rethrow;
     }
@@ -418,14 +401,11 @@ class HttpInterceptor {
     } catch (e) {
       final offline = isTransientNetworkError(e);
       if (!offline) {
-        print('❌ Error registering FCM token: $e');
+        LoggerService.error('FCM token registration failed', error: e);
       }
-      return {
-        'success': false,
-        'message':
-            offline ? 'Network unavailable' : 'Error registering FCM token: ${e.toString()}',
-        if (offline) 'offline': true,
-      };
+      final mapped = ErrorMapper.fromException(e, null, 'registerFCMToken');
+      return mapped.toApiMap()
+        ..['offline'] = offline || mapped.isOffline;
     }
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
+import '../services/error_service.dart';
+import '../errors/error_mapper.dart';
 
 class AppBlocObserver extends BlocObserver {
   @override
@@ -20,8 +22,15 @@ class AppBlocObserver extends BlocObserver {
 
   @override
   void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
+    final appError = ErrorMapper.fromException(
+      error,
+      stackTrace,
+      bloc.runtimeType.toString(),
+    );
+    ErrorService.log(appError);
     if (kDebugMode) {
-      print('onError -- ${bloc.runtimeType}, $error');
+      // ignore: avoid_print
+      print('onError -- ${bloc.runtimeType}, ${appError.debugMessage ?? appError.userMessage}');
     }
     super.onError(bloc, error, stackTrace);
   }

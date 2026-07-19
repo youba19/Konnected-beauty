@@ -116,52 +116,20 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: AppTheme.getScaffoldBackground(brightness),
-      body: Stack(
-        children: [
-          // TOP GREEN GLOW
-          Positioned(
-            top: -150,
-            left: -60,
-            right: -60,
-            child: IgnorePointer(
-              child: Container(
-                height: 280,
-                decoration: BoxDecoration(
-                  // soft radial green halo like the screenshot
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -0.6),
-                    radius: 0.8,
-                    colors: [
-                      AppTheme.greenPrimary.withOpacity(0.35),
-                      brightness == Brightness.dark
-                          ? AppTheme.transparentBackground
-                          : AppTheme.textWhite54,
-                    ],
-                    stops: const [0.0, 1.0],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // CONTENT
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header (within the scroll)
-                  _buildHeader(),
+      // Let the shared home glow show through on this navbar tab.
+      backgroundColor: Colors.transparent,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header (within the scroll)
+            _buildHeader(),
 
-                  // Main content (non-nested scroll)
-                  _isLoading ? _buildLoadingContent() : _buildWalletContent(),
-                ],
-              ),
-            ),
-          ),
-        ],
+            // Main content (non-nested scroll)
+            _isLoading ? _buildLoadingContent() : _buildWalletContent(),
+          ],
+        ),
       ),
     );
   }

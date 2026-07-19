@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+
+import '../../core/errors/app_error.dart';
+import '../../core/errors/error_sanitizer.dart';
 
 class TopNotificationBanner extends StatelessWidget {
   final String message;
@@ -31,7 +35,7 @@ class TopNotificationBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(25), // Pill-shaped design
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -69,54 +73,42 @@ class TopNotificationBanner extends StatelessWidget {
 }
 
 class TopNotificationService {
+  static OverlayEntry? _currentEntry;
+  static int _token = 0;
+
   /// Hides stack traces, HTTP client dumps, and OS error details from the top banner.
-  static String sanitizeNotificationMessage(String message) {
-    final t = message.trim();
-    if (t.isEmpty) return 'Something went wrong.';
+  static String sanitizeNotificationMessage(String message) =>
+      ErrorSanitizer.forUser(message);
 
-    final lower = t.toLowerCase();
-    const technicalHints = [
-      'clientexception',
-      'socketexception',
-      'httpexception',
-      'formatexception',
-      'platformexception',
-      'dart:',
-      'package:',
-      'stack trace',
-      'stacktrace',
-      '#0      ',
-      '#1      ',
-      'failed assertion',
-      'uri=http',
-      'uri: http',
-      'os error',
-      'errno =',
-      'connection failed',
-      'handshakeexception',
-      'tlsexception',
-      'certificateexception',
-    ];
-    final looksTechnical = technicalHints.any(lower.contains);
-
-    if (looksTechnical) {
-      if (lower.contains('network is unreachable') ||
-          lower.contains('network unreachable') ||
-          lower.contains('failed host lookup') ||
-          lower.contains('no address associated') ||
-          lower.contains('connection refused') ||
-          lower.contains('timed out') ||
-          lower.contains('connection reset')) {
-        return 'No internet connection. Check your network and try again.';
+  static void dismiss() {
+    final entry = _currentEntry;
+    _currentEntry = null;
+    if (entry == null) return;
+    try {
+      if (entry.mounted) {
+        entry.remove();
       }
-      return 'Something went wrong. Please try again.';
+    } catch (_) {
+      // Overlay may already be torn down during route transitions.
     }
+  }
 
-    const maxLen = 200;
-    if (t.length > maxLen) {
-      return '${t.substring(0, maxLen - 1).trimRight()}…';
+  static OverlayState? _resolveOverlay(BuildContext context) {
+    // Prefer the root navigator overlay so entries survive sheet/dialog
+    // dismissal and avoid Duplicate GlobalKey reparenting.
+    final rootNavigator = Navigator.maybeOf(context, rootNavigator: true);
+    final rootOverlay = rootNavigator?.overlay;
+    if (rootOverlay != null) return rootOverlay;
+
+    try {
+      return Overlay.of(context, rootOverlay: true);
+    } catch (_) {
+      try {
+        return Overlay.of(context);
+      } catch (_) {
+        return null;
+      }
     }
-    return t;
   }
 
   static void show({
@@ -127,25 +119,65 @@ class TopNotificationService {
     VoidCallback? onDismiss,
     IconData? icon,
   }) {
-    final overlay = Overlay.of(context);
+    // Resolve overlay while [context] is still valid (e.g. before a route pop).
+    final overlay = _resolveOverlay(context);
+    if (overlay == null) return;
+
     final displayMessage = sanitizeNotificationMessage(message);
+    final token = ++_token;
 
-    final entry = OverlayEntry(
-      builder: (context) => TopNotificationBanner(
-        message: displayMessage,
-        backgroundColor: backgroundColor,
-        duration: duration,
-        onDismiss: onDismiss,
-        icon: icon,
-      ),
+    void insert() {
+      if (token != _token) return;
+
+      dismiss();
+
+      late final OverlayEntry entry;
+      entry = OverlayEntry(
+        builder: (overlayContext) => TopNotificationBanner(
+          message: displayMessage,
+          backgroundColor: backgroundColor,
+          duration: duration,
+          onDismiss: onDismiss,
+          icon: icon,
+        ),
+      );
+
+      try {
+        overlay.insert(entry);
+        _currentEntry = entry;
+      } catch (_) {
+        return;
+      }
+
+      Future.delayed(duration, () {
+        if (token != _token) return;
+        if (!identical(_currentEntry, entry)) return;
+        dismiss();
+        onDismiss?.call();
+      });
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      insert();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => insert());
+    }
+  }
+
+  static void showAppError({
+    required BuildContext context,
+    required AppError error,
+    Duration duration = const Duration(seconds: 3),
+    VoidCallback? onDismiss,
+  }) {
+    showError(
+      context: context,
+      message: error.userMessage,
+      duration: duration,
+      onDismiss: onDismiss,
     );
-
-    overlay.insert(entry);
-
-    Future.delayed(duration, () {
-      entry.remove();
-      onDismiss?.call();
-    });
   }
 
   // Convenience methods for common notification types

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../models/campaign_chat_message.dart';
+import 'api_response_helper.dart';
 import 'http_interceptor.dart';
 
 class CampaignMessagesService {
@@ -11,11 +12,11 @@ class CampaignMessagesService {
     int limit = 100,
   }) async {
     if (campaignId.isEmpty) {
-      return {
-        'success': false,
-        'message': 'Campaign ID is required',
-        'data': <CampaignChatMessageItem>[],
-      };
+      return ApiResponseHelper.failureFromException(
+        ArgumentError('Campaign ID is required'),
+        context: 'getCampaignMessages',
+        data: <CampaignChatMessageItem>[],
+      );
     }
 
     try {
@@ -38,12 +39,11 @@ class CampaignMessagesService {
         );
 
         if (response.statusCode != 200 && response.statusCode != 201) {
-          return {
-            'success': false,
-            'message': 'Failed to load messages (${response.statusCode})',
-            'data': all,
-            'statusCode': response.statusCode,
-          };
+          return ApiResponseHelper.fromHttpResponse(
+            response,
+            context: 'getCampaignMessages',
+            defaultData: all,
+          );
         }
 
         final responseData = jsonDecode(response.body) as Map<String, dynamic>;
@@ -66,19 +66,18 @@ class CampaignMessagesService {
         page++;
       } while (page <= totalPages && page <= 100);
 
-      return {
-        'success': true,
-        'message': 'success',
-        'data': all,
-        'total': all.length,
-        'statusCode': 200,
-      };
-    } catch (e) {
-      return {
-        'success': false,
-        'message': e.toString(),
-        'data': <CampaignChatMessageItem>[],
-      };
+      return ApiResponseHelper.success(
+        data: all,
+        statusCode: 200,
+        extra: {'total': all.length},
+      );
+    } catch (e, st) {
+      return ApiResponseHelper.failureFromException(
+        e,
+        stackTrace: st,
+        context: 'getCampaignMessages',
+        data: <CampaignChatMessageItem>[],
+      );
     }
   }
 }

@@ -192,42 +192,42 @@ class AppTheme {
   }
 
   // Font Family
-  static String get fontFamily => GoogleFonts.poppins().fontFamily ?? 'Poppins';
+  static String get fontFamily => GoogleFonts.montserrat().fontFamily ?? 'Montserrat';
 
-  // Google Fonts Poppins
-  static TextStyle get poppinsFont => GoogleFonts.poppins();
+  // Google Fonts Montserrat
+  static TextStyle get poppinsFont => GoogleFonts.montserrat();
 
-  // Global font override - automatically applies Poppins to any TextStyle
+  // Global font override - automatically applies Montserrat to any TextStyle
   static TextStyle applyPoppins(TextStyle style) {
-    return GoogleFonts.poppins().merge(style);
+    return GoogleFonts.montserrat().merge(style);
   }
 
   // Text Styles with comprehensive font weights and sizes
-  static TextStyle get headingStyle => GoogleFonts.poppins(
+  static TextStyle get headingStyle => GoogleFonts.montserrat(
         fontSize: 24,
         fontWeight: FontWeight.bold,
         color: textPrimaryColor,
       );
 
-  static TextStyle get subtitleStyle => GoogleFonts.poppins(
+  static TextStyle get subtitleStyle => GoogleFonts.montserrat(
         fontSize: 16,
         color: textSecondaryColor,
         height: 1.4,
       );
 
-  static TextStyle get buttonTextStyle => GoogleFonts.poppins(
+  static TextStyle get buttonTextStyle => GoogleFonts.montserrat(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: primaryColor,
       );
 
-  static TextStyle get loginButtonTextStyle => GoogleFonts.poppins(
+  static TextStyle get loginButtonTextStyle => GoogleFonts.montserrat(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: textPrimaryColor,
       );
 
-  static TextStyle get dividerTextStyle => GoogleFonts.poppins(
+  static TextStyle get dividerTextStyle => GoogleFonts.montserrat(
         fontSize: 14,
         color: textSecondaryColor,
       );
@@ -240,7 +240,7 @@ class AppTheme {
     double? height,
     TextDecoration? decoration,
   }) {
-    return GoogleFonts.poppins(
+    return GoogleFonts.montserrat(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color ?? textPrimaryColor,
@@ -278,18 +278,18 @@ class AppTheme {
   static TextStyle get labelText =>
       getTextStyle(fontSize: 14, fontWeight: FontWeight.w600);
 
-  // Font override system - forces all text to use Poppins
+  // Font override system - forces all text to use Montserrat
   static TextStyle forceFont(TextStyle style) {
     return style.copyWith(fontFamily: fontFamily);
   }
 
   // Global text style that overrides everything
-  static TextStyle get globalText => GoogleFonts.poppins(
+  static TextStyle get globalText => GoogleFonts.montserrat(
         fontSize: 16,
         color: textPrimaryColor,
       );
 
-  // Custom Text widget that always uses Poppins
+  // Custom Text widget that always uses Montserrat
   static Widget text(
     String data, {
     TextStyle? style,
@@ -302,7 +302,7 @@ class AppTheme {
   }) {
     return Text(
       data,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.montserrat(
         fontSize: fontSize ?? style?.fontSize ?? 16,
         fontWeight: fontWeight ?? style?.fontWeight,
         color: color ?? style?.color ?? textPrimaryColor,
@@ -313,7 +313,7 @@ class AppTheme {
     );
   }
 
-  // Create a TextStyle with guaranteed Poppins font
+  // Create a TextStyle with guaranteed Montserrat font
   static TextStyle createStyle({
     double? fontSize,
     FontWeight? fontWeight,
@@ -321,7 +321,7 @@ class AppTheme {
     double? height,
     TextDecoration? decoration,
   }) {
-    return GoogleFonts.poppins(
+    return GoogleFonts.montserrat(
       fontSize: fontSize ?? 16,
       fontWeight: fontWeight ?? FontWeight.normal,
       color: color ?? textPrimaryColor,
@@ -330,12 +330,12 @@ class AppTheme {
     );
   }
 
-  // Global font override - use this to force Poppins anywhere
+  // Global font override - use this to force Montserrat anywhere
   static TextStyle overrideFont(TextStyle? style) {
     if (style == null) {
-      return GoogleFonts.poppins();
+      return GoogleFonts.montserrat();
     }
-    return GoogleFonts.poppins().merge(style);
+    return GoogleFonts.montserrat().merge(style);
   }
 
   // Theme Data

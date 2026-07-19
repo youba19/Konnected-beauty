@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_theme.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+
+abstract final class _LanguageUi {
+  static const double radius = 16;
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+}
 
 class LanguageScreen extends StatefulWidget {
   const LanguageScreen({super.key});
@@ -18,7 +26,6 @@ class _LanguageScreenState extends State<LanguageScreen> {
   @override
   void initState() {
     super.initState();
-    // Get current language from the bloc
     final currentState = context.read<LanguageBloc>().state;
     if (currentState is LanguageLoaded) {
       _selectedLanguage = currentState.locale.languageCode;
@@ -35,106 +42,119 @@ class _LanguageScreenState extends State<LanguageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1F1E1E),
-              Color(0xFF3B3B3B),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
 
-              // Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 24),
-
-                      // Language Selection Field
-                      _buildLanguageField(),
-
-                      const SizedBox(height: 24),
-
-                      // Save Changes Button
-                      _buildSaveButton(),
-                    ],
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: Scaffold(
+            backgroundColor: ui.bg,
+            body: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: topInset + 220,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: ui.fullSheetGradient,
+                        stops: ui.fullSheetStops,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 0.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Back Button
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: const Icon(
-              Icons.arrow_back_ios,
-              color: Colors.white,
-              size: 20,
+                SafeArea(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(ui),
+                        const SizedBox(height: 22),
+                        _buildLanguageField(ui),
+                        const SizedBox(height: 18),
+                        _buildSaveButton(ui),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          // Title Row
-          Row(
-            children: [
-              // Language Icon
-              const Icon(
-                LucideIcons.languages,
-                color: Colors.white,
-                size: 28,
-              ),
-
-              const SizedBox(width: 12),
-
-              // Title
-              Text(
-                AppTranslations.getString(context, 'language'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildLanguageField() {
+  Widget _buildHeader(SalonUiTheme ui) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Container(
+            width: _LanguageUi.buttonSize,
+            height: _LanguageUi.buttonSize,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  ui.buttonFillTop,
+                  ui.buttonFillBottom,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(_LanguageUi.buttonRadius),
+              border: ui.isDark
+                  ? null
+                  : Border.all(color: ui.cardBorder, width: 1),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              LucideIcons.arrowLeft,
+              color: ui.buttonIcon,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Icon(
+              LucideIcons.languages,
+              color: ui.textPrimary,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              AppTranslations.getString(context, 'language'),
+              style: TextStyle(
+                color: ui.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLanguageField(SalonUiTheme ui) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
-        borderRadius: BorderRadius.circular(12),
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_LanguageUi.radius),
         border: Border.all(
-          color: Colors.white.withOpacity(0.3),
+          color: ui.cardBorder,
           width: 1,
         ),
       ),
@@ -142,15 +162,15 @@ class _LanguageScreenState extends State<LanguageScreen> {
         child: DropdownButton<String>(
           value: _selectedLanguage,
           isExpanded: true,
-          dropdownColor: AppTheme.secondaryColor,
-          style: const TextStyle(
-            color: Colors.white,
+          dropdownColor: ui.card,
+          style: TextStyle(
+            color: ui.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
-            color: Colors.white,
+            color: ui.textPrimary,
             size: 22,
           ),
           items: [
@@ -161,9 +181,9 @@ class _LanguageScreenState extends State<LanguageScreen> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.languages,
-                      color: Colors.white,
+                      color: ui.textPrimary,
                       size: 22,
                     ),
                     const SizedBox(width: 12),
@@ -180,9 +200,9 @@ class _LanguageScreenState extends State<LanguageScreen> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.languages,
-                      color: Colors.white,
+                      color: ui.textPrimary,
                       size: 22,
                     ),
                     const SizedBox(width: 12),
@@ -203,45 +223,31 @@ class _LanguageScreenState extends State<LanguageScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(SalonUiTheme ui) {
     return Container(
       width: double.infinity,
       height: 48,
       decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1,
-        ),
+        color: ui.primaryButtonBg,
+        borderRadius: BorderRadius.circular(_LanguageUi.radius),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: _selectedLanguage != null ? _saveLanguage : null,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(_LanguageUi.radius),
           child: Center(
             child: Text(
               AppTranslations.getString(context, 'save_changes'),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: ui.primaryButtonFg,
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
         ),
       ),
     );
-  }
-
-  String _getLanguageName(String? languageCode) {
-    switch (languageCode) {
-      case 'fr':
-        return 'Français';
-      case 'en':
-      default:
-        return 'English';
-    }
   }
 }

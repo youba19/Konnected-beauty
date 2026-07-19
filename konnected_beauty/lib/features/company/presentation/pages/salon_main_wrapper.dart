@@ -1,10 +1,12 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/translations/app_translations.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
 import '../../../../core/bloc/campaigns/campaigns_bloc.dart';
 import '../../../../core/bloc/campaigns/campaigns_event.dart';
@@ -13,7 +15,6 @@ import '../../../../core/services/storage/token_storage_service.dart';
 import 'salon_home_screen.dart';
 import 'influencers_screen.dart';
 import 'campaigns_screen.dart';
-import 'salon_settings_screen.dart';
 import 'salon_wallet_screen.dart';
 import 'qr_scanner_screen.dart';
 
@@ -27,17 +28,21 @@ class SalonMainWrapper extends StatefulWidget {
 }
 
 class _SalonMainWrapperState extends State<SalonMainWrapper> {
-  int selectedIndex = 0; // Services tab is selected by default
+  int selectedIndex = 0;
   bool _showDeleteSuccess = false;
   bool _isLoadingMore = false;
   Timer? _refreshTimer;
+
+  static const double _bottomNavHorizontalPadding = 18;
+  static const double _bottomNavBottomPadding = 12;
+  static const double _bottomNavEstimatedHeight = 72;
+  static const double _fabExtraBottomGap = 22;
 
   @override
   void initState() {
     super.initState();
     _showDeleteSuccess = widget.showDeleteSuccess;
 
-    // Auto-hide the success message after 3 seconds
     if (_showDeleteSuccess) {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
@@ -48,14 +53,11 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
       });
     }
 
-    // Print stored tokens to console
     TokenStorageService.printStoredTokens();
 
-    // Load salon services on app start
     print('🔄 === LOADING SERVICES ON APP START ===');
     context.read<SalonServicesBloc>().add(LoadSalonServices());
 
-    // Start a timer to periodically check for more data after refresh
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (mounted) {
         _checkAndLoadMoreData();
@@ -68,8 +70,6 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Always refresh services when returning to this screen to ensure fresh data
     print('🔄 === REFRESHING SERVICES ON SCREEN RETURN ===');
     context.read<SalonServicesBloc>().add(LoadSalonServices());
   }
@@ -90,189 +90,137 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
   }
 
   void _refreshCurrentTab(int tabIndex) {
-    print('🔄 === REFRESHING TAB $tabIndex ===');
-
     switch (tabIndex) {
-      case 0: // Services Tab
-        print('🔄 Refreshing Services...');
+      case 0:
         context.read<SalonServicesBloc>().add(RefreshSalonServices());
         break;
-      case 1: // Campaigns Tab
-        print('🔄 Refreshing Campaigns...');
+      case 1:
         context.read<CampaignsBloc>().add(RefreshCampaigns(
-              status: null, // Load all campaigns
+              status: null,
               limit: 10,
             ));
         break;
-      case 2: // Wallet Tab
-        print('🔄 Refreshing Wallet...');
-        // Wallet screen has its own RefreshIndicator, so we don't need to do anything here
-        // The wallet screen will refresh when it becomes visible
+      case 2:
         break;
-      case 3: // Influencers Tab
-        print('🔄 Refreshing Influencers...');
+      case 3:
         context.read<InfluencersBloc>().add(RefreshInfluencers());
         break;
-      case 4: // Settings Tab
-        print('🔄 Refreshing Settings...');
-        // Settings screen will refresh when it becomes visible
-        // The settings screen loads data in initState
-        break;
-      default:
-        print('🔄 Unknown tab index: $tabIndex');
     }
-
-    print('🔄 === END REFRESH TAB $tabIndex ===');
   }
 
   @override
   Widget build(BuildContext context) {
-    // Force dark mode for salon - always use dark theme
-    return Theme(
-      data: ThemeData.dark(),
-      child: Builder(
-        builder: (context) {
-          return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Color(0xFF3B3B3B),
-                  Color(0xFF1F1E1E),
-                ],
-              ),
-            ),
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final brightness = themeState.brightness;
+        final ui = SalonUiTheme.from(brightness);
+        final baseTheme = AppTheme.getThemeData(brightness);
+
+        return Theme(
+          data: baseTheme.copyWith(
+            textTheme: GoogleFonts.montserratTextTheme(baseTheme.textTheme),
+            primaryTextTheme:
+                GoogleFonts.montserratTextTheme(baseTheme.primaryTextTheme),
+          ),
+          child: ColoredBox(
+            color: ui.bg,
             child: Scaffold(
               backgroundColor: Colors.transparent,
               body: Builder(
                 builder: (context) {
-                  print('🏗️ === INDEXED STACK BUILD ===');
-                  print('🏗️ Selected Index: $selectedIndex');
-                  print(
-                      '🏗️ Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+                  final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-                  // Force rebuild of the InfluencersScreen when index changes to 3
-                  if (selectedIndex == 3) {
-                    print('🎯 === FORCING INFLUENCERS SCREEN REBUILD ===');
-                    return const InfluencersScreen();
-                  }
-
-                  return IndexedStack(
-                    index: selectedIndex,
+                  return Stack(
+                    fit: StackFit.expand,
                     children: [
-                      // Services Tab
-                      SalonHomeScreen(
-                        showDeleteSuccess: _showDeleteSuccess,
+                      IndexedStack(
+                        index: selectedIndex,
+                        children: [
+                          SalonHomeScreen(
+                            showDeleteSuccess: _showDeleteSuccess,
+                          ),
+                          CampaignsScreen(
+                            onNavigateToInfluencers: () {
+                              setState(() {
+                                selectedIndex = 3;
+                              });
+                            },
+                          ),
+                          const SalonWalletScreen(),
+                          const InfluencersScreen(),
+                        ],
                       ),
-                      // Campaigns Tab
-                      CampaignsScreen(
-                        onNavigateToInfluencers: () {
-                          setState(() {
-                            selectedIndex = 3; // Navigate to Influencers tab
-                          });
-                        },
+                      Positioned(
+                        left: _bottomNavHorizontalPadding,
+                        right: _bottomNavHorizontalPadding,
+                        bottom: bottomInset + _bottomNavBottomPadding,
+                        child: _buildBottomNavigation(ui),
                       ),
-                      // Wallet Tab
-                      const SalonWalletScreen(),
-                      // Influencers Tab
-                      const InfluencersScreen(),
-                      // Settings Tab
-                      const SalonSettingsScreen(),
+                      Positioned(
+                        right: 16,
+                        bottom: bottomInset +
+                            _bottomNavBottomPadding +
+                            _bottomNavEstimatedHeight +
+                            _fabExtraBottomGap,
+                        child: _buildFloatingActionButton(ui),
+                      ),
                     ],
                   );
                 },
               ),
-              bottomNavigationBar: _buildBottomNavigation(),
-              floatingActionButton: _buildFloatingActionButton(),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigation() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.navBarColor,
-        border: Border(
-          top: BorderSide(
-            color: AppTheme.textPrimaryColor.withOpacity(0.1),
-            width: 1,
           ),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: [
-              Expanded(
-                  child: _buildNavItem(0, LucideIcons.clipboardList,
-                      AppTranslations.getString(context, 'services'))),
-              Expanded(
-                  child: _buildNavItem(1, LucideIcons.badgePercent,
-                      AppTranslations.getString(context, 'campaigns'))),
-              Expanded(
-                  child: _buildNavItem(2, LucideIcons.wallet,
-                      AppTranslations.getString(context, 'wallet'))),
-              Expanded(
-                  child: _buildNavItem(3, LucideIcons.users,
-                      AppTranslations.getString(context, 'influencers'))),
-              Expanded(
-                  child: _buildNavItem(4, LucideIcons.settings2,
-                      AppTranslations.getString(context, 'settings'))),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = selectedIndex == index;
-    return GestureDetector(
-      onTap: () {
-        print('🎯 === NAVIGATION TAP ===');
-        print('🎯 Tapped on tab: $label (index: $index)');
-        print('🎯 Previous selected index: $selectedIndex');
-        setState(() {
-          selectedIndex = index;
-        });
-        print('🎯 New selected index: $selectedIndex');
-
-        // Refresh data when navigating to different tabs
-        _refreshCurrentTab(index);
-
-        print('🎯 === END NAVIGATION TAP ===');
+        );
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected
-                ? AppTheme.textPrimaryColor
-                : AppTheme.navBartextColor,
-            size: 22,
+    );
+  }
+
+  Widget _buildBottomNavigation(SalonUiTheme ui) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 12),
+      decoration: BoxDecoration(
+        color: ui.navBar,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: ui.isDark ? 0.35 : 0.12),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
-          const SizedBox(height: 3),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected
-                      ? AppTheme.textPrimaryColor
-                      : AppTheme.navBartextColor,
-                  fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-              ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildNavItem(
+              0,
+              LucideIcons.clipboardList,
+              AppTranslations.getString(context, 'services'),
+              ui,
+            ),
+          ),
+          Expanded(
+            child: _buildNavItem(
+              1,
+              LucideIcons.ticket,
+              AppTranslations.getString(context, 'campaigns'),
+              ui,
+            ),
+          ),
+          Expanded(
+            child: _buildNavItem(
+              2,
+              LucideIcons.wallet,
+              AppTranslations.getString(context, 'revenue'),
+              ui,
+            ),
+          ),
+          Expanded(
+            child: _buildNavItem(
+              3,
+              LucideIcons.users,
+              AppTranslations.getString(context, 'influencers'),
+              ui,
             ),
           ),
         ],
@@ -280,120 +228,57 @@ class _SalonMainWrapperState extends State<SalonMainWrapper> {
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    // Show QR button for all screens
-    return Container(
-      margin: const EdgeInsets.only(bottom: 0),
-      child: _buildLiquidGlassButton(),
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    String label,
+    SalonUiTheme ui,
+  ) {
+    final isSelected = selectedIndex == index;
+    final color = isSelected ? ui.navSelected : ui.navUnselected;
+    return GestureDetector(
+      onTap: () {
+        setState(() => selectedIndex = index);
+        _refreshCurrentTab(index);
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildLiquidGlassButton() {
-    return GestureDetector(
-      onTap: () {
-        _scanQRCode();
-      },
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.15),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1.2,
-              ),
-              boxShadow: [
-                // Outer glow for depth
-                BoxShadow(
-                  color: Colors.white.withOpacity(0.1),
-                  blurRadius: 20,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 0),
-                ),
-                // Drop shadow for depth
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 15,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                // Liquid glass highlight - main
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        center: const Alignment(-0.3, -0.3),
-                        radius: 1.0,
-                        colors: [
-                          Colors.white.withOpacity(0.6),
-                          Colors.white.withOpacity(0.2),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.0, 0.5, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // Secondary liquid highlight
-                Positioned(
-                  top: 15,
-                  left: 15,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.4),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Main content
-                const Center(
-                  child: Icon(
-                    LucideIcons.qrCode,
-                    size: 32,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+  Widget _buildFloatingActionButton(SalonUiTheme ui) {
+    return FloatingActionButton(
+      onPressed: _scanQRCode,
+      backgroundColor: ui.fabBg,
+      elevation: 4,
+      shape: CircleBorder(
+        side: BorderSide(color: ui.fabBorder, width: 1),
+      ),
+      child: Icon(
+        LucideIcons.scanLine,
+        color: ui.textPrimary,
+        size: 26,
       ),
     );
   }
 
   Future<void> _scanQRCode() async {
-    print('🔍 === QR SCAN BUTTON TAPPED - ULTRA FORCE ===');
-
-    // Ultra force: Open QR scanner directly without permission checks
-    print('📷 ULTRA FORCE: Opening QR scanner directly...');
-
     if (mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(

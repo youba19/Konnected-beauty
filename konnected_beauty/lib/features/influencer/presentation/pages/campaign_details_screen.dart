@@ -406,24 +406,24 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         TextEditingController(text: _currentPromotionValue().toString());
     var isSaving = false;
 
-    await showDialog<void>(
+    final updated = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black54,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogBuilderContext, setDialogState) {
             Future<void> save() async {
               final value = int.tryParse(controller.text.trim());
               if (value == null || value < 0) {
                 TopNotificationService.showError(
-                  context: context,
+                  context: dialogBuilderContext,
                   message: 'Please enter a valid campaign value',
                 );
                 return;
               }
               if (isPercentage && value > 100) {
                 TopNotificationService.showError(
-                  context: context,
+                  context: dialogBuilderContext,
                   message: 'Percentage value must be between 0 and 100',
                 );
                 return;
@@ -450,15 +450,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                   _updatedCampaignData!['promotion'] = value;
                   _updatedCampaignData!['promotionType'] = promotionType;
                 });
-                Navigator.of(dialogContext).pop();
-                TopNotificationService.showSuccess(
-                  context: context,
-                  message: 'Campaign value updated',
-                );
+                Navigator.of(dialogContext).pop(true);
               } else {
                 setDialogState(() => isSaving = false);
                 TopNotificationService.showError(
-                  context: context,
+                  context: dialogBuilderContext,
                   message:
                       result['message']?.toString() ?? 'Failed to update value',
                 );
@@ -646,7 +642,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                         child: OutlinedButton(
                           onPressed: isSaving
                               ? null
-                              : () => Navigator.of(dialogContext).pop(),
+                              : () => Navigator.of(dialogContext).pop(false),
                           style: OutlinedButton.styleFrom(
                             side:
                                 const BorderSide(color: Colors.white, width: 1),
@@ -672,6 +668,12 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           },
         );
       },
+    ).whenComplete(controller.dispose);
+
+    if (!mounted || updated != true) return;
+    TopNotificationService.showSuccess(
+      context: context,
+      message: 'Campaign value updated',
     );
   }
 

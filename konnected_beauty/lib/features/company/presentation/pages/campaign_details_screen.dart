@@ -6,7 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:confetti/confetti.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/campaigns/campaigns_bloc.dart';
@@ -18,7 +19,18 @@ import '../../../../core/services/api/influencers_service.dart';
 import '../../../../core/services/campaign_chat_socket_service.dart';
 import '../../../../widgets/common/campaign_conversation_tab.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
+import '../../../../widgets/common/stripe_link_required_dialog.dart';
+import '../../../../core/services/api/stripe_service.dart';
+import '../../../../core/bloc/influencer_details/influencer_details_bloc.dart';
+import 'influencer_details_screen.dart';
 import 'orders_screen.dart';
+
+abstract final class _CampaignDetailsUi {
+  static const double radius = 16;
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+  static const double horizontalPadding = 16;
+}
 
 class CampaignDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> campaign;
@@ -219,7 +231,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   }
 
   Future<void> _fetchFreshCampaignData() async {
-    final campaignId = widget.campaign['id'];
+    final campaignId = widget.campaign['id']?.toString();
     if (campaignId == null) {
       setState(() {
         _isLoading = false;
@@ -369,37 +381,53 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     return status == 'pending' && initiator == 'salon';
   }
 
+  SalonUiTheme _salonUi(BuildContext context) =>
+      SalonUiTheme.from(context.read<ThemeBloc>().state.brightness);
+
   Future<void> _showEditPromotionDialog() async {
+    final ui = _salonUi(context);
     final promotionType = _currentPromotionType();
     final isPercentage = promotionType == 'percentage';
     final controller =
         TextEditingController(text: _currentPromotionValue().toString());
     var isSaving = false;
 
-    await showDialog<void>(
+    final influencer = campaignData['influencer']?['profile'] ?? {};
+    final pseudo = influencer['pseudo']?.toString() ?? 'Unknown';
+    final zone = influencer['zone']?.toString() ?? '';
+    final pictureUrl = influencer['profilePicture']?.toString();
+
+    final updated = await showModalBottomSheet<bool>(
       context: context,
-      barrierColor: Colors.black54,
-      builder: (dialogContext) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (sheetBuilderContext, setSheetState) {
             Future<void> save() async {
               final value = int.tryParse(controller.text.trim());
               if (value == null || value < 0) {
                 TopNotificationService.showError(
-                  context: context,
-                  message: 'Please enter a valid campaign value',
+                  context: sheetBuilderContext,
+                  message: AppTranslations.getString(
+                    sheetBuilderContext,
+                    'please_enter_valid_campaign_value',
+                  ),
                 );
                 return;
               }
               if (isPercentage && value > 100) {
                 TopNotificationService.showError(
-                  context: context,
-                  message: 'Percentage value must be between 0 and 100',
+                  context: sheetBuilderContext,
+                  message: AppTranslations.getString(
+                    sheetBuilderContext,
+                    'percentage_value_must_be_between',
+                  ),
                 );
                 return;
               }
 
-              setDialogState(() => isSaving = true);
+              setSheetState(() => isSaving = true);
               final result = await InfluencersService.updateCampaignPromotion(
                 campaignId: campaignData['id']?.toString() ??
                     widget.campaign['id']?.toString() ??
@@ -407,240 +435,406 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 promotion: value,
                 promotionType: promotionType,
               );
-              if (!mounted || !dialogContext.mounted) return;
+              if (!mounted || !sheetContext.mounted) return;
 
               if (result['success'] == true) {
                 setState(() {
                   widget.campaign['promotion'] = value;
                   widget.campaign['promotionType'] = promotionType;
-                  _freshCampaignData ??= Map<String, dynamic>.from(
-                    widget.campaign,
-                  );
+                  _freshCampaignData ??=
+                      Map<String, dynamic>.from(widget.campaign);
                   _freshCampaignData!['promotion'] = value;
                   _freshCampaignData!['promotionType'] = promotionType;
                 });
-                Navigator.of(dialogContext).pop();
-                TopNotificationService.showSuccess(
-                  context: context,
-                  message: 'Campaign value updated',
-                );
+                Navigator.of(sheetContext).pop(true);
               } else {
-                setDialogState(() => isSaving = false);
+                setSheetState(() => isSaving = false);
                 TopNotificationService.showError(
-                  context: context,
-                  message:
-                      result['message']?.toString() ?? 'Failed to update value',
+                  context: sheetBuilderContext,
+                  message: result['message']?.toString() ??
+                      AppTranslations.getString(
+                        sheetBuilderContext,
+                        'failed_to_update_value',
+                      ),
                 );
               }
             }
 
-            return Dialog(
-              backgroundColor: const Color(0xFF1F1D1D),
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Edit campaign value',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Update the terms of your collaboration.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      Text(
-                        isPercentage
-                            ? 'Followers promotion value'
-                            : 'Promotion value',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: controller,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        decoration: InputDecoration(
-                          suffixText: isPercentage ? '%' : 'EUR',
-                          suffixStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+            final bottomInset =
+                MediaQuery.viewInsetsOf(sheetBuilderContext).bottom;
+            final bottomSafe =
+                MediaQuery.paddingOf(sheetBuilderContext).bottom;
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight:
+                      MediaQuery.sizeOf(sheetBuilderContext).height * 0.9,
+                ),
+                decoration: BoxDecoration(
+                  color: ui.bg,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 180,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 14,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(22),
-                            borderSide: const BorderSide(
-                              color: Colors.white,
-                              width: 1.2,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(22),
-                            borderSide: const BorderSide(
-                              color: Colors.white,
-                              width: 1.4,
-                            ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: ui.sheetHeaderGradient,
+                            stops: const [0.0, 0.35, 0.7, 1.0],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      const Row(
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        28,
+                        20,
+                        18 + bottomSafe,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(LucideIcons.percent,
-                              color: Colors.white, size: 22),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Commission influencer',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
                           Text(
-                            '8%',
+                            AppTranslations.getString(
+                              sheetBuilderContext,
+                              'edit_campaign_value_confirm_title',
+                            ),
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
+                              color: ui.textPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              height: 1.25,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      const Row(
-                        children: [
-                          Icon(LucideIcons.percent,
-                              color: Colors.white, size: 22),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Commission Konnected',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '3%',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      const Text(
-                        'Offering a treatment or giving the ambassador a preferential rate is optional and can make collaboration easier.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          height: 1.3,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 26),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 58,
-                        child: ElevatedButton(
-                          onPressed: isSaving ? null : save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.white70,
-                            foregroundColor: const Color(0xFF1F1D1D),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          child: isSaving
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFF1F1D1D),
+                          const SizedBox(height: 20),
+                          Flexible(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildEditPromotionProfileCard(
+                                    ui: ui,
+                                    pseudo: pseudo,
+                                    zone: zone,
+                                    pictureUrl: pictureUrl,
                                   ),
-                                )
-                              : const Text(
-                                  'Save changes',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
+                                  const SizedBox(height: 14),
+                                  _buildEditPromotionCommissionCard(ui),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    AppTranslations.getString(
+                                      sheetBuilderContext,
+                                      isPercentage
+                                          ? 'followers_promotion_value'
+                                          : 'promotion_value',
+                                    ),
+                                    style: TextStyle(
+                                      color: ui.textPrimary,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextField(
+                                    controller: controller,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    style: TextStyle(
+                                      color: ui.textPrimary,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: '00',
+                                      hintStyle: TextStyle(
+                                        color: ui.textMuted,
+                                      ),
+                                      suffixText: isPercentage ? '%' : 'EUR',
+                                      suffixStyle: TextStyle(
+                                        color: ui.textPrimary,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.transparent,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 14,
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          _CampaignDetailsUi.radius,
+                                        ),
+                                        borderSide: BorderSide(
+                                          color: ui.outlinedButtonBorder,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          _CampaignDetailsUi.radius,
+                                        ),
+                                        borderSide: BorderSide(
+                                          color: ui.textPrimary,
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: isSaving ? null : save,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ui.primaryButtonBg,
+                                disabledBackgroundColor:
+                                    ui.primaryButtonBg.withValues(alpha: 0.7),
+                                foregroundColor: ui.primaryButtonFg,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    _CampaignDetailsUi.radius,
                                   ),
                                 ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: OutlinedButton(
-                          onPressed: isSaving
-                              ? null
-                              : () => Navigator.of(dialogContext).pop(),
-                          style: OutlinedButton.styleFrom(
-                            side:
-                                const BorderSide(color: Colors.white, width: 1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: isSaving
+                                  ? SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: ui.primaryButtonFg,
+                                      ),
+                                    )
+                                  : Text(
+                                      AppTranslations.getString(
+                                        sheetBuilderContext,
+                                        'save_changes',
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                             ),
                           ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: OutlinedButton(
+                              onPressed: isSaving
+                                  ? null
+                                  : () => Navigator.of(sheetContext).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: ui.textPrimary,
+                                side: BorderSide(
+                                  color: ui.outlinedButtonBorder,
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    _CampaignDetailsUi.radius,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                AppTranslations.getString(
+                                  sheetBuilderContext,
+                                  'cancel',
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );
           },
         );
       },
+    ).whenComplete(controller.dispose);
+
+    if (!mounted || updated != true) return;
+    TopNotificationService.showSuccess(
+      context: context,
+      message: AppTranslations.getString(context, 'campaign_value_updated'),
+    );
+  }
+
+  Widget _buildEditPromotionProfileCard({
+    required SalonUiTheme ui,
+    required String pseudo,
+    required String zone,
+    String? pictureUrl,
+  }) {
+    return Container(
+      height: 55,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
+        color: ui.card,
+      ),
+      child: Row(
+        children: [
+          ClipOval(
+            child: SizedBox(
+              width: 42,
+              height: 42,
+              child: pictureUrl != null && pictureUrl.isNotEmpty
+                  ? Image.network(
+                      pictureUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return ColoredBox(
+                          color: ui.bannerFill,
+                          child: Icon(
+                            LucideIcons.user,
+                            color: ui.textMuted,
+                            size: 22,
+                          ),
+                        );
+                      },
+                    )
+                  : ColoredBox(
+                      color: ui.bannerFill,
+                      child: Icon(
+                        LucideIcons.user,
+                        color: ui.textMuted,
+                        size: 22,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '@$pseudo',
+                  style: TextStyle(
+                    color: ui.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (zone.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    zone,
+                    style: TextStyle(
+                      color: ui.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      height: 1.1,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditPromotionCommissionCard(SalonUiTheme ui) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+        border: Border.all(
+          color: ui.cardBorder,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildEditPromotionCommissionRow(
+            ui: ui,
+            label: AppTranslations.getString(context, 'commission_influencer'),
+            value: '8%',
+          ),
+          const SizedBox(height: 12),
+          _buildEditPromotionCommissionRow(
+            ui: ui,
+            label: AppTranslations.getString(context, 'commission_kbeauty'),
+            value: '3%',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditPromotionCommissionRow({
+    required SalonUiTheme ui,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(LucideIcons.badgePercent, color: ui.textPrimary, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 
@@ -689,119 +883,154 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LanguageBloc, LanguageState>(
-      builder: (context, languageState) {
-        return Scaffold(
-            resizeToAvoidBottomInset: true,
-            backgroundColor:
-                const Color(0xFF1F1E1E), // Set scaffold background color
-            body: Stack(
-              children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Color(0xFF1F1E1E), // Bottom color (darker)
-                          Color(0xFF3B3B3B), // Top color (lighter)
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  bottom: MediaQuery.viewInsetsOf(context).bottom == 0,
-                  child: _isLoading
-                      ? _buildShimmerContent()
-                      : _selectedTabIndex == 0
-                          ? SingleChildScrollView(
-                              controller: _scrollController,
-                              keyboardDismissBehavior:
-                                  ScrollViewKeyboardDismissBehavior.onDrag,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildHeader(),
-                                  _buildTabBar(),
-                                  Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: _buildDetailsBody(),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        16, 0, 16, 24),
-                                    child: _buildActionButtons(),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _buildHeader(),
-                                _buildTabBar(),
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    controller: _conversationScrollController,
-                                    keyboardDismissBehavior:
-                                        ScrollViewKeyboardDismissBehavior
-                                            .onDrag,
-                                    child: _buildConversationScrollBody(),
-                                  ),
-                                ),
-                                _buildConversationComposer(),
-                              ],
+    final topInset = MediaQuery.paddingOf(context).top;
+
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+
+        return BlocBuilder<LanguageBloc, LanguageState>(
+          builder: (context, languageState) {
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: ui.systemOverlay,
+              child: ColoredBox(
+                color: ui.bg,
+                child: Scaffold(
+                  resizeToAvoidBottomInset: true,
+                  backgroundColor: Colors.transparent,
+                  body: Stack(
+                    children: [
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: topInset + 180,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: ui.headerGradient,
+                              stops: ui.headerStops,
                             ),
-                ),
-                // Confetti Animation
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: ConfettiWidget(
-                    confettiController: _confettiController,
-                    blastDirection: 1.57, // Downward direction
-                    blastDirectionality: BlastDirectionality.explosive,
-                    shouldLoop: false,
-                    colors: const [
-                      Colors.yellow,
-                      Colors.blue,
-                      Colors.green,
-                      Colors.purple,
-                      Colors.orange,
-                      Colors.pink,
-                      Colors.brown,
-                      Colors.lightBlue,
-                      Colors.red,
+                          ),
+                        ),
+                      ),
+                      SafeArea(
+                        top: false,
+                        bottom: MediaQuery.viewInsetsOf(context).bottom == 0,
+                        child: _isLoading
+                            ? Padding(
+                                padding: EdgeInsets.only(top: topInset),
+                                child: _buildShimmerContent(ui),
+                              )
+                            : _selectedTabIndex == 0
+                                ? SingleChildScrollView(
+                                    controller: _scrollController,
+                                    keyboardDismissBehavior:
+                                        ScrollViewKeyboardDismissBehavior.onDrag,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        SizedBox(height: topInset + 8),
+                                        _buildHeader(ui),
+                                        _buildTabBar(ui),
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            _CampaignDetailsUi.horizontalPadding,
+                                            16,
+                                            _CampaignDetailsUi.horizontalPadding,
+                                            0,
+                                          ),
+                                          child: _buildDetailsBody(ui),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            _CampaignDetailsUi.horizontalPadding,
+                                            16,
+                                            _CampaignDetailsUi.horizontalPadding,
+                                            28,
+                                          ),
+                                          child: _buildActionButtons(ui),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      SizedBox(height: topInset + 8),
+                                      _buildHeader(ui),
+                                      _buildTabBar(ui),
+                                      Expanded(
+                                        child: SingleChildScrollView(
+                                          controller:
+                                              _conversationScrollController,
+                                          keyboardDismissBehavior:
+                                              ScrollViewKeyboardDismissBehavior
+                                                  .onDrag,
+                                          child: _buildConversationScrollBody(ui),
+                                        ),
+                                      ),
+                                      _buildConversationComposer(ui),
+                                    ],
+                                  ),
+                      ),
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: ConfettiWidget(
+                          confettiController: _confettiController,
+                          blastDirection: 1.57,
+                          blastDirectionality: BlastDirectionality.explosive,
+                          shouldLoop: false,
+                          colors: const [
+                            Colors.yellow,
+                            Colors.blue,
+                            Colors.green,
+                            Colors.purple,
+                            Colors.orange,
+                            Colors.pink,
+                            Colors.brown,
+                            Colors.lightBlue,
+                            Colors.red,
+                          ],
+                          createParticlePath: (size) {
+                            final random =
+                                (DateTime.now().millisecondsSinceEpoch % 4);
+                            switch (random) {
+                              case 0:
+                                return drawStar(size);
+                              case 1:
+                                return drawCircle(size);
+                              case 2:
+                                return drawSquare(size);
+                              case 3:
+                                return drawTriangle(size);
+                              default:
+                                return drawCircle(size);
+                            }
+                          },
+                        ),
+                      ),
                     ],
-                    createParticlePath: (size) {
-                      // Create various shapes for confetti
-                      final random =
-                          (DateTime.now().millisecondsSinceEpoch % 4);
-                      switch (random) {
-                        case 0:
-                          return drawStar(size);
-                        case 1:
-                          return drawCircle(size);
-                        case 2:
-                          return drawSquare(size);
-                        case 3:
-                          return drawTriangle(size);
-                        default:
-                          return drawCircle(size);
-                      }
-                    },
                   ),
                 ),
-              ],
-            ));
+              ),
+            );
+          },
+        );
       },
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  Widget _buildHeader(SalonUiTheme ui) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: _CampaignDetailsUi.horizontalPadding,
+        vertical: 8,
+      ),
       child: Row(
         children: [
           GestureDetector(
@@ -814,10 +1043,30 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               }
               Navigator.of(context).pop();
             },
-            child: const Icon(
-              Icons.arrow_back,
-              color: AppTheme.textPrimaryColor,
-              size: 28,
+            child: Container(
+              width: _CampaignDetailsUi.buttonSize,
+              height: _CampaignDetailsUi.buttonSize,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    ui.buttonFillTop,
+                    ui.buttonFillBottom,
+                  ],
+                ),
+                borderRadius:
+                    BorderRadius.circular(_CampaignDetailsUi.buttonRadius),
+                border: ui.isDark
+                    ? null
+                    : Border.all(color: ui.cardBorder, width: 1),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
+        ),
             ),
           ),
           const Spacer(),
@@ -828,7 +1077,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.sizeOf(context).width * 0.62,
                 ),
-                child: _buildStatusButton(),
+                child: _buildStatusButton(ui),
               ),
             ),
           ),
@@ -837,13 +1086,19 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(SalonUiTheme ui) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(
+        _CampaignDetailsUi.horizontalPadding,
+        8,
+        _CampaignDetailsUi.horizontalPadding,
+        4,
+      ),
       child: Row(
         children: [
           Expanded(
             child: _buildTabLabel(
+              ui: ui,
               index: 0,
               labelKey: 'tab_details',
             ),
@@ -852,9 +1107,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             child: CampaignConversationTabLabel(
               selected: _selectedTabIndex == 1,
               label: AppTranslations.getString(context, 'tab_conversation'),
-              selectedColor: Colors.white,
-              unselectedColor: Colors.white54,
-              pulseColor: AppTheme.greenPrimary,
+              selectedColor: ui.textPrimary,
+              unselectedColor: ui.textSecondary,
+              pulseColor: SalonUiTheme.accentBlue,
               onTap: () async {
                 setState(() => _selectedTabIndex = 1);
                 await _attachChatSocket();
@@ -867,7 +1122,11 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildTabLabel({required int index, required String labelKey}) {
+  Widget _buildTabLabel({
+    required SalonUiTheme ui,
+    required int index,
+    required String labelKey,
+  }) {
     final selected = _selectedTabIndex == index;
     return InkWell(
       onTap: () async {
@@ -875,8 +1134,6 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           FocusManager.instance.primaryFocus?.unfocus();
         }
         setState(() => _selectedTabIndex = index);
-        // Keep the chat socket alive when switching to Details so the connection is not torn down
-        // (reconnecting only when opening Conversation again caused flaky sends after short idle).
         if (index == 1) {
           await _attachChatSocket();
           _scrollContentToBottom();
@@ -887,16 +1144,16 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           Text(
             AppTranslations.getString(context, labelKey),
             style: TextStyle(
-              color: selected ? Colors.white : Colors.white54,
+              color: selected ? ui.textPrimary : ui.textSecondary,
               fontSize: 16,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Container(
             height: 3,
             decoration: BoxDecoration(
-              color: selected ? Colors.white : Colors.transparent,
+              color: selected ? ui.textPrimary : Colors.transparent,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -905,34 +1162,397 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildDetailsBody() {
+  Widget _buildDetailsBody(SalonUiTheme ui) {
+    final status = campaignData['status']?.toString().toLowerCase().trim() ?? '';
+
+    if (status == 'finished') {
+      return _buildFinishedDetailsBody(ui);
+    }
+
+    if (status == 'in progress' || status == 'on_going' || status == 'ongoing') {
+      return _buildOngoingDetailsBody(ui);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildCampaignWithSection(),
-        const SizedBox(height: 24),
-        _buildCreatedAtSection(),
-        const SizedBox(height: 24),
-        _buildPromotionSection(),
-        const SizedBox(height: 24),
-        _buildClicksSection(),
-        const SizedBox(height: 24),
-        _buildCompletedOrdersSection(),
-        const SizedBox(height: 24),
-        _buildViewOrdersButton(),
-        const SizedBox(height: 24),
-        _buildTotalSection(),
+        _buildCreatedAtInline(ui),
+        const SizedBox(height: 18),
+        _buildCampaignWithSection(ui),
+        const SizedBox(height: 16),
+        if (_campaignLink.isNotEmpty) ...[
+          _buildDarkActionButton(
+            ui: ui,
+            label: AppTranslations.getString(context, 'copy_link'),
+            icon: LucideIcons.link,
+            onTap: _copyCampaignLink,
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (_canEditCampaignValue) ...[
+          _buildDarkActionButton(
+            ui: ui,
+            label: AppTranslations.getString(context, 'edit_promotion'),
+            icon: LucideIcons.pencil,
+            onTap: _showEditPromotionDialog,
+          ),
+          const SizedBox(height: 12),
+        ],
+        _buildPromotionCard(ui),
       ],
     );
   }
 
-  Widget _buildConversationScrollBody() {
+  Widget _buildOngoingDetailsBody(SalonUiTheme ui) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCreatedAtInline(ui),
+        const SizedBox(height: 18),
+        _buildCampaignWithSection(ui),
+        const SizedBox(height: 16),
+        if (_campaignLink.isNotEmpty) ...[
+          _buildDarkActionButton(
+            ui: ui,
+            label: AppTranslations.getString(context, 'copy_link'),
+            icon: LucideIcons.link,
+            onTap: _copyCampaignLink,
+          ),
+          const SizedBox(height: 12),
+        ],
+        _buildStatsCard(ui: ui, showViewOrders: true),
+      ],
+    );
+  }
+
+  Widget _buildFinishedDetailsBody(SalonUiTheme ui) {
+    final finishedRaw = campaignData['finishedAt'] ??
+        campaignData['completedAt'] ??
+        campaignData['updatedAt'] ??
+        '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildDateInline(
+          ui: ui,
+          labelKey: 'created_at',
+          dateRaw: campaignData['createdAt'] ?? '',
+        ),
+        const SizedBox(height: 8),
+        _buildDateInline(
+          ui: ui,
+          labelKey: 'finished_at',
+          dateRaw: finishedRaw,
+        ),
+        const SizedBox(height: 18),
+        _buildCampaignWithSection(ui),
+        const SizedBox(height: 16),
+        _buildStatsCard(ui: ui, showViewOrders: true),
+      ],
+    );
+  }
+
+  Widget _buildDateInline({
+    required SalonUiTheme ui,
+    required String labelKey,
+    required dynamic dateRaw,
+  }) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '${AppTranslations.getString(context, labelKey)} ',
+            style: TextStyle(
+              color: ui.textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          TextSpan(
+            text: _formatDate(dateRaw?.toString() ?? ''),
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCard({
+    required SalonUiTheme ui,
+    required bool showViewOrders,
+  }) {
+    final clicks = campaignData['clicks'] ?? widget.campaign['clicks'] ?? 0;
+    final completedOrders = campaignData['totalCompletedOrders'] ?? 0;
+    final totalAmount = campaignData['totalAmount'] ?? 0;
+    final promotion = _formatPromotionValue(
+      campaignData['promotion'],
+      campaignData['promotionType'],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildFinishedStatCell(
+                  ui: ui,
+                  label: AppTranslations.getString(context, 'promotion'),
+                  value: promotion,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildFinishedStatCell(
+                  ui: ui,
+                  label: AppTranslations.getString(context, 'clicks'),
+                  value: _formatNumber(clicks),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildFinishedStatCell(
+                  ui: ui,
+                  label: AppTranslations.getString(context, 'completed_orders'),
+                  value: _formatNumber(completedOrders),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildFinishedStatCell(
+                  ui: ui,
+                  label: AppTranslations.getString(context, 'total'),
+                  value: '${_formatNumber(totalAmount)} EUR',
+                ),
+              ),
+            ],
+          ),
+          if (showViewOrders) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          OrdersScreen(campaign: widget.campaign),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ui.textPrimary,
+                  side: BorderSide(color: ui.outlinedButtonBorder, width: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(_CampaignDetailsUi.radius),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      AppTranslations.getString(context, 'view_orders'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(LucideIcons.shoppingBag, size: 18, color: ui.textPrimary),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinishedStatCell({
+    required SalonUiTheme ui,
+    required String label,
+    required String value,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: ui.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatNumber(dynamic value) {
+    final intValue = value is int ? value : int.tryParse(value.toString()) ?? 0;
+    final raw = intValue.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < raw.length; i++) {
+      final reverseIndex = raw.length - i;
+      buf.write(raw[i]);
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) buf.write(',');
+    }
+    return buf.toString();
+  }
+
+  String get _campaignLink {
+    final link = campaignData['link']?.toString() ??
+        widget.campaign['link']?.toString() ??
+        '';
+    return link.trim();
+  }
+
+  void _copyCampaignLink() {
+    final link = _campaignLink;
+    if (link.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: link));
+    TopNotificationService.showSuccess(
+      context: context,
+      message: AppTranslations.getString(context, 'campaign_link_copied'),
+    );
+  }
+
+  Widget _buildCreatedAtInline(SalonUiTheme ui) {
+    return _buildDateInline(
+      ui: ui,
+      labelKey: 'created_at',
+      dateRaw: campaignData['createdAt'] ?? '',
+    );
+  }
+
+  Widget _buildDarkActionButton({
+    required SalonUiTheme ui,
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: ui.card,
+      borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+        child: Container(
+          width: double.infinity,
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+            border: Border.all(color: ui.cardBorder, width: 1),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: ui.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(icon, color: ui.textPrimary, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPromotionCard(SalonUiTheme ui) {
+    return _buildInfoCard(
+      ui: ui,
+      label: AppTranslations.getString(context, 'promotion'),
+      value: _formatPromotionValue(
+        campaignData['promotion'],
+        campaignData['promotionType'],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required SalonUiTheme ui,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_CampaignDetailsUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: ui.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationScrollBody(SalonUiTheme ui) {
     if (_campaignMessagesLoading) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(24, 48, 24, 24),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
         child: Center(
           child: CircularProgressIndicator(
-            color: Colors.white54,
+            color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
           ),
         ),
       );
@@ -945,8 +1565,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         child: Text(
           AppTranslations.getString(context, 'conversation_empty'),
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white54,
+          style: TextStyle(
+            color: ui.textMuted,
             fontSize: 15,
           ),
         ),
@@ -961,10 +1581,10 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           for (int i = 0; i < lines.length; i++) ...[
             if (lines.length >= 2 && i == lines.length - 1) ...[
               const SizedBox(height: 8),
-              _buildNewMessageDivider(),
+              _buildNewMessageDivider(ui),
               const SizedBox(height: 16),
             ],
-            _buildConversationBubble(lines[i]),
+            _buildConversationBubble(ui, lines[i]),
             const SizedBox(height: 12),
           ],
         ],
@@ -972,12 +1592,12 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildNewMessageDivider() {
+  Widget _buildNewMessageDivider(SalonUiTheme ui) {
     return Row(
       children: [
         Expanded(
           child: Divider(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: ui.borderSubtle.withValues(alpha: 0.35),
             height: 1,
           ),
         ),
@@ -986,7 +1606,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           child: Text(
             AppTranslations.getString(context, 'new_message'),
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.45),
+              color: ui.textMuted,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -994,7 +1614,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         ),
         Expanded(
           child: Divider(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: ui.borderSubtle.withValues(alpha: 0.35),
             height: 1,
           ),
         ),
@@ -1002,7 +1622,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildConversationBubble(_ConversationLine line) {
+  Widget _buildConversationBubble(SalonUiTheme ui, _ConversationLine line) {
     final maxW = MediaQuery.of(context).size.width * 0.78;
     return Align(
       alignment: line.isSalon ? Alignment.centerRight : Alignment.centerLeft,
@@ -1020,7 +1640,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               child: Text(
                 _formatConversationTimestamp(line.at!),
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
+                  color: ui.textMuted,
                   fontSize: 12,
                 ),
               ),
@@ -1029,16 +1649,17 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
             constraints: BoxConstraints(maxWidth: maxW),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0xFF3A3A3A),
+                color: ui.card,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ui.cardBorder, width: 1),
               ),
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Text(
                   line.text,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ui.textPrimary,
                     fontSize: 15,
                     height: 1.35,
                   ),
@@ -1051,7 +1672,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildConversationComposer() {
+  Widget _buildConversationComposer(SalonUiTheme ui) {
     final viewInsets = MediaQuery.viewInsetsOf(context);
     final viewPadding = MediaQuery.viewPaddingOf(context);
     // Body is already resized above the keyboard; only add home-indicator padding.
@@ -1074,8 +1695,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                       textInputAction: TextInputAction.newline,
                       minLines: 1,
                       maxLines: 5,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: ui.textPrimary,
                         fontSize: 15,
                       ),
                       scrollPadding: const EdgeInsets.only(bottom: 120),
@@ -1086,25 +1707,25 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                           'type_a_message',
                         ),
                         hintStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.35),
+                          color: ui.textMuted,
                         ),
                         filled: true,
-                        fillColor: const Color(0xFF2C2C2C),
+                        fillColor: ui.card,
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 18,
                           vertical: 14,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Colors.white,
+                          borderRadius: BorderRadius.circular(999),
+                          borderSide: BorderSide(
+                            color: ui.outlinedButtonBorder,
                             width: 1,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Colors.white,
+                          borderRadius: BorderRadius.circular(999),
+                          borderSide: BorderSide(
+                            color: ui.textPrimary,
                             width: 1.2,
                           ),
                         ),
@@ -1113,17 +1734,17 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                   ),
                   const SizedBox(width: 10),
                   Material(
-                    color: const Color(0xFFBDBDBD),
+                    color: ui.primaryButtonBg,
                     borderRadius: BorderRadius.circular(14),
                     child: InkWell(
                       onTap: _sendConversationMessage,
                       borderRadius: BorderRadius.circular(14),
-                      child: const Padding(
-                        padding: EdgeInsets.all(14),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
                         child: Icon(
                           LucideIcons.send,
-                          color: Colors.black,
-                          size: 22,
+                          color: ui.primaryButtonFg,
+                          size: 20,
                         ),
                       ),
                     ),
@@ -1139,7 +1760,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                   ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: ui.textMuted,
                     fontSize: 13,
                   ),
                 ),
@@ -1178,433 +1799,141 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     }
   }
 
-  Widget _buildCampaignWithSection() {
+  Widget _buildCampaignWithSection(SalonUiTheme ui) {
+    final influencerId = campaignData['influencer']?['id']?.toString() ??
+        widget.campaign['influencer']?['id']?.toString();
+    final pseudo =
+        campaignData['influencer']?['profile']?['pseudo']?.toString() ??
+            'Unknown';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           AppTranslations.getString(context, 'campaign_with'),
           style: TextStyle(
-            color: AppTheme.textPrimaryColor,
+            color: ui.textPrimary,
             fontSize: 14,
+            fontWeight: FontWeight.w400,
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            // Profile Picture
-            _buildProfilePicture(),
-            const SizedBox(width: 12),
-            Text(
-              '@${campaignData['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCreatedAtSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          AppTranslations.getString(context, 'created_at'),
-          style: TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _formatDate(campaignData['createdAt'] ?? ''),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPromotionSection() {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppTranslations.getString(context, 'promotion_type'),
-                style: TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 14,
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: () {
+            if (influencerId == null || influencerId.isEmpty) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BlocProvider(
+                  create: (_) => InfluencerDetailsBloc(),
+                  child: InfluencerDetailsScreen(
+                    influencerId: influencerId,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                campaignData['promotionType'] ?? 'percentage',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Value',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                _formatPromotionValue(
-                  campaignData['promotion'],
-                  campaignData['promotionType'],
-                ),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildClicksSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          AppTranslations.getString(context, 'clicks'),
-          style: TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${widget.campaign['clicks']} Clicks',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCompletedOrdersSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Completed orders',
-          style: TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Builder(
-          builder: (context) {
-            final completedOrders = campaignData['totalCompletedOrders'] ?? 0;
-            print('🔍 === COMPLETED ORDERS ===');
-            print(
-                '🔍 Raw: ${campaignData['totalCompletedOrders']} | Processed: $completedOrders');
-            print('🔍 === END COMPLETED ORDERS ===');
-            return Text(
-              '$completedOrders',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
               ),
             );
           },
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            children: [
+              _buildProfilePicture(ui),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '@$pseudo',
+                  style: TextStyle(
+                    color: ui.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildViewOrdersButton() {
+  Widget _buildStatusButton(SalonUiTheme ui) {
     final status = campaignData['status']?.toString().toLowerCase() ?? '';
 
-    // Only show button for finished or ongoing campaigns
-    if (status != 'finished' && status != 'in progress') {
-      return const SizedBox.shrink();
+    String label;
+    IconData icon;
+
+    if (status == 'finished') {
+      label = AppTranslations.getString(context, 'finished');
+      icon = LucideIcons.checkCheck;
+    } else if (status == 'rejected') {
+      label = AppTranslations.getString(context, 'rejected');
+      icon = LucideIcons.xCircle;
+    } else if (status == 'pending') {
+      final initiator = campaignData['initiator'] ?? 'salon';
+      label = initiator == 'influencer'
+          ? AppTranslations.getString(context, 'waiting_for_salon')
+          : AppTranslations.getString(context, 'waiting_for_influencer');
+      icon = initiator == 'influencer'
+          ? LucideIcons.store
+          : LucideIcons.userSquare;
+    } else {
+      label = AppTranslations.getString(context, 'on_going_status');
+      icon = LucideIcons.circleDotDashed;
     }
 
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => OrdersScreen(campaign: widget.campaign),
-            ),
-          );
-        },
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.white, width: 1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          backgroundColor: AppTheme.transparentBackground,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppTranslations.getString(context, 'view_orders'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: ui.primaryButtonBg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: ui.primaryButtonFg,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.shopping_bag_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 6),
+          Icon(icon, color: ui.primaryButtonFg, size: 14),
+        ],
       ),
     );
   }
 
-  Widget _buildTotalSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Total',
-          style: TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Builder(
-          builder: (context) {
-            final totalAmount = campaignData['totalAmount'] ?? 0;
-            print('🔍 === TOTAL AMOUNT ===');
-            print(
-                '🔍 Raw: ${campaignData['totalAmount']} | Processed: $totalAmount');
-            print('🔍 === END TOTAL AMOUNT ===');
-            return Text(
-              '$totalAmount EUR',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusButton() {
-    final status = campaignData['status']?.toString().toLowerCase() ?? '';
-
-    if (status == 'finished') {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                AppTranslations.getString(context, 'finished'),
-                style: const TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Icon(
-              Icons.done_all_outlined,
-              color: AppTheme.secondaryColor,
-              size: 20,
-            ),
-          ],
-        ),
-      );
-    } else if (status == 'rejected') {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                AppTranslations.getString(context, 'rejected'),
-                style: const TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Icon(
-              Icons.cancel_outlined,
-              color: AppTheme.secondaryColor,
-              size: 20,
-            ),
-          ],
-        ),
-      );
-    } else if (status == 'pending') {
-      final initiator = campaignData['initiator'] ?? 'salon';
-      final statusText = initiator == 'influencer'
-          ? AppTranslations.getString(context, 'waiting_for_salon')
-          : AppTranslations.getString(context, 'waiting_for_influencer');
-      final statusIcon = initiator == 'influencer'
-          ? LucideIcons.store
-          : Icons.person_2_outlined;
-
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                statusText,
-                style: const TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Icon(
-              statusIcon,
-              color: AppTheme.secondaryColor,
-              size: 20,
-            ),
-          ],
-        ),
-      );
-    } else {
-      // On going or other statuses
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black, width: 1),
-        ),
-        child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                AppTranslations.getString(context, 'on_going_status'),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: Colors.black, width: 1, style: BorderStyle.solid),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: SizedBox(
-                  width: 6,
-                  height: 6,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(SalonUiTheme ui) {
     final status = campaignData['status']?.toString().toLowerCase() ?? '';
     final initiator = campaignData['initiator'] ?? 'salon';
 
-    if (status == 'finished') {
-      // No buttons for finished campaigns
+    if (status == 'finished' || status == 'rejected') {
       return const SizedBox.shrink();
-    } else if (status == 'rejected') {
-      // No buttons for rejected campaigns
-      return const SizedBox.shrink();
-    } else if (status == 'pending') {
-      // Check if influencer initiated the campaign
+    }
+
+    if (status == 'pending') {
       if (initiator == 'influencer') {
-        // Show accept/refuse buttons when influencer invited salon
         return Column(
           children: [
-            // Accept Campaign Button
             SizedBox(
               width: double.infinity,
+              height: 52,
               child: ElevatedButton(
                 onPressed: () => _acceptCampaign(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.greenColor,
+                  backgroundColor: ui.primaryButtonBg,
+                  foregroundColor: ui.primaryButtonFg,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius:
+                        BorderRadius.circular(_CampaignDetailsUi.radius),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1613,248 +1942,198 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                       child: Text(
                         AppTranslations.getString(context, 'accept_campaign'),
                         style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
                         overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      LucideIcons.checkCheck,
-                      color: Colors.black,
-                      size: 20,
-                    ),
+                    Icon(LucideIcons.checkCheck, size: 18, color: ui.primaryButtonFg),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            // Refuse Campaign Button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _refuseCampaign(),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white, width: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        AppTranslations.getString(context, 'refuse_campaign'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      } else {
-        // Only delete button for pending campaigns when salon initiated
-        return Column(
-          children: [
-            if (_canEditCampaignValue) ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _showEditPromotionDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.secondaryColor,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Edit campaign value',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(LucideIcons.pencil, size: 22),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  _showDeleteCampaignDialog();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.transparentBackground,
-                  foregroundColor: AppTheme.borderColor,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(
-                        color: Colors.white, width: 1), // ✅ White border
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      AppTranslations.getString(context, 'delete_campaign'),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(LucideIcons.xCircle, size: 24),
-                  ],
-                ),
-              ),
+            _buildDarkActionButton(
+              ui: ui,
+              label: AppTranslations.getString(context, 'refuse_campaign'),
+              icon: LucideIcons.x,
+              onTap: () => _refuseCampaign(),
             ),
           ],
         );
       }
-    } else {
-      // Both buttons for ongoing campaigns
-      return Column(
-        children: [
-          // Finish Campaign Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _showFinishCampaignDialog(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Colors.white, width: 1),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    AppTranslations.getString(context, 'finish_campaign'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.check, size: 24),
-                ],
-              ),
-            ),
-          ),
-        ],
+
+      return _buildDarkActionButton(
+        ui: ui,
+        label: AppTranslations.getString(context, 'delete_campaign'),
+        icon: LucideIcons.xCircle,
+        onTap: _showDeleteCampaignDialog,
       );
     }
+
+    return _buildDarkActionButton(
+      ui: ui,
+      label: AppTranslations.getString(context, 'finish_campaign'),
+      icon: LucideIcons.check,
+      onTap: _showFinishCampaignDialog,
+    );
   }
 
   void _showDeleteCampaignDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+    final ui = _salonUi(context);
+    final pageContext = context;
+    showModalBottomSheet<void>(
+      context: pageContext,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        final bottomSafe = MediaQuery.paddingOf(sheetContext).bottom;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          title: Text(
-            AppTranslations.getString(context, 'delete_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Text(
-            AppTranslations.getString(context, 'delete_campaign_confirm'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text(
-                AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            BlocListener<CampaignsBloc, CampaignsState>(
-              listener: (context, state) {
-                if (state is CampaignDeleted) {
-                  Navigator.of(context).pop(); // Close dialog
-                  TopNotificationService.showSuccess(
-                    context: context,
-                    message: state.message,
-                  );
-                  Navigator.of(context).pop(); // Go back to campaigns screen
-                } else if (state is CampaignsError) {
-                  Navigator.of(context).pop(); // Close dialog
-                  TopNotificationService.showError(
-                    context: context,
-                    message: state.message,
-                  );
-                }
-              },
-              child: TextButton(
-                onPressed: () {
-                  context.read<CampaignsBloc>().add(
-                        DeleteCampaign(campaignId: widget.campaign['id']),
-                      );
-                },
-                child: Text(
-                  AppTranslations.getString(
-                      context, 'delete_campaign_confirm_button'),
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 28, 20, 18 + bottomSafe),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'delete_campaign',
+                      ),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'delete_campaign_confirm',
+                      ),
+                      style: TextStyle(
+                        color: ui.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    BlocListener<CampaignsBloc, CampaignsState>(
+                      listener: (listenerContext, state) {
+                        if (state is CampaignDeleted) {
+                          Navigator.of(sheetContext).pop();
+                          if (!pageContext.mounted) return;
+                          TopNotificationService.showSuccess(
+                            context: pageContext,
+                            message: state.message,
+                          );
+                          Navigator.of(pageContext).pop();
+                        } else if (state is CampaignsError) {
+                          Navigator.of(sheetContext).pop();
+                          if (!pageContext.mounted) return;
+                          TopNotificationService.showError(
+                            context: pageContext,
+                            message: state.message,
+                          );
+                        }
+                      },
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            sheetContext.read<CampaignsBloc>().add(
+                                  DeleteCampaign(
+                                    campaignId: widget.campaign['id'],
+                                  ),
+                                );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                _CampaignDetailsUi.radius,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            AppTranslations.getString(
+                              sheetContext,
+                              'delete_campaign_confirm_button',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ui.textPrimary,
+                          side: BorderSide(
+                            color: ui.outlinedButtonBorder,
+                            width: 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          AppTranslations.getString(sheetContext, 'cancel'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1864,7 +2143,9 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     if (dateString.isEmpty) return 'Unknown';
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year}';
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      return '$day/$month/${date.year}';
     } catch (e) {
       return 'Unknown';
     }
@@ -1881,62 +2162,148 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     }
   }
 
-  void _acceptCampaign() {
+  Future<void> _acceptCampaign() async {
+    final stripeStatus = await StripeService.verifyAccountStatus();
+    if (!mounted) return;
+
+    final isOnboarded =
+        stripeStatus['success'] == true &&
+        (stripeStatus['data'] as Map<String, dynamic>?)?['isOnboarded'] == true;
+
+    if (!isOnboarded) {
+      await StripeLinkRequiredDialog.show(context);
+      return;
+    }
+
     _showAcceptCampaignDialog();
   }
 
   void _showAcceptCampaignDialog() {
-    showDialog(
+    final ui = _salonUi(context);
+    showModalBottomSheet<void>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        final bottomSafe = MediaQuery.paddingOf(sheetContext).bottom;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          title: Text(
-            AppTranslations.getString(context, 'accept_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Text(
-            AppTranslations.getString(context, 'confirm_accept_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text(
-                AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _performAcceptCampaign();
-              },
-              child: Text(
-                AppTranslations.getString(context, 'confirm'),
-                style: const TextStyle(
-                  color: AppTheme.greenColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 28, 20, 18 + bottomSafe),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'accept_campaign',
+                      ),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'confirm_accept_campaign',
+                      ),
+                      style: TextStyle(
+                        color: ui.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          _performAcceptCampaign();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ui.primaryButtonBg,
+                          foregroundColor: ui.primaryButtonFg,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          AppTranslations.getString(sheetContext, 'confirm'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ui.textPrimary,
+                          side: BorderSide(
+                            color: ui.outlinedButtonBorder,
+                            width: 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          AppTranslations.getString(sheetContext, 'cancel'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -1957,11 +2324,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.greenColor,
-          ),
-        ),
+        builder: (context) {
+          final ui = _salonUi(context);
+          return Center(
+            child: CircularProgressIndicator(
+              color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
+            ),
+          );
+        },
       );
 
       final result = await InfluencersService.acceptInfluencerInvite(
@@ -1995,6 +2365,8 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
         if (mounted) {
           setState(() {});
         }
+      } else if (result['stripeAccountNotLinked'] == true) {
+        await StripeLinkRequiredDialog.show(context);
       } else {
         TopNotificationService.showError(
           context: context,
@@ -2019,95 +2391,132 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   }
 
   void _showRefuseCampaignDialog() {
-    showDialog(
+    final ui = _salonUi(context);
+    showModalBottomSheet<void>(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppTheme.secondaryColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Main question
-                Text(
-                  AppTranslations.getString(
-                      context, 'are_you_sure_refuse_campaign'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        final bottomSafe = MediaQuery.paddingOf(sheetContext).bottom;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Warning message
-                Text(
-                  AppTranslations.getString(context, 'no_going_back_warning'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Action buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 28, 20, 18 + bottomSafe),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Cancel button
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white, width: 1),
-                        backgroundColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'are_you_sure_refuse_campaign',
                       ),
-                      child: Text(
-                        AppTranslations.getString(context, 'cancel'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'no_going_back_warning',
+                      ),
+                      style: TextStyle(
+                        color: ui.textSecondary,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          _performRefuseCampaign();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          AppTranslations.getString(
+                            sheetContext,
+                            'yes_refuse',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    // Yes, Refuse button
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop();
-                        _performRefuseCampaign();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red, width: 1),
-                        backgroundColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ui.textPrimary,
+                          side: BorderSide(
+                            color: ui.outlinedButtonBorder,
+                            width: 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                      ),
-                      child: Text(
-                        AppTranslations.getString(context, 'yes_refuse'),
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
+                        child: Text(
+                          AppTranslations.getString(sheetContext, 'cancel'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -2129,11 +2538,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.greenColor,
-          ),
-        ),
+        builder: (context) {
+          final ui = _salonUi(context);
+          return Center(
+            child: CircularProgressIndicator(
+              color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
+            ),
+          );
+        },
       );
 
       final result = await InfluencersService.refuseInfluencerInvite(
@@ -2175,159 +2587,188 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
 
   // ignore: unused_element
   void _showReplyDialog() {
-    _replyMessageController.clear(); // Clear previous message
-    showDialog(
+    final ui = _salonUi(context);
+    _replyMessageController.clear();
+    showModalBottomSheet<void>(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          backgroundColor: AppTheme.secondaryColor,
-          insetPadding: EdgeInsets.all(10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) {
+        final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final bottomSafe = MediaQuery.paddingOf(sheetContext).bottom;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
           child: Container(
-            width: MediaQuery.of(context).size.width,
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    AppTranslations.getString(context, 'reply'),
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Message to influencer section
-                  Text(
-                    AppTranslations.getString(context, 'message_to_influencer'),
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Text input field
-                  Container(
+            decoration: BoxDecoration(
+              color: ui.bg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 160,
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppTheme.scaffoldBackground,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.border2,
-                        width: 1,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
                       ),
-                    ),
-                    child: TextField(
-                      controller: _replyMessageController,
-                      maxLines: 5,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 16,
-                      ),
-                      decoration: InputDecoration(
-                        hintText:
-                            AppTranslations.getString(context, 'write_message'),
-                        hintStyle: TextStyle(
-                          color: AppTheme.textSecondaryColor.withOpacity(0.6),
-                          fontSize: 16,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.all(16),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: ui.sheetHeaderGradient,
+                        stops: const [0.0, 0.35, 0.7, 1.0],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Info text
-                  Text(
-                    AppTranslations.getString(
-                        context, 'single_message_allowed'),
-                    style: TextStyle(
-                      color: AppTheme.textSecondaryColor.withOpacity(0.8),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Action buttons
-                  Column(
-                    children: [
-                      // Send Reply button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(dialogContext).pop();
-                            _performReply();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  AppTranslations.getString(
-                                      context, 'send_reply'),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.send,
-                                size: 20,
-                                color: Colors.black,
-                              ),
-                            ],
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20, 28, 20, 18 + bottomSafe),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppTranslations.getString(sheetContext, 'reply'),
+                          style: TextStyle(
+                            color: ui.textPrimary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Cancel button
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(dialogContext).pop();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                              color: AppTheme.textSecondaryColor,
+                        const SizedBox(height: 24),
+                        Text(
+                          AppTranslations.getString(
+                            sheetContext,
+                            'message_to_influencer',
+                          ),
+                          style: TextStyle(
+                            color: ui.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: ui.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: ui.cardBorder,
                               width: 1,
                             ),
-                            foregroundColor: AppTheme.textPrimaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: Text(
-                            AppTranslations.getString(context, 'cancel'),
-                            style: const TextStyle(
+                          child: TextField(
+                            controller: _replyMessageController,
+                            maxLines: 5,
+                            style: TextStyle(
+                              color: ui.textPrimary,
                               fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: AppTranslations.getString(
+                                sheetContext,
+                                'write_message',
+                              ),
+                              hintStyle: TextStyle(
+                                color: ui.textMuted,
+                                fontSize: 16,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.all(16),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Text(
+                          AppTranslations.getString(
+                            sheetContext,
+                            'single_message_allowed',
+                          ),
+                          style: TextStyle(
+                            color: ui.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(sheetContext).pop();
+                              _performReply();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ui.primaryButtonBg,
+                              foregroundColor: ui.primaryButtonFg,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    AppTranslations.getString(
+                                      sheetContext,
+                                      'send_reply',
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.send,
+                                  size: 20,
+                                  color: ui.primaryButtonFg,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: ui.outlinedButtonBorder,
+                                width: 1,
+                              ),
+                              foregroundColor: ui.textPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(
+                              AppTranslations.getString(
+                                sheetContext,
+                                'cancel',
+                              ),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -2360,61 +2801,48 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     _replyMessageController.clear();
   }
 
-  Widget _buildProfilePicture() {
+  Widget _buildProfilePicture(SalonUiTheme ui) {
     final profilePicture =
-        widget.campaign['influencer']?['profile']?['profilePicture'];
+        campaignData['influencer']?['profile']?['profilePicture'] ??
+            widget.campaign['influencer']?['profile']?['profilePicture'];
 
-    if (profilePicture != null && profilePicture.toString().isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          profilePicture.toString(),
-          width: 50,
-          height: 50,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return CircleAvatar(
-              radius: 25,
-              backgroundColor: Colors.grey[600],
-              child: Icon(
-                Icons.person,
-                color: AppTheme.textPrimaryColor,
-                size: 30,
-              ),
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return CircleAvatar(
-              radius: 25,
-              backgroundColor: Colors.grey[600],
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
-                color: AppTheme.textPrimaryColor,
-              ),
-            );
-          },
-        ),
-      );
-    } else {
-      return CircleAvatar(
-        radius: 25,
-        backgroundColor: Colors.grey[600],
-        child: Icon(
-          Icons.person,
-          color: AppTheme.textPrimaryColor,
-          size: 30,
+    Widget placeholder() {
+      return ColoredBox(
+        color: ui.bannerFill,
+        child: Center(
+          child: Icon(Icons.person, color: ui.textMuted, size: 22),
         ),
       );
     }
+
+    return ClipOval(
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: profilePicture != null && profilePicture.toString().isNotEmpty
+            ? Image.network(
+                profilePicture.toString(),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => placeholder(),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return placeholder();
+                },
+              )
+            : placeholder(),
+      ),
+    );
   }
 
-  Widget _buildShimmerContent() {
+  Widget _buildShimmerContent(SalonUiTheme ui) {
+    final shimmerBase =
+        ui.isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final shimmerHighlight =
+        ui.isDark ? Colors.grey[600]! : Colors.grey[100]!;
+
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: shimmerBase,
+      highlightColor: shimmerHighlight,
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2428,7 +2856,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
+                      color: ui.bannerFill,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -2442,35 +2870,35 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Campaign with section shimmer
-                  _buildShimmerCampaignWithSection(),
+                  _buildShimmerCampaignWithSection(ui),
                   const SizedBox(height: 24),
 
                   // Created at section shimmer
-                  _buildShimmerCreatedAtSection(),
+                  _buildShimmerCreatedAtSection(ui),
                   const SizedBox(height: 24),
 
                   // Promotion section shimmer
-                  _buildShimmerPromotionSection(),
+                  _buildShimmerPromotionSection(ui),
                   const SizedBox(height: 24),
 
                   // Clicks section shimmer
-                  _buildShimmerClicksSection(),
+                  _buildShimmerClicksSection(ui),
                   const SizedBox(height: 24),
 
                   // Completed orders section shimmer
-                  _buildShimmerCompletedOrdersSection(),
+                  _buildShimmerCompletedOrdersSection(ui),
                   const SizedBox(height: 24),
 
                   // View orders button shimmer (only for finished/ongoing campaigns)
-                  _buildShimmerViewOrdersButton(),
+                  _buildShimmerViewOrdersButton(ui),
                   const SizedBox(height: 24),
 
                   // Total section shimmer
-                  _buildShimmerTotalSection(),
+                  _buildShimmerTotalSection(ui),
                   const SizedBox(height: 20),
 
                   // Action buttons shimmer
-                  _buildShimmerActionButtons(),
+                  _buildShimmerActionButtons(ui),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -2481,7 +2909,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerCampaignWithSection() {
+  Widget _buildShimmerCampaignWithSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2492,7 +2920,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               height: 16,
               width: 100,
               decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: ui.bannerFill,
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
@@ -2500,7 +2928,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               height: 24,
               width: 120,
               decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: ui.bannerFill,
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
@@ -2513,7 +2941,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: ui.bannerFill,
                 shape: BoxShape.circle,
               ),
             ),
@@ -2522,7 +2950,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
               height: 24,
               width: 150,
               decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: ui.bannerFill,
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
@@ -2532,7 +2960,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerCreatedAtSection() {
+  Widget _buildShimmerCreatedAtSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2540,7 +2968,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 16,
           width: 80,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2549,7 +2977,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 24,
           width: 120,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2557,7 +2985,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerPromotionSection() {
+  Widget _buildShimmerPromotionSection(SalonUiTheme ui) {
     return Row(
       children: [
         Expanded(
@@ -2568,7 +2996,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 height: 16,
                 width: 100,
                 decoration: BoxDecoration(
-                  color: Colors.grey[700],
+                  color: ui.bannerFill,
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
@@ -2577,7 +3005,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 height: 24,
                 width: 80,
                 decoration: BoxDecoration(
-                  color: Colors.grey[700],
+                  color: ui.bannerFill,
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
@@ -2592,7 +3020,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 height: 16,
                 width: 60,
                 decoration: BoxDecoration(
-                  color: Colors.grey[700],
+                  color: ui.bannerFill,
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
@@ -2601,7 +3029,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
                 height: 24,
                 width: 100,
                 decoration: BoxDecoration(
-                  color: Colors.grey[700],
+                  color: ui.bannerFill,
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
@@ -2612,7 +3040,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerClicksSection() {
+  Widget _buildShimmerClicksSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2620,7 +3048,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 16,
           width: 60,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2629,7 +3057,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 24,
           width: 100,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2637,7 +3065,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerCompletedOrdersSection() {
+  Widget _buildShimmerCompletedOrdersSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2645,7 +3073,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 16,
           width: 120,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2654,7 +3082,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 24,
           width: 80,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2662,18 +3090,18 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerViewOrdersButton() {
+  Widget _buildShimmerViewOrdersButton(SalonUiTheme ui) {
     return Container(
       height: 56,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: ui.bannerFill,
         borderRadius: BorderRadius.circular(12),
       ),
     );
   }
 
-  Widget _buildShimmerTotalSection() {
+  Widget _buildShimmerTotalSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2681,7 +3109,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 16,
           width: 50,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2690,7 +3118,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 24,
           width: 120,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(8),
           ),
         ),
@@ -2698,14 +3126,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
     );
   }
 
-  Widget _buildShimmerActionButtons() {
+  Widget _buildShimmerActionButtons(SalonUiTheme ui) {
     return Column(
       children: [
         Container(
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(12),
           ),
         ),
@@ -2714,7 +3142,7 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.grey[700],
+            color: ui.bannerFill,
             borderRadius: BorderRadius.circular(12),
           ),
         ),
@@ -2761,57 +3189,130 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
   }
 
   void _showFinishCampaignDialog() {
-    showDialog(
+    final ui = _salonUi(context);
+    showModalBottomSheet<void>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        final bottomSafe = MediaQuery.paddingOf(sheetContext).bottom;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          title: Text(
-            AppTranslations.getString(context, 'finish_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Text(
-            AppTranslations.getString(context, 'confirm_finish_campaign'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text(
-                AppTranslations.getString(context, 'cancel'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _finishCampaign();
-              },
-              child: Text(
-                AppTranslations.getString(context, 'confirm'),
-                style: const TextStyle(
-                  color: AppTheme.greenColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 28, 20, 18 + bottomSafe),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'finish_campaign',
+                      ),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      AppTranslations.getString(
+                        sheetContext,
+                        'confirm_finish_campaign',
+                      ),
+                      style: TextStyle(
+                        color: ui.textSecondary,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          _finishCampaign();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ui.primaryButtonBg,
+                          foregroundColor: ui.primaryButtonFg,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          AppTranslations.getString(sheetContext, 'confirm'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ui.textPrimary,
+                          side: BorderSide(
+                            color: ui.outlinedButtonBorder,
+                            width: 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              _CampaignDetailsUi.radius,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          AppTranslations.getString(sheetContext, 'cancel'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -2832,11 +3333,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.greenColor,
-          ),
-        ),
+        builder: (context) {
+          final ui = _salonUi(context);
+          return Center(
+            child: CircularProgressIndicator(
+              color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
+            ),
+          );
+        },
       );
 
       final result = await InfluencersService.finishCampaign(
@@ -2932,11 +3436,14 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.greenColor,
-          ),
-        ),
+        builder: (context) {
+          final ui = _salonUi(context);
+          return Center(
+            child: CircularProgressIndicator(
+              color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
+            ),
+          );
+        },
       );
 
       final result = await InfluencersService.rateInfluencer(
@@ -2990,68 +3497,101 @@ class _CampaignDetailsScreenState extends State<CampaignDetailsScreen> {
       enableDrag: true,
       isDismissible: true,
       useSafeArea: true,
-      builder: (context) => _buildThankYouModal(),
+      builder: (context) {
+        final ui = SalonUiTheme.from(context.read<ThemeBloc>().state.brightness);
+        return _buildThankYouModal(ui);
+      },
     );
   }
 
-  Widget _buildThankYouModal() {
+  Widget _buildThankYouModal(SalonUiTheme ui) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: ui.bg,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
       ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          // Title
-          Text(
-            AppTranslations.getString(context, 'thank_you_for_reviewing'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-
-          // Message
-          Text(
-            AppTranslations.getString(context, 'thank_you_helping_message'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 16,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-
-          // Close Button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.white, width: 1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 140,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: Text(
-                AppTranslations.getString(context, 'close'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: ui.sheetHeaderGradient,
+                  stops: const [0.0, 0.35, 0.7, 1.0],
                 ),
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  AppTranslations.getString(
+                    context,
+                    'thank_you_for_reviewing',
+                  ),
+                  style: TextStyle(
+                    color: ui.textPrimary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppTranslations.getString(
+                    context,
+                    'thank_you_helping_message',
+                  ),
+                  style: TextStyle(
+                    color: ui.textSecondary,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: ui.outlinedButtonBorder,
+                        width: 1,
+                      ),
+                      foregroundColor: ui.textPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: Text(
+                      AppTranslations.getString(context, 'close'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -3098,176 +3638,203 @@ class _RatingModalState extends State<RatingModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title
-          Text(
-            AppTranslations.getString(context, 'how_was_it'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+
+        return Container(
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
           ),
-          const SizedBox(height: 8),
-
-          // Subtitle
-          Text(
-            AppTranslations.getString(context, 'rate_review'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Rate Section
-          Text(
-            AppTranslations.getString(context, 'rate'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Star Rating
-          Row(
-            children: List.generate(5, (index) {
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedStars = index + 1;
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  child: Icon(
-                    index < selectedStars ? Icons.star : Icons.star_border,
-                    color: Colors.white,
-                    size: 42,
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 24),
-
-          // Review Section
-          Text(
-            AppTranslations.getString(context, 'review'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Review Text Field
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.transparentBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey[400]!,
-                width: 1,
-              ),
-            ),
-            child: TextField(
-              controller: reviewController,
-              maxLines: 4,
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 16,
-              ),
-              decoration: InputDecoration(
-                hintText:
-                    AppTranslations.getString(context, 'describe_your_review'),
-                hintStyle: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 16,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(16),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Action Buttons
-          Row(
+          child: Stack(
             children: [
-              // Cancel Button
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white, width: 1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    AppTranslations.getString(context, 'cancel'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-
-              // Submit Button
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: selectedStars > 0
-                      ? () {
-                          widget.onSubmitRating(
-                              selectedStars, reviewController.text);
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppTranslations.getString(context, 'how_was_it'),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    AppTranslations.getString(context, 'submit'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 8),
+                    Text(
+                      AppTranslations.getString(context, 'rate_review'),
+                      style: TextStyle(
+                        color: ui.textSecondary,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    Text(
+                      AppTranslations.getString(context, 'rate'),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: List.generate(5, (index) {
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedStars = index + 1;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            child: Icon(
+                              index < selectedStars
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: SalonUiTheme.accentBlue,
+                              size: 42,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      AppTranslations.getString(context, 'review'),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: ui.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: ui.cardBorder,
+                          width: 1,
+                        ),
+                      ),
+                      child: TextField(
+                        controller: reviewController,
+                        maxLines: 4,
+                        style: TextStyle(
+                          color: ui.textPrimary,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: AppTranslations.getString(
+                            context,
+                            'describe_your_review',
+                          ),
+                          hintStyle: TextStyle(
+                            color: ui.textMuted,
+                            fontSize: 16,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: ui.outlinedButtonBorder,
+                                width: 1,
+                              ),
+                              foregroundColor: ui.textPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(
+                              AppTranslations.getString(context, 'cancel'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: selectedStars > 0
+                                ? () {
+                                    widget.onSubmitRating(
+                                      selectedStars,
+                                      reviewController.text,
+                                    );
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ui.primaryButtonBg,
+                              foregroundColor: ui.primaryButtonFg,
+                              disabledBackgroundColor:
+                                  ui.primaryButtonBg.withValues(alpha: 0.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(
+                              AppTranslations.getString(context, 'submit'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

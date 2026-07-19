@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
@@ -8,6 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'core/bloc/app_bloc_observer.dart';
+import 'core/services/error_service.dart';
 import 'core/services/firebase_notification_service.dart';
 import 'core/bloc/language/language_bloc.dart';
 import 'core/bloc/theme/theme_bloc.dart';
@@ -41,8 +44,10 @@ import 'features/company/presentation/pages/salon_main_wrapper.dart';
 import 'features/influencer/presentation/pages/influencer_home_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  Bloc.observer = AppBlocObserver();
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    ErrorService.installGlobalHandlers();
+    Bloc.observer = AppBlocObserver();
 
   // Initialize Firebase asynchronously (non-blocking)
   // Note: On iOS, Firebase is also configured in AppDelegate.swift
@@ -118,6 +123,9 @@ void main() async {
     initialBrightness: initialBrightness,
     hasSeenOnboarding: hasSeenOnboarding,
   ));
+  }, (error, stack) {
+    ErrorService.handle(error, stack, context: 'zone');
+  });
 }
 
 class KonnectedBeautyApp extends StatelessWidget {
@@ -219,6 +227,7 @@ class KonnectedBeautyApp extends StatelessWidget {
                 builder: (context, authState) {
                   final brightness = themeState.brightness;
                   return MaterialApp(
+                    navigatorKey: ErrorService.navigatorKey,
                     title: 'Konected Beauty',
                     debugShowCheckedModeBanner: false,
                     theme: AppTheme.getThemeData(brightness),
@@ -308,7 +317,7 @@ class KonnectedBeautyApp extends StatelessWidget {
   }
 }
 
-// Custom widget that forces ALL text to use Poppins font
+// Custom widget that forces ALL text to use Montserrat font
 class FontOverrideWidget extends StatelessWidget {
   final Widget child;
 
@@ -319,29 +328,24 @@ class FontOverrideWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle(
-      style: GoogleFonts.poppins(
-        fontSize: 16,
-        color: AppTheme.textPrimaryColor,
-      ),
-      child: Builder(
-        builder: (context) {
-          return DefaultTextStyle(
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              color: AppTheme.textPrimaryColor,
-            ),
-            child: child,
-          );
-        },
-      ),
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final textColor = AppTheme.getTextPrimaryColor(themeState.brightness);
+        return DefaultTextStyle(
+          style: GoogleFonts.montserrat(
+            fontSize: 16,
+            color: textColor,
+          ),
+          child: child,
+        );
+      },
     );
   }
 }
 
-// Extension to force Poppins on all TextStyle objects
+// Extension to force Montserrat on all TextStyle objects
 extension TextStyleExtension on TextStyle {
-  TextStyle get poppins => GoogleFonts.poppins().merge(this);
+  TextStyle get poppins => GoogleFonts.montserrat().merge(this);
 }
 
 //   Widget _buildHomeScreen(AuthState authState) {

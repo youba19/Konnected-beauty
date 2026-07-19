@@ -961,32 +961,76 @@ class InfluencersService {
       print('📥 Response Status: ${response.statusCode}');
       print('📥 Response Body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData =
+            jsonDecode(response.body) as Map<String, dynamic>;
+        final bodyCode =
+            StripeLinkError.parseStatusCode(responseData['statusCode']);
+        final bodyMessage = StripeLinkError.messageFrom(responseData);
+        if (bodyCode == 499 ||
+            StripeLinkError.isAccountNotLinked(bodyMessage, bodyCode)) {
+          return {
+            'success': false,
+            'message': bodyMessage.isNotEmpty
+                ? bodyMessage
+                : 'Stripe account id not linked',
+            'statusCode': bodyCode ?? 499,
+            'stripeAccountNotLinked': true,
+          };
+        }
         return {
           'success': true,
           'message':
               responseData['message'] ?? 'Campaign accepted successfully',
           'statusCode': response.statusCode,
         };
-      } else if (response.statusCode == 400) {
-        final responseData = jsonDecode(response.body);
+      }
+
+      try {
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>;
+        final msg = StripeLinkError.messageFrom(errorData);
+        final bodyCode =
+            StripeLinkError.parseStatusCode(errorData['statusCode']);
+        final effectiveCode = bodyCode ?? response.statusCode;
+        final stripeNotLinked = effectiveCode == 499 ||
+            StripeLinkError.isAccountNotLinked(msg, effectiveCode);
+
+        if (response.statusCode == 400) {
+          return {
+            'success': false,
+            'message': msg.isNotEmpty ? msg : 'Bad request',
+            'statusCode': effectiveCode,
+            if (stripeNotLinked) 'stripeAccountNotLinked': true,
+          };
+        }
+        if (response.statusCode == 403) {
+          return {
+            'success': false,
+            'message': msg.isNotEmpty
+                ? msg
+                : 'Forbidden - Account not active',
+            'statusCode': effectiveCode,
+            if (stripeNotLinked) 'stripeAccountNotLinked': true,
+          };
+        }
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Bad request',
-          'statusCode': response.statusCode,
+          'message':
+              msg.isNotEmpty ? msg : 'Failed to accept campaign',
+          'statusCode': effectiveCode,
+          if (stripeNotLinked) 'stripeAccountNotLinked': true,
         };
-      } else if (response.statusCode == 403) {
+      } catch (_) {
+        if (response.statusCode == 403) {
+          return {
+            'success': false,
+            'message': 'Forbidden - Account not active',
+            'statusCode': response.statusCode,
+          };
+        }
         return {
           'success': false,
-          'message': 'Forbidden - Account not active',
-          'statusCode': response.statusCode,
-        };
-      } else {
-        final responseData = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': responseData['message'] ?? 'Failed to accept campaign',
+          'message': 'Failed to accept campaign',
           'statusCode': response.statusCode,
         };
       }

@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../core/translations/app_translations.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/api/orders_service.dart';
 import '../../../../core/services/api/salon_services_service.dart';
+import '../../../../widgets/common/top_notification_banner.dart';
 import 'order_detail_screen.dart';
+import 'qr_scanner_screen.dart';
+
+abstract final class _OrdersUi {
+  static const double radius = 16;
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+  static const double horizontalPadding = 16;
+}
 
 class OrdersScreen extends StatefulWidget {
   final Map<String, dynamic> campaign;
@@ -94,17 +107,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     setState(() {});
   }
 
-  String _getSelectedServiceName() {
-    if (_selectedServiceIds.isNotEmpty && _selectedServiceIds.length == 1) {
-      final selectedId = _selectedServiceIds.first;
-      final service = _availableServices.firstWhere(
-        (service) => service['id'] == selectedId,
-        orElse: () => {'name': 'Unknown Service'},
-      );
-      return service['name'] as String;
-    }
-    return AppTranslations.getString(context, 'select_multiple_services');
-  }
 
   Future<void> _loadServices() async {
     try {
@@ -692,224 +694,306 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Color(0xFF1F1E1E), // Bottom color (darker)
-                  Color(0xFF3B3B3B), // Top color (lighter)
-                ],
-              ),
-            ),
-            child: SafeArea(
-              child: GestureDetector(
-                onTap: () {
-                  // Close keyboard when tapping outside text fields
-                  FocusScope.of(context).unfocus();
-                },
-                child: Column(
-                  children: [
-                    Expanded(
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: ColoredBox(
+            color: ui.bg,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              floatingActionButton: _buildQrFab(ui),
+              body: Stack(
+                children: [
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: topInset + 180,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: ui.headerGradient,
+                          stops: ui.headerStops,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    top: false,
+                    child: GestureDetector(
+                      onTap: () => FocusScope.of(context).unfocus(),
                       child: RefreshIndicator(
                         onRefresh: () => _loadOrders(refresh: true),
-                        color: AppTheme.primaryColor,
+                        color: Colors.white,
+                        backgroundColor: SalonUiTheme.blueUpper,
                         child: CustomScrollView(
                           controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
                           slivers: [
                             SliverToBoxAdapter(
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Header
-                                  _buildHeader(),
-
-                                  // Search and Filter
-                                  _buildSearchAndFilter(),
+                                  SizedBox(height: topInset + 8),
+                                  _buildHeader(ui),
+                                  _buildSearchAndFilter(ui),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      _OrdersUi.horizontalPadding,
+                                      20,
+                                      _OrdersUi.horizontalPadding,
+                                      8,
+                                    ),
+                                    child: Text(
+                                      AppTranslations.getString(
+                                          context, 'orders'),
+                                      style: TextStyle(
+                                        color: ui.isDark ? Colors.white : Colors.black,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                            // Orders List
                             _isLoading
                                 ? SliverToBoxAdapter(
-                                    child: _buildLoadingContent())
-                                : _buildOrdersSliver(),
+                                    child: _buildLoadingContent(ui))
+                                : _buildOrdersSliver(ui),
+                            const SliverToBoxAdapter(
+                                child: SizedBox(height: 96)),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildQrFab(SalonUiTheme ui) {
+    return FloatingActionButton(
+      onPressed: _openQrScanner,
+      backgroundColor: ui.fabBg,
+      elevation: 4,
+      shape: CircleBorder(
+        side: BorderSide(color: ui.fabBorder, width: 1),
+      ),
+      child: Icon(
+        LucideIcons.scanLine,
+        color: ui.isDark ? Colors.white : Colors.black,
+        size: 24,
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Future<void> _openQrScanner() async {
+    final status = await Permission.camera.status;
+    if (status.isGranted) {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+      );
+      return;
+    }
+
+    final result = await Permission.camera.request();
+    if (!mounted) return;
+    if (result.isGranted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+      );
+    } else {
+      TopNotificationService.showError(
+        context: context,
+        message: 'Camera permission is required to scan QR codes',
+      );
+    }
+  }
+
+  Widget _buildHeader(SalonUiTheme ui) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(
+        _OrdersUi.horizontalPadding,
+        0,
+        _OrdersUi.horizontalPadding,
+        8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Back button
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: const Icon(
-                  Icons.arrow_back,
-                  color: Colors.white,
-                  size: 32,
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              width: _OrdersUi.buttonSize,
+              height: _OrdersUi.buttonSize,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [ui.buttonFillTop, ui.buttonFillBottom],
                 ),
+                borderRadius: BorderRadius.circular(_OrdersUi.buttonRadius),
+                border: ui.isDark
+                    ? null
+                    : Border.all(color: ui.cardBorder, width: 1),
               ),
-            ],
+              alignment: Alignment.center,
+              child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
+        ),
+            ),
           ),
-          const SizedBox(height: 16),
-
-          // Orders title
+          const SizedBox(height: 18),
           Text(
             AppTranslations.getString(context, 'orders'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white : Colors.black,
               fontSize: 28,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
-            textAlign: TextAlign.center,
           ),
-          // Campaign with section
+          const SizedBox(height: 8),
           Row(
             children: [
               Text(
                 AppTranslations.getString(context, 'campaign_with'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 16,
+                style: TextStyle(
+                  color: ui.isDark ? Colors.white70 : Colors.black,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(width: 8),
-              _buildInfluencerAvatar(),
+              _buildInfluencerAvatar(ui),
               const SizedBox(width: 8),
-              Text(
-                '@${widget.campaign['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: Text(
+                  '@${widget.campaign['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildInfluencerAvatar() {
+  Widget _buildInfluencerAvatar(SalonUiTheme ui) {
     final profilePicture =
         widget.campaign['influencer']?['profile']?['profilePicture'];
 
-    if (profilePicture != null && profilePicture.toString().isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          profilePicture.toString(),
-          width: 20,
-          height: 20,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultAvatar();
-          },
-        ),
-      );
-    } else {
-      return _buildDefaultAvatar();
-    }
-  }
-
-  Widget _buildDefaultAvatar() {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: const BoxDecoration(
-        color: Colors.orange,
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        Icons.person,
-        color: Colors.white,
-        size: 20,
+    return ClipOval(
+      child: SizedBox(
+        width: 22,
+        height: 22,
+        child: profilePicture != null && profilePicture.toString().isNotEmpty
+            ? Image.network(
+                profilePicture.toString(),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildDefaultAvatar(ui);
+                },
+              )
+            : _buildDefaultAvatar(ui),
       ),
     );
   }
 
-  Widget _buildSearchAndFilter() {
+  Widget _buildDefaultAvatar(SalonUiTheme ui) {
+    return ColoredBox(
+      color: ui.bannerFill,
+      child: Center(
+        child: Icon(Icons.person, color: ui.isDark ? Colors.white54 : Colors.black, size: 14),
+      ),
+    );
+  }
+
+  Widget _buildSearchAndFilter(SalonUiTheme ui) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(
+        _OrdersUi.horizontalPadding,
+        16,
+        _OrdersUi.horizontalPadding,
+        0,
+      ),
       child: Row(
         children: [
-          // Search bar
           Expanded(
             child: Container(
-              height: 54,
+              height: 48,
               decoration: BoxDecoration(
-                color: AppTheme.transparentBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.borderColor,
-                  width: 1,
-                ),
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(_OrdersUi.radius),
+                border: Border.all(color: ui.borderSubtle, width: 1),
               ),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: AppTheme.textPrimaryColor),
+                style: TextStyle(color: ui.isDark ? Colors.white : Colors.black, fontSize: 15),
+                cursorColor: ui.isDark ? Colors.white : Colors.black,
                 onChanged: (value) {
-                  // Frontend search - filter locally
                   _searchQuery = value;
                   _filterOrders();
                 },
                 decoration: InputDecoration(
-                  hintText: AppTranslations.getString(context, 'search'),
-                  hintStyle:
-                      const TextStyle(color: AppTheme.textSecondaryColor),
-                  suffixIcon: const Icon(
+                  hintText:
+                      AppTranslations.getString(context, 'search_orders'),
+                  hintStyle: TextStyle(
+                    color: ui.isDark ? Colors.white54 : Colors.black,
+                    fontSize: 15,
+                  ),
+                  prefixIcon: Icon(
                     LucideIcons.search,
-                    color: AppTheme.textPrimaryColor,
-                    size: 20,
+                    color: ui.isDark ? Colors.white70 : Colors.black,
+                    size: 18,
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: 12,
+                    vertical: 14,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-
-          // Filter button
+          const SizedBox(width: 10),
           GestureDetector(
             onTap: () => _showFilterBottomSheet(context),
             child: Container(
-              width: 54,
-              height: 54,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: AppTheme.transparentBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.borderColor,
-                  width: 1,
-                ),
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(_OrdersUi.radius),
+                border: Border.all(color: ui.borderSubtle, width: 1),
               ),
-              child: const Icon(
-                Icons.filter_list,
-                color: AppTheme.textPrimaryColor,
+              alignment: Alignment.center,
+              child: Icon(
+                LucideIcons.slidersHorizontal,
+                color: ui.isDark ? Colors.white : Colors.black,
                 size: 20,
               ),
             ),
@@ -919,10 +1003,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildLoadingContent() {
+  Widget _buildLoadingContent(SalonUiTheme ui) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
+      baseColor: ui.isDark ? Colors.grey[800]! : Colors.grey[300]!,
+      highlightColor: ui.isDark ? Colors.grey[600]! : Colors.grey[100]!,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -932,25 +1016,25 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 margin: const EdgeInsets.only(bottom: 12),
                 height: 100,
                 decoration: BoxDecoration(
-                  color: Colors.grey[700],
+                  color: ui.card,
                   borderRadius: BorderRadius.circular(12),
                 ),
               );
             }),
-            const SizedBox(height: 40), // Extra padding at bottom
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOrdersSliver() {
+  Widget _buildOrdersSliver(SalonUiTheme ui) {
     if (_hasError) {
-      return SliverToBoxAdapter(child: _buildErrorState());
+      return SliverToBoxAdapter(child: _buildErrorState(ui));
     }
 
     if (_filteredOrders.isEmpty) {
-      return SliverToBoxAdapter(child: _buildEmptyState());
+      return SliverToBoxAdapter(child: _buildEmptyState(ui));
     }
 
     return SliverPadding(
@@ -959,70 +1043,71 @@ class _OrdersScreenState extends State<OrdersScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             if (index < _filteredOrders.length) {
-              return _buildOrderCard(_filteredOrders[index]);
+              return _buildOrderCard(ui, _filteredOrders[index]);
             } else if (index == _filteredOrders.length) {
-              // Load more indicator
               if (_isLoadingMore) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
+                return Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Center(
                     child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
+                      color: ui.isDark
+                          ? Colors.white
+                          : SalonUiTheme.blueUpper,
                     ),
                   ),
                 );
               } else if (_hasMoreData) {
-                return _buildLoadMoreButton();
+                return _buildLoadMoreButton(ui);
               } else {
                 return const SizedBox(height: 40);
               }
             }
             return null;
           },
-          childCount:
-              _filteredOrders.length + (_hasMoreData || _isLoadingMore ? 1 : 0),
+          childCount: _filteredOrders.length +
+              (_hasMoreData || _isLoadingMore ? 1 : 0),
         ),
       ),
     );
   }
 
-  Widget _buildOrdersList() {
+  Widget _buildOrdersList(SalonUiTheme ui) {
     if (_hasError) {
-      return _buildErrorState();
+      return _buildErrorState(ui);
     }
 
     if (_filteredOrders.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(ui);
     }
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          ..._orders.map((order) => _buildOrderCard(order)),
-          if (_hasMoreData && !_isLoading) _buildLoadMoreButton(),
-          const SizedBox(height: 40), // Extra padding at bottom
+          ..._orders.map((order) => _buildOrderCard(ui, order)),
+          if (_hasMoreData && !_isLoading) _buildLoadMoreButton(ui),
+          const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(SalonUiTheme ui) {
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.error_outline,
-            color: AppTheme.textSecondaryColor,
+            color: ui.isDark ? Colors.white70 : Colors.black,
             size: 64,
           ),
           const SizedBox(height: 16),
           Text(
             _errorMessage,
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white70 : Colors.black,
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
@@ -1031,8 +1116,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           ElevatedButton(
             onPressed: () => _loadOrders(refresh: true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
+              backgroundColor: ui.primaryButtonBg,
+              foregroundColor: ui.primaryButtonFg,
             ),
             child: const Text('Retry'),
           ),
@@ -1041,22 +1126,22 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(SalonUiTheme ui) {
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.shopping_bag_outlined,
-            color: AppTheme.textSecondaryColor,
+            color: ui.isDark ? Colors.white70 : Colors.black,
             size: 64,
           ),
           const SizedBox(height: 16),
           Text(
             AppTranslations.getString(context, 'no_orders_found'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white70 : Colors.black,
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
@@ -1064,8 +1149,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           const SizedBox(height: 8),
           Text(
             AppTranslations.getString(context, 'orders_will_appear_here'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white70 : Colors.black,
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -1075,7 +1160,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildLoadMoreButton() {
+  Widget _buildLoadMoreButton(SalonUiTheme ui) {
     final hasMorePages = _currentPage < _totalPages;
     final hasMoreByTotal = _orders.length < _total;
     final canLoadMore = hasMorePages && hasMoreByTotal;
@@ -1105,16 +1190,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     _loadMoreOrders();
                   },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.transparentBackground,
-              foregroundColor: AppTheme.textPrimaryColor,
-              side: const BorderSide(color: AppTheme.borderColor),
+              backgroundColor: Colors.transparent,
+              foregroundColor: ui.isDark ? Colors.white : Colors.black,
+              side: BorderSide(color: ui.outlinedButtonBorder),
             ),
             child: _isLoadingMore
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
+                      color: ui.isDark
+                          ? Colors.white
+                          : SalonUiTheme.blueUpper,
                       strokeWidth: 2,
                     ),
                   )
@@ -1124,8 +1211,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
           const SizedBox(height: 8),
           Text(
             '${AppTranslations.getString(context, 'page')} $_currentPage/$_totalPages | ${AppTranslations.getString(context, 'orders')} ${_filteredOrders.length}/$_total',
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white70 : Colors.black,
               fontSize: 12,
             ),
           ),
@@ -1134,65 +1221,31 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
+  Widget _buildOrderCard(SalonUiTheme ui, Map<String, dynamic> order) {
     try {
-      // Debug: Print order data
-      print('🔍 Building order card for: ${order['id']}');
-      print('🔍 Order data: $order');
-
-      // Extract data from real API response format
-      print('🔍 Raw order keys: ${order.keys.toList()}');
-      print(
-          '🔍 Order ID raw: ${order['id']} (type: ${order['id'].runtimeType})');
-      print(
-          '🔍 ClientInfo raw: ${order['clientInfo']} (type: ${order['clientInfo'].runtimeType})');
-      print(
-          '🔍 Status raw: ${order['status']} (type: ${order['status'].runtimeType})');
-      print(
-          '🔍 DiscountedAmount raw: ${order['discountedAmount']} (type: ${order['discountedAmount'].runtimeType})');
-
       final fullOrderId = order['id']?.toString() ?? 'N/A';
       final orderId =
-          fullOrderId.length > 8 ? fullOrderId.substring(0, 8) : fullOrderId;
+          fullOrderId.length > 9 ? fullOrderId.substring(0, 9) : fullOrderId;
       final clientName =
           order['clientInfo']?['name']?.toString() ?? 'Unknown Client';
-      final status = order['status']?.toString() ?? 'Unknown';
       final discountedAmount = order['discountedAmount']?.toString() ?? '0';
 
-      print(
-          '🔍 Extracted - ID: $orderId, Client: $clientName, Status: $status, Amount: $discountedAmount');
-      print('🔍 Client Info: ${order['clientInfo']}');
-      print('🔍 Status Raw: ${order['status']}');
-      print('🔍 Amount Raw: ${order['discountedAmount']}');
-
-      // Format services count from array or object
       String services = '0 services';
       try {
         final servicesData = order['services'];
         if (servicesData != null) {
           if (servicesData is List) {
-            // Handle array format
-            final servicesList = servicesData as List<dynamic>;
-            final count = servicesList.length;
+            final count = servicesData.length;
             services = count == 1 ? '1 service' : '$count services';
-          } else if (servicesData is Map) {
-            // Handle single service object
-            services = '1 service';
           } else {
-            // Handle other types (string, etc.)
             services = '1 service';
           }
         }
-      } catch (e) {
-        print('❌ Error parsing services: $e');
+      } catch (_) {
         services = '0 services';
       }
 
-      // Format date
-      final createdAt = order['createdAt']?.toString() ?? '';
-      final date = createdAt.isNotEmpty
-          ? DateTime.tryParse(createdAt)?.toString().split(' ')[0] ?? 'Unknown'
-          : 'Unknown';
+      final amount = int.tryParse(discountedAmount) ?? 0;
 
       return GestureDetector(
         onTap: () {
@@ -1204,84 +1257,57 @@ class _OrdersScreenState extends State<OrdersScreen> {
         },
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           decoration: BoxDecoration(
-            color: AppTheme.transparentBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.borderColor,
-              width: 1,
-            ),
+            color: ui.cardAlt,
+            borderRadius: BorderRadius.circular(_OrdersUi.radius),
+            border: Border.all(color: ui.cardBorder, width: 1),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Top row: Order ID
-              Text(
-                orderId,
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-
-              // Second row: Client name and Amount
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      clientName,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      orderId,
+                      style: TextStyle(
+                        color: ui.isDark ? Colors.white54 : Colors.black,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      clientName,
+                      style: TextStyle(
+                        color: ui.isDark ? Colors.white : Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    'EUR ${(int.parse(discountedAmount)).toStringAsFixed(0)} ',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 6),
+                    Text(
+                      'EUR $amount',
+                      style: TextStyle(
+                        color: ui.isDark ? Colors.white : Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-
-              // Third row: Status and Services
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    status,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    services,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
-
-              // Bottom row: Date
+              const SizedBox(width: 12),
               Text(
-                date,
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
+                services,
+                style: TextStyle(
+                  color: ui.isDark ? Colors.white70 : Colors.black,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ],
@@ -1289,24 +1315,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ),
       );
     } catch (e) {
-      print('❌ Error building order card: $e');
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.transparentBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppTheme.borderColor,
-            width: 1,
-          ),
+          color: ui.cardAlt,
+          borderRadius: BorderRadius.circular(_OrdersUi.radius),
+          border: Border.all(color: ui.cardBorder, width: 1),
         ),
         child: Text(
           'Error loading order: $e',
-          style: const TextStyle(
-            color: Colors.red,
-            fontSize: 14,
-          ),
+          style: const TextStyle(color: Colors.red, fontSize: 14),
         ),
       );
     }
@@ -1328,6 +1347,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             dateFrom: _dateFrom,
             dateTo: _dateTo,
             selectedServiceIds: _selectedServiceIds,
+            availableServices: _availableServices,
             onApplyFilter: (dateFrom, dateTo, serviceIds) {
               setState(() {
                 _dateFrom = dateFrom;
@@ -1349,6 +1369,7 @@ class _FilterBottomSheet extends StatefulWidget {
   final String? dateFrom;
   final String? dateTo;
   final List<String> selectedServiceIds;
+  final List<Map<String, dynamic>> availableServices;
   final Function(String?, String?, List<String>) onApplyFilter;
 
   const _FilterBottomSheet({
@@ -1357,6 +1378,7 @@ class _FilterBottomSheet extends StatefulWidget {
     required this.dateFrom,
     required this.dateTo,
     required this.selectedServiceIds,
+    required this.availableServices,
     required this.onApplyFilter,
   });
 
@@ -1380,20 +1402,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     _dateFrom = widget.dateFrom;
     _dateTo = widget.dateTo;
     _selectedServiceIds = List.from(widget.selectedServiceIds);
-    _loadServices();
+    if (widget.availableServices.isNotEmpty) {
+      _availableServices = List.from(widget.availableServices);
+    } else {
+      _loadServices();
+    }
   }
 
-  String _getSelectedServiceName() {
-    if (_selectedServiceIds.isNotEmpty && _selectedServiceIds.length == 1) {
-      final selectedId = _selectedServiceIds.first;
-      final service = _availableServices.firstWhere(
-        (service) => service['id'] == selectedId,
-        orElse: () => {'name': 'Unknown Service'},
-      );
-      return service['name'] as String;
-    }
-    return AppTranslations.getString(context, 'select_multiple_services');
-  }
 
   Future<void> _loadServices() async {
     try {
@@ -1453,39 +1468,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     }
   }
 
-  Future<void> _selectStartDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate:
-          _dateFrom != null ? DateTime.parse(_dateFrom!) : DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null) {
-      setState(() {
-        _dateFrom =
-            picked.toIso8601String().split('T')[0]; // Format as YYYY-MM-DD
-        print('📅 Start Date Selected: $_dateFrom');
-      });
-    }
-  }
 
-  Future<void> _selectEndDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _dateTo != null ? DateTime.parse(_dateTo!) : DateTime.now(),
-      firstDate:
-          _dateFrom != null ? DateTime.parse(_dateFrom!) : DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (picked != null) {
-      setState(() {
-        _dateTo =
-            picked.toIso8601String().split('T')[0]; // Format as YYYY-MM-DD
-        print('📅 End Date Selected: $_dateTo');
-      });
-    }
-  }
 
   String _formatDate(String dateString) {
     try {
@@ -1498,526 +1481,451 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      builder: (context, scrollController) {
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final bottomSafe = MediaQuery.paddingOf(context).bottom;
+        final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.88,
           ),
-          child: GestureDetector(
-            onTap: () {
-              // Close keyboard when tapping outside text fields
-              FocusScope.of(context).unfocus();
-            },
-            child: Column(
-              children: [
-                // Handle bar
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 160,
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: EdgeInsets.only(
-                      left: 24,
-                      right: 24,
-                      top: 16,
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title
-                        Text(
-                          AppTranslations.getString(context, 'filter'),
-                          style: const TextStyle(
-                            color: AppTheme.textPrimaryColor,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Subtitle
-                        Text(
-                          AppTranslations.getString(
-                              context, 'orders_total_date_services'),
-                          style: const TextStyle(
-                            color: AppTheme.textPrimaryColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Orders Total Section
-                        Text(
-                          AppTranslations.getString(context, 'orders_total'),
-                          style: const TextStyle(
-                            color: AppTheme.textPrimaryColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Min and Max inputs
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    AppTranslations.getString(context, 'min'),
-                                    style: const TextStyle(
-                                      color: AppTheme.textPrimaryColor,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.transparentBackground,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: AppTheme.borderColor,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: TextField(
-                                      controller: _minAmountController,
-                                      style: const TextStyle(
-                                          color: AppTheme.textPrimaryColor),
-                                      keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(
-                                        hintText: AppTranslations.getString(
-                                            context, 'min'),
-                                        hintStyle: const TextStyle(
-                                            color: AppTheme.textSecondaryColor),
-                                        border: InputBorder.none,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    AppTranslations.getString(context, 'max'),
-                                    style: const TextStyle(
-                                      color: AppTheme.textPrimaryColor,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.transparentBackground,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: AppTheme.borderColor,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: TextField(
-                                      controller: _maxAmountController,
-                                      style: const TextStyle(
-                                          color: AppTheme.textPrimaryColor),
-                                      keyboardType: TextInputType.number,
-                                      decoration: InputDecoration(
-                                        hintText: AppTranslations.getString(
-                                            context, 'max'),
-                                        hintStyle: const TextStyle(
-                                            color: AppTheme.textSecondaryColor),
-                                        border: InputBorder.none,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Date Section
-                        Text(
-                          AppTranslations.getString(context, 'date'),
-                          style: const TextStyle(
-                            color: AppTheme.textPrimaryColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Start Date
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppTranslations.getString(context, 'start_date'),
-                              style: const TextStyle(
-                                color: AppTheme.textPrimaryColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            GestureDetector(
-                              onTap: () => _selectStartDate(),
-                              child: Container(
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.transparentBackground,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme.borderColor,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _dateFrom != null
-                                              ? _formatDate(_dateFrom!)
-                                              : AppTranslations.getString(
-                                                  context, 'select_start_date'),
-                                          style: TextStyle(
-                                            color: _dateFrom != null
-                                                ? AppTheme.textPrimaryColor
-                                                : AppTheme.textSecondaryColor,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(
-                                        Icons.calendar_today,
-                                        color: AppTheme.textPrimaryColor,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // End Date
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppTranslations.getString(context, 'end_date'),
-                              style: const TextStyle(
-                                color: AppTheme.textPrimaryColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            GestureDetector(
-                              onTap: () => _selectEndDate(),
-                              child: Container(
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.transparentBackground,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme.borderColor,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _dateTo != null
-                                              ? _formatDate(_dateTo!)
-                                              : AppTranslations.getString(
-                                                  context, 'select_end_date'),
-                                          style: TextStyle(
-                                            color: _dateTo != null
-                                                ? AppTheme.textPrimaryColor
-                                                : AppTheme.textSecondaryColor,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(
-                                        Icons.calendar_today,
-                                        color: AppTheme.textPrimaryColor,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Services Section
-                        Text(
-                          AppTranslations.getString(context, 'services'),
-                          style: const TextStyle(
-                            color: AppTheme.textPrimaryColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Services dropdown
-                        Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: AppTheme.transparentBackground,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppTheme.borderColor,
-                              width: 1,
-                            ),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: DropdownButton<String>(
-                                value: () {
-                                  if (_selectedServiceIds.isEmpty) return null;
-
-                                  if (_selectedServiceIds.length ==
-                                      _availableServices.length) {
-                                    return 'all';
-                                  }
-
-                                  if (_selectedServiceIds.length == 1) {
-                                    final selectedId =
-                                        _selectedServiceIds.first;
-                                    // Check if this ID exists in available services
-                                    final serviceExists =
-                                        _availableServices.any((service) =>
-                                            service['id'] == selectedId);
-                                    return serviceExists ? selectedId : null;
-                                  }
-
-                                  return null;
-                                }(),
-                                hint: Text(
-                                  _selectedServiceIds.isNotEmpty &&
-                                          _selectedServiceIds.length == 1
-                                      ? _getSelectedServiceName()
-                                      : AppTranslations.getString(
-                                          context, 'select_multiple_services'),
-                                  style: const TextStyle(
-                                    color: AppTheme.textSecondaryColor,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimaryColor,
-                                  fontSize: 16,
-                                ),
-                                icon: const Icon(
-                                  Icons.arrow_drop_down,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                                isExpanded: true,
-                                items: () {
-                                  print('🔍 === BUILDING DROPDOWN ITEMS ===');
-                                  print(
-                                      '🔍 Available services count: ${_availableServices.length}');
-
-                                  final items = <DropdownMenuItem<String>>[
-                                    // Add "All Services" option
-                                    DropdownMenuItem<String>(
-                                      value: 'all',
-                                      child: Text(
-                                        'All Services',
-                                        style: const TextStyle(
-                                          color: AppTheme.textPrimaryColor,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ];
-
-                                  // Add individual services (ensure unique IDs)
-                                  final addedIds = <String>{};
-                                  for (int i = 0;
-                                      i < _availableServices.length;
-                                      i++) {
-                                    final service = _availableServices[i];
-                                    final serviceId = service['id'] as String;
-
-                                    if (!addedIds.contains(serviceId)) {
-                                      print(
-                                          '🔍 Adding service $i: $serviceId - ${service['name']}');
-                                      items.add(DropdownMenuItem<String>(
-                                        value: serviceId,
-                                        child: Text(
-                                          service['name'],
-                                          style: const TextStyle(
-                                            color: AppTheme.textPrimaryColor,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ));
-                                      addedIds.add(serviceId);
-                                    } else {
-                                      print(
-                                          '🔍 Skipping duplicate service: $serviceId - ${service['name']}');
-                                    }
-                                  }
-
-                                  print(
-                                      '🔍 Total dropdown items: ${items.length}');
-                                  print(
-                                      '🔍 Dropdown values: ${items.map((item) => item.value).toList()}');
-
-                                  return items;
-                                }(),
-                                onChanged: (String? value) {
-                                  print('🔍 === DROPDOWN CHANGED ===');
-                                  print('🔍 Selected value: $value');
-                                  print(
-                                      '🔍 Available services: $_availableServices');
-
-                                  setState(() {
-                                    if (value == 'all') {
-                                      // Select all services
-                                      _selectedServiceIds = _availableServices
-                                          .map((service) =>
-                                              service['id'] as String)
-                                          .toList();
-                                      print(
-                                          '🔍 Selected all services: $_selectedServiceIds');
-                                    } else if (value != null) {
-                                      // Select specific service
-                                      _selectedServiceIds = [value];
-                                      print(
-                                          '🔍 Selected specific service: $_selectedServiceIds');
-                                    } else {
-                                      // Clear selection
-                                      _selectedServiceIds = [];
-                                      print('🔍 Cleared selection');
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
                     ),
                   ),
                 ),
-                // Action Buttons - Fixed at bottom
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
+              ),
+              GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    20,
+                    20,
+                    16 + bottomSafe + keyboardInset,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppTheme.textPrimaryColor,
-                              width: 1,
-                            ),
-                          ),
-                          child: TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text(
-                              AppTranslations.getString(context, 'cancel'),
-                              style: const TextStyle(
-                                color: AppTheme.textPrimaryColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                      Text(
+                        AppTranslations.getString(context, 'filter'),
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        AppTranslations.getString(
+                          context,
+                          'orders_total_date_services',
+                        ),
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildLabeledField(
+                                      ui: ui,
+                                      label: AppTranslations.getString(
+                                          context, 'min'),
+                                      child: _buildOutlineField(
+                                        ui: ui,
+                                        controller: _minAmountController,
+                                        hint: AppTranslations.getString(
+                                            context, 'min'),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildLabeledField(
+                                      ui: ui,
+                                      label: AppTranslations.getString(
+                                          context, 'max'),
+                                      child: _buildOutlineField(
+                                        ui: ui,
+                                        controller: _maxAmountController,
+                                        hint: AppTranslations.getString(
+                                            context, 'max'),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+                              const SizedBox(height: 18),
+                              _buildLabeledField(
+                                ui: ui,
+                                label: AppTranslations.getString(
+                                    context, 'date'),
+                                child: GestureDetector(
+                                  onTap: () => _selectDateRange(ui),
+                                  child: _buildSelectableBox(
+                                    ui: ui,
+                                    text: _dateFrom != null && _dateTo != null
+                                        ? '${_formatDate(_dateFrom!)} - ${_formatDate(_dateTo!)}'
+                                        : AppTranslations.getString(
+                                            context,
+                                            'select_date_range',
+                                          ),
+                                    isPlaceholder: !(_dateFrom != null &&
+                                        _dateTo != null),
+                                    trailing: LucideIcons.calendar,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              _buildLabeledField(
+                                ui: ui,
+                                label: AppTranslations.getString(
+                                    context, 'services'),
+                                child: _buildServicesDropdown(ui),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: AppTheme.textPrimaryColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: TextButton(
-                            onPressed: () {
-                              // Apply filter logic
-                              widget.onApplyFilter(
-                                  _dateFrom, _dateTo, _selectedServiceIds);
-                              Navigator.of(context).pop();
-                            },
-                            child: Text(
-                              AppTranslations.getString(
-                                  context, 'apply_filter'),
-                              style: const TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 50,
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: ui.isDark ? Colors.white : Colors.black,
+                                  side: BorderSide(
+                                    color: ui.outlinedButtonBorder,
+                                    width: 1,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        _OrdersUi.radius),
+                                  ),
+                                ),
+                                child: Text(
+                                  AppTranslations.getString(
+                                      context, 'cancel'),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SizedBox(
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  widget.onApplyFilter(
+                                    _dateFrom,
+                                    _dateTo,
+                                    _selectedServiceIds,
+                                  );
+                                  Navigator.of(context).pop();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: ui.primaryButtonBg,
+                                  foregroundColor: ui.primaryButtonFg,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        _OrdersUi.radius),
+                                  ),
+                                ),
+                                child: Text(
+                                  AppTranslations.getString(
+                                      context, 'apply_filter'),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLabeledField({
+    required SalonUiTheme ui,
+    required String label,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: ui.isDark ? Colors.white : Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildOutlineField({
+    required SalonUiTheme ui,
+    required TextEditingController controller,
+    required String hint,
+    TextInputType? keyboardType,
+  }) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(_OrdersUi.radius),
+        border: Border.all(color: ui.borderSubtle, width: 1),
+      ),
+      child: TextField(
+        controller: controller,
+        style: TextStyle(color: ui.isDark ? Colors.white : Colors.black, fontSize: 15),
+        cursorColor: ui.isDark ? Colors.white : Colors.black,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: ui.isDark ? Colors.white54 : Colors.black,
+            fontSize: 15,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectableBox({
+    required SalonUiTheme ui,
+    required String text,
+    required bool isPlaceholder,
+    required IconData trailing,
+  }) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(_OrdersUi.radius),
+        border: Border.all(color: ui.borderSubtle, width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isPlaceholder
+                    ? (ui.isDark
+                        ? Colors.white.withValues(alpha: 0.45)
+                        : Colors.black)
+                    : (ui.isDark ? Colors.white : Colors.black),
+                fontSize: 15,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(
+            trailing,
+            color: ui.isDark ? Colors.white : Colors.black,
+            size: 18,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectDateRange(SalonUiTheme ui) async {
+    final now = DateTime.now();
+    final initialStart = _dateFrom != null
+        ? DateTime.tryParse(_dateFrom!) ?? now
+        : now.subtract(const Duration(days: 30));
+    final initialEnd =
+        _dateTo != null ? DateTime.tryParse(_dateTo!) ?? now : now;
+
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 1),
+      initialDateRange: DateTimeRange(start: initialStart, end: initialEnd),
+      builder: (context, child) {
+        final pickerUi = SalonUiTheme.of(context);
+        return Theme(
+          data: pickerUi.isDark
+              ? ThemeData.dark().copyWith(
+                  colorScheme: ColorScheme.dark(
+                    primary: SalonUiTheme.accentBlue,
+                    onPrimary: Colors.white,
+                    surface: pickerUi.card,
+                    onSurface: pickerUi.textPrimary,
+                  ),
+                )
+              : ThemeData.light().copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: SalonUiTheme.accentBlue,
+                    onPrimary: Colors.white,
+                    surface: pickerUi.card,
+                    onSurface: pickerUi.textPrimary,
+                  ),
+                ),
+          child: child!,
+        );
+      },
+    );
+
+    if (range != null) {
+      setState(() {
+        _dateFrom = range.start.toIso8601String().split('T').first;
+        _dateTo = range.end.toIso8601String().split('T').first;
+      });
+    }
+  }
+
+  Widget _buildServicesDropdown(SalonUiTheme ui) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(_OrdersUi.radius),
+        border: Border.all(color: ui.borderSubtle, width: 1),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButton<String>(
+            value: () {
+              if (_selectedServiceIds.isEmpty) return null;
+              if (_selectedServiceIds.length == _availableServices.length &&
+                  _availableServices.isNotEmpty) {
+                return 'all';
+              }
+              if (_selectedServiceIds.length == 1) {
+                final selectedId = _selectedServiceIds.first;
+                final exists = _availableServices
+                    .any((service) => service['id'] == selectedId);
+                return exists ? selectedId : null;
+              }
+              return null;
+            }(),
+            hint: Text(
+              AppTranslations.getString(context, 'select_multiple_services'),
+              style: TextStyle(
+                color: ui.isDark
+                    ? Colors.white.withValues(alpha: 0.45)
+                    : Colors.black,
+                fontSize: 15,
+              ),
+            ),
+            style: TextStyle(
+              color: ui.isDark ? Colors.white : Colors.black,
+              fontSize: 15,
+            ),
+            dropdownColor: ui.card,
+            icon: Icon(
+              LucideIcons.chevronDown,
+              color: ui.isDark ? Colors.white : Colors.black,
+              size: 18,
+            ),
+            isExpanded: true,
+            items: [
+              DropdownMenuItem<String>(
+                value: 'all',
+                child: Text(
+                  AppTranslations.getString(context, 'all_services'),
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              ..._availableServices.map((service) {
+                return DropdownMenuItem<String>(
+                  value: service['id'] as String,
+                  child: Text(
+                    service['name']?.toString() ?? '',
+                    style: TextStyle(
+                      color: ui.isDark ? Colors.white : Colors.black,
+                      fontSize: 15,
+                    ),
+                  ),
+                );
+              }),
+            ],
+            onChanged: (String? value) {
+              setState(() {
+                if (value == 'all') {
+                  _selectedServiceIds = _availableServices
+                      .map((service) => service['id'] as String)
+                      .toList();
+                } else if (value != null) {
+                  _selectedServiceIds = [value];
+                } else {
+                  _selectedServiceIds = [];
+                }
+              });
+            },
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/salon_auth_service.dart';
 import '../../services/api/influencer_auth_service.dart';
+import '../bloc_error_helper.dart';
 
 // Events
 abstract class ResetPasswordEvent {}
@@ -92,8 +93,8 @@ class ResetPasswordBloc extends Bloc<ResetPasswordEvent, ResetPasswordState> {
       } else {
         emit(ResetPasswordError(result['message']));
       }
-    } catch (e) {
-      emit(ResetPasswordError('Network error: ${e.toString()}'));
+    } catch (e, st) {
+      emit(ResetPasswordError(BlocErrorHelper.messageFrom(e, st, 'requestPasswordReset')));
     }
   }
 
@@ -131,8 +132,8 @@ class ResetPasswordBloc extends Bloc<ResetPasswordEvent, ResetPasswordState> {
       } else {
         emit(ResetPasswordError(result['message']));
       }
-    } catch (e) {
-      emit(ResetPasswordError('Network error: ${e.toString()}'));
+    } catch (e, st) {
+      emit(ResetPasswordError(BlocErrorHelper.messageFrom(e, st, 'requestPasswordReset')));
     }
   }
 
@@ -165,8 +166,8 @@ class ResetPasswordBloc extends Bloc<ResetPasswordEvent, ResetPasswordState> {
       } else {
         emit(ResetPasswordError(result['message']));
       }
-    } catch (e) {
-      emit(ResetPasswordError('Network error: ${e.toString()}'));
+    } catch (e, st) {
+      emit(ResetPasswordError(BlocErrorHelper.messageFrom(e, st, 'requestPasswordReset')));
     }
   }
 

@@ -1,9 +1,12 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/influencer_details/influencer_details_bloc.dart';
@@ -11,7 +14,14 @@ import '../../../../core/bloc/influencer_details/influencer_details_event.dart';
 import '../../../../core/bloc/influencer_details/influencer_details_state.dart';
 import '../../../../core/services/api/influencers_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
-import 'salon_payment_information_screen.dart';
+import '../../../../widgets/common/stripe_link_required_dialog.dart';
+
+abstract final class _InfluencerDetailsUi {
+  static const double radius = 16;
+  static const double inviteProfileCardHeight = 55.29;
+  static const double backButtonSize = 44;
+  static const double horizontalPadding = 16;
+}
 
 class InfluencerDetailsScreen extends StatefulWidget {
   final String influencerId;
@@ -30,7 +40,6 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _followersPromotionController = TextEditingController();
   final _messageController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -53,124 +62,124 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LanguageBloc, LanguageState>(
-      builder: (context, languageState) {
-        return BlocBuilder<InfluencerDetailsBloc, InfluencerDetailsState>(
-          builder: (context, state) {
-            print('🎨 === INFLUENCER DETAILS SCREEN BUILD ===');
-            print('🎨 State: ${state.runtimeType}');
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
 
-            if (state is InfluencerDetailsLoading) {
-              return _buildLoadingState();
-            } else if (state is InfluencerDetailsError) {
-              return _buildErrorState(state);
-            } else if (state is InfluencerDetailsLoaded) {
-              return _buildLoadedState(state);
-            } else {
-              return _buildInitialState();
-            }
+        return BlocBuilder<LanguageBloc, LanguageState>(
+          builder: (context, languageState) {
+            return BlocBuilder<InfluencerDetailsBloc, InfluencerDetailsState>(
+              builder: (context, state) {
+                print('🎨 === INFLUENCER DETAILS SCREEN BUILD ===');
+                print('🎨 State: ${state.runtimeType}');
+
+                if (state is InfluencerDetailsLoading) {
+                  return _buildLoadingState(ui);
+                } else if (state is InfluencerDetailsError) {
+                  return _buildErrorState(state, ui);
+                } else if (state is InfluencerDetailsLoaded) {
+                  return _buildLoadedState(state, ui);
+                } else {
+                  return _buildInitialState(ui);
+                }
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildLoadingState() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [
-            Color(0xFF1F1E1E),
-            Color(0xFF3B3B3B),
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(
-                color: AppTheme.accentColor,
-                strokeWidth: 2,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppTranslations.getString(
-                    context, 'loading_influencer_details'),
-                style: const TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 16,
-                ),
-              ),
-            ],
+  Widget _buildLoadingState(SalonUiTheme ui) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: ui.systemOverlay,
+      child: ColoredBox(
+        color: ui.bg,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: CircularProgressIndicator(
+              color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
+              strokeWidth: 2,
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildErrorState(InfluencerDetailsError state) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [
-            Color(0xFF1F1E1E),
-            Color(0xFF3B3B3B),
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+  Widget _buildErrorState(InfluencerDetailsError state, SalonUiTheme ui) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: ui.systemOverlay,
+      child: ColoredBox(
+        color: ui.bg,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  LucideIcons.alertCircle,
-                  size: 64,
-                  color: AppTheme.errorColor,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  AppTranslations.getString(context, 'error_loading_details'),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildOverlayIconButton(
+                    ui: ui,
+                    icon: LucideIcons.arrowLeft,
+                    onTap: () => Navigator.of(context).pop(),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  state.message,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    context.read<InfluencerDetailsBloc>().add(
-                          RefreshInfluencerDetails(
-                              influencerId: widget.influencerId),
-                        );
-                  },
-                  icon: const Icon(LucideIcons.refreshCw),
-                  label: Text(AppTranslations.getString(context, 'retry')),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentColor,
-                    foregroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          LucideIcons.alertCircle,
+                          size: 64,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          AppTranslations.getString(
+                              context, 'error_loading_details'),
+                          style: TextStyle(
+                            color: ui.textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          state.message,
+                          style: TextStyle(
+                            color: ui.textSecondary,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            context.read<InfluencerDetailsBloc>().add(
+                                  RefreshInfluencerDetails(
+                                      influencerId: widget.influencerId),
+                                );
+                          },
+                          icon: Icon(
+                            LucideIcons.refreshCw,
+                            color: ui.primaryButtonFg,
+                          ),
+                          label: Text(
+                            AppTranslations.getString(context, 'retry'),
+                            style: TextStyle(color: ui.primaryButtonFg),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ui.primaryButtonBg,
+                            foregroundColor: ui.primaryButtonFg,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -181,42 +190,41 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildInitialState() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [
-            Color(0xFF1F1E1E),
-            Color(0xFF3B3B3B),
-          ],
-        ),
-      ),
+  Widget _buildInitialState(SalonUiTheme ui) {
+    return ColoredBox(
+      color: ui.bg,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: Text(
-            AppTranslations.getString(context, 'initializing'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
+          child: CircularProgressIndicator(
+            color: ui.isDark ? Colors.white : SalonUiTheme.blueUpper,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLoadedState(InfluencerDetailsLoaded state) {
+  double _heroExpandedHeight(BuildContext context) {
+    return MediaQuery.sizeOf(context).height * 0.52;
+  }
+
+  double _heroCollapsedHeight(BuildContext context) {
+    return MediaQuery.paddingOf(context).top + 148;
+  }
+
+  Widget _buildLoadedState(InfluencerDetailsLoaded state, SalonUiTheme ui) {
     final data = state.influencerData;
     final profile = data['profile'] ?? {};
     final socials = data['socials'] ?? [];
     final receivedRatings = data['receivedRatings'] ?? [];
-    final email = data['email'] ?? '';
-    final phoneNumber = data['phoneNumber'] ?? '';
+    final email = data['email']?.toString() ?? '';
+    final phoneNumber = data['phoneNumber']?.toString() ?? '';
+    final profilePicture = profile['profilePicture']?.toString();
+    final pseudo = profile['pseudo']?.toString() ?? 'unknown';
+    final zone = profile['zone']?.toString() ?? '';
+    final bio = profile['bio']?.toString() ??
+        AppTranslations.getString(context, 'no_bio_available');
 
-    // Calculate average rating
     double averageRating = 0.0;
     if (receivedRatings.isNotEmpty) {
       final totalStars = receivedRatings.fold<int>(
@@ -226,255 +234,154 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
       averageRating = totalStars / receivedRatings.length;
     }
 
-    print('🎨 === BUILDING LOADED STATE ===');
-    print('🎨 Profile: $profile');
-    print('🎨 Socials: $socials');
-    print('🎨 Received Ratings: $receivedRatings');
-    print('🎨 Email: $email');
-    print('🎨 Phone: $phoneNumber');
-    print('🎨 Average Rating: $averageRating');
+    final expandedHeight = _heroExpandedHeight(context);
+    final collapsedHeight = _heroCollapsedHeight(context);
+    final topInset = MediaQuery.paddingOf(context).top;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [
-            Color(0xFF1F1E1E),
-            Color(0xFF3B3B3B),
-          ],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildProfileSection(
-                          profile, email, phoneNumber, averageRating),
-                      const SizedBox(height: 16),
-                      _buildBioSection(profile),
-                      const SizedBox(height: 24),
-                      _buildInviteButton(),
-                      const SizedBox(height: 32),
-                      _buildSocialMediaSection(socials),
-                      const SizedBox(height: 32),
-                      _buildReviewsSection(receivedRatings),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(0.0),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
-              LucideIcons.arrowLeft,
-              color: Colors.white,
-              size: 24,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: ui.systemOverlay,
+      child: ColoredBox(
+        color: ui.bg,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileSection(
-    Map<String, dynamic> profile,
-    String email,
-    String phoneNumber,
-    double averageRating,
-  ) {
-    final profilePicture = profile['profilePicture'];
-    final pseudo = profile['pseudo'] ?? 'Unknown';
-    final zone = profile['zone'] ?? '';
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Profile Picture with Rating Badge
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 2,
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _InfluencerHeroHeaderDelegate(
+                  ui: ui,
+                  expandedHeight: expandedHeight,
+                  collapsedHeight: collapsedHeight,
+                  topInset: topInset,
+                  imageUrl: profilePicture,
+                  pseudo: pseudo,
+                  zone: zone,
+                  phone: phoneNumber,
+                  email: email,
+                  rating: averageRating,
+                  onBack: () => Navigator.of(context).pop(),
                 ),
               ),
-              child: ClipOval(
-                child: profilePicture != null && profilePicture.isNotEmpty
-                    ? Image.network(
-                        profilePicture,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.white.withOpacity(0.1),
-                            child: const Icon(
-                              LucideIcons.user,
-                              color: Colors.white54,
-                              size: 50,
-                            ),
-                          );
-                        },
-                      )
-                    : Container(
-                        color: Colors.white.withOpacity(0.1),
-                        child: const Icon(
-                          LucideIcons.user,
-                          color: Colors.white54,
-                          size: 50,
-                        ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  _InfluencerDetailsUi.horizontalPadding,
+                  8,
+                  _InfluencerDetailsUi.horizontalPadding,
+                  32,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    Text(
+                      bio,
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        height: 1.45,
                       ),
-              ),
-            ),
-            // Rating Badge overlapping bottom-center
-            if (averageRating > 0)
-              Positioned(
-                bottom: -4,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          averageRating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                    const SizedBox(height: 24),
+                    _buildInviteButton(ui),
+                    const SizedBox(height: 20),
+                    _buildSocialMediaSection(socials, ui),
+                    const SizedBox(height: 28),
+                    Text(
+                      AppTranslations.getString(context, 'reviews'),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (receivedRatings.isEmpty)
+                      Text(
+                        AppTranslations.getString(
+                            context, 'no_reviews_available'),
+                        style: TextStyle(
+                          color: ui.textMuted,
+                          fontSize: 16,
+                        ),
+                      )
+                    else
+                      ...receivedRatings.map<Widget>((rating) {
+                        final salonInfo = rating['ratedBy']?['salonInfo'] ?? {};
+                        final salonName = salonInfo['name'] ??
+                            AppTranslations.getString(context, 'unknown_salon');
+                        final comment = rating['comment'] ?? '';
+                        final createdAt = rating['createdAt'] ?? '';
+                        final stars = rating['stars'] ?? 0;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildReviewCard(
+                            salonName,
+                            comment.isEmpty
+                                ? AppTranslations.getString(
+                                    context, 'no_comment')
+                                : comment,
+                            _formatDate(createdAt),
+                            stars,
+                            ui,
                           ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(
-                          Icons.star,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                      ],
-                    ),
-                  ),
+                        );
+                      }),
+                  ]),
                 ),
               ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        // User Information in the middle (centered with image)
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Handle
-              Text(
-                '@$pseudo',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Location
-              if (zone.isNotEmpty)
-                Text(
-                  zone,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              if (zone.isNotEmpty) const SizedBox(height: 6),
-              // Phone Number
-              if (phoneNumber.isNotEmpty)
-                Text(
-                  phoneNumber,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              if (phoneNumber.isNotEmpty) const SizedBox(height: 6),
-              // Email
-              if (email.isNotEmpty)
-                Text(
-                  email,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildBioSection(Map<String, dynamic> profile) {
-    final bio = profile['bio'] ??
-        AppTranslations.getString(context, 'no_bio_available');
-
-    return Text(
-      bio,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
       ),
     );
   }
 
-  Widget _buildInviteButton() {
+  Widget _buildOverlayIconButton({
+    required SalonUiTheme ui,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: _InfluencerDetailsUi.backButtonSize,
+          height: _InfluencerDetailsUi.backButtonSize,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [ui.buttonFillTop, ui.buttonFillBottom],
+            ),
+            shape: BoxShape.circle,
+            border: ui.isDark
+                ? null
+                : Border.all(color: ui.cardBorder, width: 1),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: ui.buttonIcon, size: 22),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInviteButton(SalonUiTheme ui) {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {
-          _showCampaignInviteDialog();
-        },
+        onPressed: _showCampaignInviteDialog,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: ui.primaryButtonBg,
+          foregroundColor: ui.primaryButtonFg,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
           ),
         ),
         child: Row(
@@ -482,264 +389,172 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
           children: [
             Text(
               AppTranslations.getString(context, 'invite_for_campaign'),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            SizedBox(width: 8),
-            Icon(LucideIcons.plus, size: 20),
+            const SizedBox(width: 8),
+            Icon(LucideIcons.ticket, size: 20, color: ui.primaryButtonFg),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInformationSection(Map<String, dynamic> profile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow(
-            AppTranslations.getString(context, 'zone'),
-            profile['zone'] ??
-                AppTranslations.getString(context, 'not_specified')),
-        const SizedBox(height: 16),
-        _buildInfoRow(
-            AppTranslations.getString(context, 'pseudo'),
-            profile['pseudo'] ??
-                AppTranslations.getString(context, 'not_specified')),
-        const SizedBox(height: 16),
-        _buildInfoRow(
-            AppTranslations.getString(context, 'bio'),
-            profile['bio'] ??
-                AppTranslations.getString(context, 'not_specified')),
-      ],
-    );
-  }
+  Widget _buildSocialMediaSection(List<dynamic> socials, SalonUiTheme ui) {
+    if (socials.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  Widget _buildInfoRow(String label, String value, {bool isRating = false}) {
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
+    final widgets = <Widget>[];
+    for (var i = 0; i < socials.length; i += 2) {
+      final first = socials[i];
+      final second = i + 1 < socials.length ? socials[i + 1] : null;
+
+      if (second != null) {
+        widgets.add(
+          Row(
             children: [
-              Flexible(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    color: isRating
-                        ? AppTheme.textSecondaryColor
-                        : AppTheme.textPrimaryColor,
-                    fontSize: 16,
-                    fontWeight: isRating ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 3,
+              Expanded(
+                child: _buildSocialMediaButton(
+                  first['name'] ?? 'Unknown',
+                  first['link'],
+                  ui,
                 ),
               ),
-              if (isRating) ...[
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.star,
-                  color: AppTheme.textPrimaryColor,
-                  size: 20,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSocialMediaButton(
+                  second['name'] ?? 'Unknown',
+                  second['link'],
+                  ui,
                 ),
-              ],
+              ),
             ],
           ),
-        ),
-      ],
-    );
+        );
+        widgets.add(const SizedBox(height: 12));
+      } else {
+        widgets.add(
+          _buildSocialMediaButton(
+            first['name'] ?? 'Unknown',
+            first['link'],
+            ui,
+          ),
+        );
+        widgets.add(const SizedBox(height: 12));
+      }
+    }
+
+    if (widgets.isNotEmpty) {
+      widgets.removeLast();
+    }
+
+    return Column(children: widgets);
   }
 
-  Widget _buildSocialMediaSection(List<dynamic> socials) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              LucideIcons.share2,
-              color: Colors.white,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              AppTranslations.getString(context, 'social_media'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (socials.isEmpty)
-          Text(
-            AppTranslations.getString(context, 'no_social_media_available'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          )
-        else
-          ...socials.map<Widget>((social) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildSocialMediaButton(
-                social['name'] ?? 'Unknown',
-                _getSocialIcon(social['name']),
-                social['link'],
-              ),
-            );
-          }).toList(),
-      ],
-    );
-  }
-
-  Widget _buildSocialMediaButton(String platform, IconData icon, String? url) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: () {
-          if (url != null && url.isNotEmpty) {
-            _openSocialMedia(url);
-          } else {
-            TopNotificationService.showInfo(
-              context: context,
-              message: '$platform link not available.',
-            );
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: Colors.white.withOpacity(0.3),
-              width: 1,
-            ),
+  Widget _buildSocialMediaButton(
+    String platform,
+    String? url,
+    SalonUiTheme ui,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        if (url != null && url.isNotEmpty) {
+          _openSocialMedia(url);
+        } else {
+          TopNotificationService.showInfo(
+            context: context,
+            message: '$platform link not available.',
+          );
+        }
+      },
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: ui.card,
+          borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+          border: Border.all(
+            color: ui.cardBorder,
+            width: 1,
           ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(
-                  platform,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+            Expanded(
+              child: Text(
+                platform,
+                style: TextStyle(
+                  color: ui.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const Icon(LucideIcons.externalLink, size: 18),
+            Icon(
+              LucideIcons.externalLink,
+              color: ui.textPrimary,
+              size: 18,
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildReviewsSection(List<dynamic> receivedRatings) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              LucideIcons.messageSquare,
-              color: Colors.white,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              AppTranslations.getString(context, 'reviews'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (receivedRatings.isEmpty)
-          Text(
-            AppTranslations.getString(context, 'no_reviews_available'),
-            style: const TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          )
-        else
-          ...receivedRatings.map<Widget>((rating) {
-            final salonInfo = rating['ratedBy']?['salonInfo'] ?? {};
-            final salonName = salonInfo['name'] ??
-                AppTranslations.getString(context, 'unknown_salon');
-            final comment = rating['comment'] ?? '';
-            final createdAt = rating['createdAt'] ?? '';
-            final stars = rating['stars'] ?? 0;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildReviewCard(
-                salonName,
-                comment.isEmpty
-                    ? AppTranslations.getString(context, 'no_comment')
-                    : comment,
-                _formatDate(createdAt),
-                stars,
-              ),
-            );
-          }).toList(),
-      ],
     );
   }
 
   Widget _buildReviewCard(
-      String companyName, String reviewText, String timestamp, int stars) {
+    String companyName,
+    String reviewText,
+    String timestamp,
+    int stars,
+    SalonUiTheme ui,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+        border: Border.all(
+          color: ui.cardBorder,
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
                   companyName,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ui.textPrimary,
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               Text(
                 timestamp,
-                style: const TextStyle(
-                  color: Colors.white54,
+                style: TextStyle(
+                  color: ui.textMuted,
                   fontSize: 14,
                 ),
               ),
               const SizedBox(width: 8),
-              _buildStarRating(stars),
+              _buildStarRating(stars, ui),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             reviewText,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 15,
               height: 1.4,
             ),
           ),
@@ -748,21 +563,19 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
     );
   }
 
-  Widget _buildStarRating(int rating) {
+  Widget _buildStarRating(int rating, SalonUiTheme ui) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Show the numeric rating
         Text(
           '$rating',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: ui.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(width: 4),
-        // Show the star icon
         const Icon(
           Icons.star,
           color: Colors.yellow,
@@ -831,396 +644,558 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
   }
 
   void _showCampaignInviteDialog() {
+    final ui = SalonUiTheme.from(context.read<ThemeBloc>().state.brightness);
+    final blocState = context.read<InfluencerDetailsBloc>().state;
+    if (blocState is! InfluencerDetailsLoaded) return;
+
+    final data = blocState.influencerData;
+    final profile = data['profile'] ?? {};
+    final pseudo = profile['pseudo']?.toString() ?? 'unknown';
+    final zone = profile['zone']?.toString() ?? '';
+    final pictureUrl = profile['profilePicture']?.toString();
+    final receivedRatings = data['receivedRatings'] ?? [];
+
+    double averageRating = 0.0;
+    if (receivedRatings.isNotEmpty) {
+      final totalStars = receivedRatings.fold<int>(
+        0,
+        (int sum, dynamic rating) => sum + ((rating['stars'] as int?) ?? 0),
+      );
+      averageRating = totalStars / receivedRatings.length;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      enableDrag: false,
-      isDismissible: false,
-      builder: (context) {
-        return Scaffold(
-          resizeToAvoidBottomInset: true,
-          backgroundColor: Colors.transparent,
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Color(0xFF1F1E1E),
-                  Color(0xFF3B3B3B),
-                ],
-              ),
-            ),
-            child: SafeArea(
-              child: Center(
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.95,
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppTranslations.getString(
-                                context, 'campaign_invite_title'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppTranslations.getString(
-                                context, 'campaign_invite_instructions'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          // Followers promotion value
-                          Text(
-                            AppTranslations.getString(
-                                context, 'followers_promotion_value'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _followersPromotionController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: InputDecoration(
-                              hintText: '00',
-                              hintStyle: const TextStyle(color: Colors.white70),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: Colors.white, width: 1),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: Colors.white, width: 1),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: Colors.white, width: 1),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              suffixIcon: const Padding(
-                                padding: EdgeInsets.only(right: 16),
-                                child: Center(
-                                  widthFactor: 1.0,
-                                  child: Text(
-                                    '%',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            style: const TextStyle(color: Colors.white),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'please_enter_promotion_value');
-                              }
+      builder: (sheetContext) {
+        var isSubmitting = false;
 
-                              final intValue = int.tryParse(value);
-                              if (intValue == null) {
-                                return 'Please enter a valid number';
-                              }
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+            final sheetHeight = MediaQuery.sizeOf(context).height * 0.88;
 
-                              if (intValue < 0 || intValue > 100) {
-                                return AppTranslations.getString(
-                                    context, 'percentage_validation');
-                              }
-
-                              return null;
-                            },
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                height: sheetHeight,
+                decoration: BoxDecoration(
+                  color: ui.bg,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 200,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20),
                           ),
-                          const SizedBox(height: 16),
-                          // Commission influencer
-                          Row(
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'commission_influencer'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Text(
-                                '8%',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: ui.sheetHeaderGradient,
+                            stops: const [0.0, 0.35, 0.65, 1.0],
                           ),
-                          const SizedBox(height: 12),
-                          // Commission Kbeauty
-                          Row(
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                AppTranslations.getString(
-                                    context, 'commission_kbeauty'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Text(
-                                '5%',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // Optional collaboration info
-                          Text(
-                            AppTranslations.getString(
-                                context, 'optional_collaboration_info'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppTranslations.getString(
-                                context, 'message_to_influencer'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _messageController,
-                            maxLines: 2,
-                            decoration: InputDecoration(
-                              hintText: AppTranslations.getString(
-                                  context, 'message_placeholder'),
-                              hintStyle: const TextStyle(color: Colors.white70),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: Colors.white, width: 1),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: Colors.white, width: 1),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                    color: Colors.white, width: 1),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                            ),
-                            style: const TextStyle(color: Colors.white),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return AppTranslations.getString(
-                                    context, 'please_enter_message');
-                              }
-                              if (value.length < 10) {
-                                return AppTranslations.getString(
-                                    context, 'message_min_length');
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          // Message constraint info
-                          Text(
-                            AppTranslations.getString(
-                                context, 'message_constraint_info'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          // Create Campaign & Invite Button
-                          Builder(
-                            builder: (context) {
-                              final brightness = Theme.of(context).brightness;
-                              final isLightMode =
-                                  brightness == Brightness.light;
-                              return SizedBox(
-                                width: double.infinity,
-                                height: 48,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : _createCampaignAndInvite,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: isLightMode
-                                        ? Colors.black
-                                        : Colors.white,
-                                    foregroundColor: isLightMode
-                                        ? Colors.white
-                                        : Colors.black,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  child: _isLoading
-                                      ? SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    isLightMode
-                                                        ? Colors.white
-                                                        : Colors.black),
-                                          ),
-                                        )
-                                      : Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Flexible(
-                                              child: Text(
-                                                AppTranslations.getString(
-                                                    context,
-                                                    'create_campaign_invite'),
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Icon(
-                                              LucideIcons.tag,
-                                              size: 18,
-                                              color: isLightMode
-                                                  ? Colors.white
-                                                  : Colors.black,
-                                            ),
-                                          ],
-                                        ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          // Cancel Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF2A2A2A),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: Text(
-                                AppTranslations.getString(context, 'cancel'),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                    Form(
+                      key: _formKey,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppTranslations.getString(
+                                context,
+                                'invite_influencer_confirm_title',
+                              ),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                height: 1.25,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            _buildInviteProfileCard(
+                              ui: ui,
+                              pseudo: pseudo,
+                              zone: zone,
+                              pictureUrl: pictureUrl,
+                              rating: averageRating,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInviteCommissionCard(ui),
+                            const SizedBox(height: 20),
+                            Text(
+                              AppTranslations.getString(
+                                context,
+                                'followers_promotion_value',
+                              ),
+                              style: TextStyle(
+                                color: ui.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextFormField(
+                              controller: _followersPromotionController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: TextStyle(color: ui.textPrimary),
+                              decoration: _inviteInputDecoration(
+                                hintText: '00',
+                                ui: ui,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return AppTranslations.getString(
+                                    context,
+                                    'please_enter_promotion_value',
+                                  );
+                                }
+                                final intValue = int.tryParse(value);
+                                if (intValue == null) {
+                                  return AppTranslations.getString(
+                                    context,
+                                    'please_enter_valid_number',
+                                  );
+                                }
+                                if (intValue < 0 || intValue > 100) {
+                                  return AppTranslations.getString(
+                                    context,
+                                    'percentage_validation',
+                                  );
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              AppTranslations.getString(
+                                context,
+                                'message_to_influencer',
+                              ),
+                              style: TextStyle(
+                                color: ui.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextFormField(
+                              controller: _messageController,
+                              maxLines: 4,
+                              style: TextStyle(color: ui.textPrimary),
+                              decoration: _inviteInputDecoration(
+                                hintText: AppTranslations.getString(
+                                  context,
+                                  'message_placeholder',
+                                ),
+                                ui: ui,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return AppTranslations.getString(
+                                    context,
+                                    'please_enter_message',
+                                  );
+                                }
+                                if (value.length < 10) {
+                                  return AppTranslations.getString(
+                                    context,
+                                    'message_min_length',
+                                  );
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 28),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: ElevatedButton(
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () => _createCampaignAndInvite(
+                                          onLoadingChanged: (loading) {
+                                            setModalState(
+                                              () => isSubmitting = loading,
+                                            );
+                                          },
+                                        ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: ui.primaryButtonBg,
+                                  foregroundColor: ui.primaryButtonFg,
+                                  disabledBackgroundColor: ui.primaryButtonBg
+                                      .withValues(alpha: 0.7),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      _InfluencerDetailsUi.radius,
+                                    ),
+                                  ),
+                                ),
+                                child: isSubmitting
+                                    ? SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: ui.primaryButtonFg,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              AppTranslations.getString(
+                                                context,
+                                                'create_campaign_invite',
+                                              ),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            LucideIcons.ticket,
+                                            size: 20,
+                                            color: ui.primaryButtonFg,
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: OutlinedButton(
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: ui.textPrimary,
+                                  backgroundColor: ui.bg,
+                                  side: BorderSide(
+                                    color: ui.borderSubtle,
+                                    width: 1,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      _InfluencerDetailsUi.radius,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  AppTranslations.getString(context, 'cancel'),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  void _createCampaignAndInvite() async {
+  InputDecoration _inviteInputDecoration({
+    required String hintText,
+    required SalonUiTheme ui,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(
+        color: ui.isDark ? ui.textMuted : Colors.black,
+        fontSize: 16,
+      ),
+      filled: true,
+      fillColor: ui.isDark ? Colors.transparent : Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      suffixIcon: hintText == '00'
+          ? Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                widthFactor: 1,
+                child: Text(
+                  '%',
+                  style: TextStyle(
+                    color: ui.textPrimary,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+          : null,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+    );
+  }
+
+  Widget _buildInviteProfileCard({
+    required SalonUiTheme ui,
+    required String pseudo,
+    required String zone,
+    required String? pictureUrl,
+    required double rating,
+  }) {
+    final ratingLabel = rating > 0
+        ? rating.toStringAsFixed(rating == rating.roundToDouble() ? 0 : 1)
+        : null;
+
+    return SizedBox(
+      height: _InfluencerDetailsUi.inviteProfileCardHeight,
+      width: double.infinity,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+          border: Border.all(
+            color: ui.cardBorder,
+            width: 1,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ui.buttonFillTop, ui.buttonFillBottom],
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 42,
+              height: 42,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  ClipOval(
+                    child: pictureUrl != null && pictureUrl.isNotEmpty
+                        ? Image.network(
+                            pictureUrl,
+                            width: 42,
+                            height: 42,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _inviteAvatarPlaceholder(ui);
+                            },
+                          )
+                        : _inviteAvatarPlaceholder(ui),
+                  ),
+                  if (ratingLabel != null)
+                    Positioned(
+                      bottom: -2,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ui.isDark
+                                ? Colors.black.withValues(alpha: 0.78)
+                                : Colors.white.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                ratingLabel,
+                                style: TextStyle(
+                                  color: ui.isDark
+                                      ? Colors.white
+                                      : ui.textPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(
+                                Icons.star,
+                                color: Color(0xFFFFC107),
+                                size: 10,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '@$pseudo',
+                    style: TextStyle(
+                      color: ui.isDark ? Colors.white : Colors.black,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                    ),
+                  ),
+                  if (zone.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      zone,
+                      style: TextStyle(
+                        color: ui.isDark
+                            ? Colors.white.withValues(alpha: 0.92)
+                            : Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _inviteAvatarPlaceholder(SalonUiTheme ui) {
+    final placeholderColor =
+        ui.isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E7EB);
+    return Container(
+      width: 42,
+      height: 42,
+      color: placeholderColor,
+      child: Icon(LucideIcons.user, color: ui.textMuted, size: 22),
+    );
+  }
+
+  Widget _buildInviteCommissionCard(SalonUiTheme ui) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: ui.bannerFill,
+        borderRadius: BorderRadius.circular(_InfluencerDetailsUi.radius),
+        border: Border.all(
+          color: ui.borderSubtle.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildInviteCommissionRow(
+            ui: ui,
+            label: AppTranslations.getString(context, 'commission_influencer'),
+            value: '8%',
+          ),
+          const SizedBox(height: 12),
+          _buildInviteCommissionRow(
+            ui: ui,
+            label: AppTranslations.getString(context, 'commission_kbeauty'),
+            value: '3%',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInviteCommissionRow({
+    required SalonUiTheme ui,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: ui.borderSubtle, width: 1.2),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            LucideIcons.badge,
+            color: ui.textPrimary,
+            size: 12,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _createCampaignAndInvite({void Function(bool loading)? onLoadingChanged}) async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    onLoadingChanged?.call(true);
 
     try {
       // Get form data - always use percentage
@@ -1244,9 +1219,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-      });
+      onLoadingChanged?.call(false);
 
       // Close dialog
       Navigator.of(context).pop();
@@ -1263,7 +1236,10 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
                   context, 'campaign_created_successfully'),
         );
       } else if (result['stripeAccountNotLinked'] == true) {
-        _showStripeLinkRequiredDialog(context);
+        await StripeLinkRequiredDialog.show(
+          context,
+          bodyTranslationKey: 'stripe_not_linked_invite_body',
+        );
       } else {
         print('❌ Failed to send campaign invite: ${result['message']}');
 
@@ -1277,9 +1253,7 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-      });
+      onLoadingChanged?.call(false);
 
       // Close dialog
       Navigator.of(context).pop();
@@ -1289,145 +1263,6 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
         context: context,
         message: 'Error sending campaign invite: $e',
       );
-    }
-  }
-
-  void _showStripeLinkRequiredDialog(BuildContext dialogContext) {
-    final surface = const Color(0xFF2C2C2E);
-    showDialog<void>(
-      context: dialogContext,
-      barrierColor: Colors.black54,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: surface,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  LucideIcons.unlink,
-                  color: Colors.white,
-                  size: 40,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  AppTranslations.getString(
-                    ctx,
-                    'stripe_not_linked_invite_title',
-                  ),
-                  style: AppTheme.applyPoppins(
-                    const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      height: 1.25,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  AppTranslations.getString(
-                    ctx,
-                    'stripe_not_linked_invite_body',
-                  ),
-                  style: AppTheme.applyPoppins(
-                    const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      Navigator.of(dialogContext).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              const SalonPaymentInformationScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      AppTranslations.getString(ctx, 'link_stripe'),
-                      style: AppTheme.applyPoppins(
-                        const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white, width: 1),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      AppTranslations.getString(ctx, 'cancel'),
-                      style: AppTheme.applyPoppins(
-                        const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _getSocialIcon(String platform) {
-    switch (platform.toLowerCase()) {
-      case 'instagram':
-        return LucideIcons.instagram;
-      case 'tiktok':
-        return LucideIcons.video;
-      case 'youtube':
-        return LucideIcons.youtube;
-      case 'twitter':
-        return LucideIcons.twitter;
-      case 'facebook':
-        return LucideIcons.facebook;
-      case 'linkedin':
-        return LucideIcons.linkedin;
-      case 'snapchat':
-        return LucideIcons.smartphone;
-      default:
-        return LucideIcons.share2;
     }
   }
 
@@ -1446,11 +1281,307 @@ class _InfluencerDetailsScreenState extends State<InfluencerDetailsScreen> {
       } else if (difference.inMinutes > 0) {
         final minutes = difference.inMinutes;
         return '$minutes ${minutes == 1 ? AppTranslations.getString(context, 'minute_ago') : AppTranslations.getString(context, 'minutes_ago')} ago';
+      } else if (difference.inSeconds > 0) {
+        return '${difference.inSeconds}s ago';
       } else {
         return AppTranslations.getString(context, 'just_now');
       }
     } catch (e) {
       return AppTranslations.getString(context, 'unknown');
     }
+  }
+}
+
+class _InfluencerHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
+  const _InfluencerHeroHeaderDelegate({
+    required this.ui,
+    required this.expandedHeight,
+    required this.collapsedHeight,
+    required this.topInset,
+    required this.imageUrl,
+    required this.pseudo,
+    required this.zone,
+    required this.phone,
+    required this.email,
+    required this.rating,
+    required this.onBack,
+  });
+
+  final SalonUiTheme ui;
+  final double expandedHeight;
+  final double collapsedHeight;
+  final double topInset;
+  final String? imageUrl;
+  final String pseudo;
+  final String zone;
+  final String phone;
+  final String email;
+  final double rating;
+  final VoidCallback onBack;
+
+  @override
+  double get minExtent => collapsedHeight;
+
+  @override
+  double get maxExtent => expandedHeight;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final range = maxExtent - minExtent;
+    final t = range <= 0 ? 1.0 : (shrinkOffset / range).clamp(0.0, 1.0);
+    final profileTop = lerpDouble(maxExtent - 124, topInset + 52, t)!;
+
+    return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.none,
+      children: [
+        if (t < 1)
+          Positioned.fill(
+            child: Opacity(
+              opacity: (1 - t).clamp(0.0, 1.0),
+              child: imageUrl != null && imageUrl!.isNotEmpty
+                  ? Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _heroPlaceholder(ui);
+                      },
+                    )
+                  : _heroPlaceholder(ui),
+            ),
+          ),
+        if (t < 0.98)
+          Positioned.fill(
+            child: Opacity(
+              opacity: (1 - t).clamp(0.0, 1.0),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: ui.isDark
+                        ? [
+                            Colors.transparent,
+                            const Color(0x99000000),
+                            ui.bg,
+                          ]
+                        : [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.35),
+                            ui.bg,
+                          ],
+                    stops: const [0.38, 0.72, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        Positioned.fill(
+          child: ColoredBox(
+            color: ui.bg.withValues(alpha: t),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: topInset,
+          child: ColoredBox(
+            color: SalonUiTheme.blueTop.withValues(alpha: t),
+          ),
+        ),
+        Positioned(
+          top: topInset + 8,
+          left: 16,
+          child: GestureDetector(
+            onTap: onBack,
+            child: Container(
+              width: _InfluencerDetailsUi.backButtonSize,
+              height: _InfluencerDetailsUi.backButtonSize,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [ui.buttonFillTop, ui.buttonFillBottom],
+                ),
+                shape: BoxShape.circle,
+                border: ui.isDark
+                    ? null
+                    : Border.all(color: ui.cardBorder, width: 1),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                LucideIcons.arrowLeft,
+                color: ui.buttonIcon,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
+        if (rating > 0)
+          Positioned(
+            top: topInset + 8,
+            right: 16,
+            child: Opacity(
+              opacity: (1 - t * 1.6).clamp(0.0, 1.0),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ui.sheetOverlayButton,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      rating.toStringAsFixed(
+                        rating == rating.roundToDouble() ? 0 : 1,
+                      ),
+                      style: TextStyle(
+                        color: ui.isDark ? Colors.white : ui.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.star,
+                      color: Color(0xFFFFC107),
+                      size: 14,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        Positioned(
+          left: _InfluencerDetailsUi.horizontalPadding,
+          right: _InfluencerDetailsUi.horizontalPadding,
+          top: profileTop,
+          child: _HeroProfileInfo(
+            ui: ui,
+            collapseT: t,
+            pseudo: pseudo,
+            zone: zone,
+            phone: phone,
+            email: email,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _heroPlaceholder(SalonUiTheme ui) {
+    final placeholderColor =
+        ui.isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E7EB);
+    return Container(
+      color: placeholderColor,
+      alignment: Alignment.center,
+      child: Icon(
+        LucideIcons.user,
+        color: ui.textMuted,
+        size: 72,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _InfluencerHeroHeaderDelegate oldDelegate) {
+    return ui.brightness != oldDelegate.ui.brightness ||
+        expandedHeight != oldDelegate.expandedHeight ||
+        collapsedHeight != oldDelegate.collapsedHeight ||
+        imageUrl != oldDelegate.imageUrl ||
+        pseudo != oldDelegate.pseudo ||
+        zone != oldDelegate.zone ||
+        phone != oldDelegate.phone ||
+        email != oldDelegate.email ||
+        rating != oldDelegate.rating;
+  }
+}
+
+class _HeroProfileInfo extends StatelessWidget {
+  const _HeroProfileInfo({
+    required this.ui,
+    required this.collapseT,
+    required this.pseudo,
+    required this.zone,
+    required this.phone,
+    required this.email,
+  });
+
+  final SalonUiTheme ui;
+  final double collapseT;
+  final String pseudo;
+  final String zone;
+  final String phone;
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor =
+        Color.lerp(Colors.white, ui.textPrimary, collapseT)!;
+    final secondaryColor = Color.lerp(
+      Colors.white.withValues(alpha: 0.93),
+      ui.textSecondary,
+      collapseT,
+    )!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '@$pseudo',
+          style: TextStyle(
+            color: primaryColor,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            height: 1.15,
+          ),
+        ),
+        if (zone.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            zone,
+            style: TextStyle(
+              color: secondaryColor,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.2,
+            ),
+          ),
+        ],
+        if (phone.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            phone,
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.2,
+            ),
+          ),
+        ],
+        if (email.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            email,
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

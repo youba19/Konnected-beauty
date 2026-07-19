@@ -312,6 +312,8 @@ class AppTranslations {
     'service_created': 'Service créé avec succès',
     'update_service': 'Mettre à jour le service',
     'create_service': 'Créer le service',
+    'service_pictures': 'Photos du service',
+    'upload_pictures': 'Télécharger des photos',
     'service_information': 'Informations du service',
     'service_price_euro': 'Prix du service (€)',
     'describe_service_details': 'Décrivez les détails de votre service',
@@ -322,9 +324,11 @@ class AppTranslations {
     'loading_services': 'Chargement des services...',
     'refresh_services': 'Actualiser les services',
     'filter_services': 'Filtrer les services',
-    'clear_filters': 'Effacer les filtres',
+    'clear_filters': 'Réinitialiser les filtres',
     'price_range': 'Fourchette de prix',
     'search_services': 'Rechercher des services',
+    'search_influencers': 'Rechercher des ambassadeurs',
+    'search_campaigns': 'Rechercher des campagnes',
     'all_services': 'Tous les services',
     'my_services': 'Mes services',
     'add_new_service': 'Ajouter un nouveau service',
@@ -361,6 +365,7 @@ class AppTranslations {
     // Salon Home Screen
     'services': 'Services',
     'search': 'Rechercher',
+    'search_orders': 'Rechercher des commandes',
     'create_new_service': 'Créer un nouveau service',
     'see_more': 'Voir plus',
     'view_details': 'Voir les détails',
@@ -382,6 +387,7 @@ class AppTranslations {
     'conversation_cannot_reply':
         'Les réponses sont disponibles lorsqu\'un ambassadeur vous invite.',
     'created_at': 'Créé le',
+    'finished_at': 'Terminé le',
     'promotion_type': 'Type de promotion',
     'value': 'Valeur',
     'completed_orders': 'Commandes terminées',
@@ -390,6 +396,9 @@ class AppTranslations {
     'order': 'Commande',
     'client_name': 'Nom du client',
     'client_email': 'Email du client',
+    'client_phone_number': 'Numéro de téléphone du client',
+    'contact': 'Contact',
+    'email_copied': 'Email copié dans le presse-papiers !',
     'phone_number': 'Numéro de téléphone',
     'scan_qr_code': 'Scanner le code QR',
     'scan_instructions': 'Pointez la caméra vers le code QR du client',
@@ -442,6 +451,7 @@ class AppTranslations {
     'clear': 'Effacer',
     'apply': 'Appliquer',
     'copy_link': 'Copier le lien',
+    'edit_promotion': 'Modifier la promotion',
     'delete_campaign': 'Retirer la campagne',
     'delete_campaign_confirm':
         'Êtes-vous sûr de vouloir supprimer cette campagne ?',
@@ -516,15 +526,27 @@ class AppTranslations {
     'please_enter_field': 'Veuillez entrer {field}',
     'please_enter_number': 'Veuillez entrer un nombre',
     'please_enter_valid_number': 'Veuillez entrer un nombre valide',
+    'min_price_cannot_be_greater':
+        'Le prix minimum ne peut pas être supérieur au prix maximum',
     'number_must_be_positive': 'Le nombre doit être positif',
 
     // Campaign Invite Dialog
     'campaign_invite_title': 'Créer une collaboration',
+    'invite_influencer_confirm_title':
+        'Êtes-vous sûr de vouloir inviter cet ambassadeur et créer une campagne pour lui ?',
+    'edit_campaign_value_confirm_title':
+        'Êtes-vous sûr de vouloir modifier la valeur de la campagne',
     'campaign_invite_instructions':
         'Définissez les conditions de votre collaboration',
     'followers_promotion_value': 'Valeur de la promotion des abonnés',
     'commission_influencer': 'Commission ambassadeur',
     'commission_kbeauty': 'Commission Kbeauty',
+    'campaign_value_updated': 'Valeur de la campagne mise à jour',
+    'failed_to_update_value': 'Échec de la mise à jour de la valeur',
+    'please_enter_valid_campaign_value':
+        'Veuillez entrer une valeur de campagne valide',
+    'percentage_value_must_be_between':
+        'La valeur en pourcentage doit être entre 0 et 100',
     'optional_collaboration_info':
         'Offrir un soin ou accorder un tarif préférentiel à l\'ambassadeur est optionnel et peut faciliter la collaboration.',
     'message_constraint_info':
@@ -541,7 +563,7 @@ class AppTranslations {
     'commission_konnected': 'Commission Konnected',
     'campaign_created_successfully': 'Campagne créée avec succès !',
     'message_to_influencer': 'Message à l\'ambassadeur',
-    'message_placeholder': 'Ecrire un message à l\'ambassadeur',
+    'message_placeholder': 'Écrire votre message à l\'ambassadeur',
     'please_enter_message': 'Veuillez entrer un message pour l\'ambassadeur',
     'message_min_length': 'Le message doit contenir au moins 10 caractères',
     'percentage_validation': 'Le pourcentage doit être entre 0 et 100',
@@ -554,7 +576,7 @@ class AppTranslations {
     'initializing': 'Initialisation...',
     'about': 'À propos',
     'no_bio_available': 'Aucune bio disponible',
-    'invite_for_campaign': 'Inviter',
+    'invite_for_campaign': 'Inviter pour une campagne',
     'salon_invite_title': 'Créer une collaboration',
     'salon_invite_instructions':
         'Proposez une collaboration et un pourcentage pour vos abonnés. L\'établissement confirmera.',
@@ -605,6 +627,7 @@ class AppTranslations {
     'unknown_address': 'Adresse inconnue',
     'domain': 'Domaine',
     'address': 'Adresse',
+    'filter_address_placeholder': 'Rechercher par adresse',
     'unknown': 'Inconnu',
     'just_now': 'À l\'instant',
     'day_ago': 'jour',
@@ -695,6 +718,8 @@ class AppTranslations {
     'yesterday': 'Hier',
     'no_more_campaigns': 'Plus de campagnes à charger',
     'no_campaigns_found': 'Aucune campagne trouvée',
+    'no_campaigns_for_filters':
+        'Aucune campagne ne correspond à vos filtres. Modifiez ou réinitialisez le filtre.',
     'try_again': 'Réessayer',
     'message': 'Message',
 
@@ -790,6 +815,8 @@ class AppTranslations {
         'Vous n\'avez pas encore lié votre compte Stripe !',
     'stripe_not_linked_invite_body':
         'Cette campagne sera créée après avoir lié votre compte Stripe à votre profil.',
+    'stripe_not_linked_accept_body':
+        'Vous devez lier votre compte Stripe pour accepter cette invitation de campagne.',
     'link_stripe': 'Lier Stripe',
     'click_button_below_to_open':
         'Cliquez sur le bouton ci-dessous pour ouvrir la page de configuration Stripe dans votre navigateur.',
@@ -1067,6 +1094,8 @@ class AppTranslations {
     'service_updated': 'Service updated successfully',
     'service_created': 'Service created successfully',
     'update_service': 'Update Service',
+    'service_pictures': 'Service Pictures',
+    'upload_pictures': 'Upload Pictures',
     'create_service': 'Create Service',
     'service_information': 'Service Information',
     'service_price_euro': 'Service Price (€)',
@@ -1078,9 +1107,11 @@ class AppTranslations {
     'loading_services': 'Loading services...',
     'refresh_services': 'Refresh Services',
     'filter_services': 'Filter Services',
-    'clear_filters': 'Clear Filters',
+    'clear_filters': 'Clear filters',
     'price_range': 'Price Range',
-    'search_services': 'Search Services',
+    'search_services': 'Search services',
+    'search_influencers': 'Search influencers',
+    'search_campaigns': 'Search Campaigns',
     'all_services': 'All Services',
     'my_services': 'My Services',
     'add_new_service': 'Add New Service',
@@ -1114,6 +1145,7 @@ class AppTranslations {
     // Salon Home Screen
     'services': 'Services',
     'search': 'Search',
+    'search_orders': 'Search Orders',
     'create_new_service': 'Create new service',
     'see_more': 'See more',
     'view_details': 'View details',
@@ -1135,6 +1167,7 @@ class AppTranslations {
     'conversation_cannot_reply':
         'You can reply when an ambassador invites you to a campaign.',
     'created_at': 'Created at',
+    'finished_at': 'Finished at',
     'value': 'Value',
     'completed_orders': 'Completed orders',
     'view_orders': 'View orders',
@@ -1142,6 +1175,9 @@ class AppTranslations {
     'order': 'Order',
     'client_name': 'Client name',
     'client_email': 'Client email',
+    'client_phone_number': 'Client phone number',
+    'contact': 'Contact',
+    'email_copied': 'Email copied to clipboard!',
     'phone_number': 'Phone number',
     'scan_qr_code': 'Scan QR Code',
     'scan_instructions': 'Point camera at client\'s QR code',
@@ -1193,6 +1229,7 @@ class AppTranslations {
     'clear': 'Clear',
     'apply': 'Apply',
     'copy_link': 'Copy link',
+    'edit_promotion': 'Edit promotion',
     'delete_campaign': 'Delete campaign',
     'delete_campaign_confirm': 'Are you sure you want to delete this campaign?',
     'campaign_finished_success': 'Campaign finished successfully!',
@@ -1278,14 +1315,25 @@ class AppTranslations {
     'please_enter_field': 'Please enter {field}',
     'please_enter_number': 'Please enter a number',
     'please_enter_valid_number': 'Please enter a valid number',
+    'min_price_cannot_be_greater':
+        'Min price cannot be greater than max price',
     'number_must_be_positive': 'Number must be positive',
 
     // Campaign Invite Dialog
     'campaign_invite_title': 'Create a collaboration',
+    'invite_influencer_confirm_title':
+        'Are you sure you want to invite this influencer and create a campaign for it ?',
+    'edit_campaign_value_confirm_title':
+        'Are you sure you want to edit campaign value',
     'campaign_invite_instructions': 'Define the terms of your collaboration',
-    'followers_promotion_value': 'Subscriber promotion value',
-    'commission_influencer': 'Ambassador commission',
+    'followers_promotion_value': 'Followers promotion value',
+    'commission_influencer': 'Commission influencer',
     'commission_kbeauty': 'Commission Kbeauty',
+    'campaign_value_updated': 'Campaign value updated',
+    'failed_to_update_value': 'Failed to update value',
+    'please_enter_valid_campaign_value': 'Please enter a valid campaign value',
+    'percentage_value_must_be_between':
+        'Percentage value must be between 0 and 100',
     'optional_collaboration_info':
         'Offering a treatment or granting a preferential rate to the ambassador is optional and can facilitate collaboration.',
     'message_constraint_info':
@@ -1302,7 +1350,7 @@ class AppTranslations {
     'commission_konnected': 'Commission Konnected',
     'campaign_created_successfully': 'Campaign created successfully!',
     'message_to_influencer': 'Message to ambassador',
-    'message_placeholder': 'Message to ambassador',
+    'message_placeholder': 'Write your message to the influencer',
     'please_enter_message': 'Please enter a message for the ambassador',
     'message_min_length': 'Message must be at least 10 characters long',
     'percentage_validation': 'Percentage must be between 0 and 100',
@@ -1315,7 +1363,7 @@ class AppTranslations {
     'initializing': 'Initializing...',
     'about': 'About',
     'no_bio_available': 'No bio available',
-    'invite_for_campaign': 'Invite',
+    'invite_for_campaign': 'Inviter for a campaign',
     'salon_invite_title': 'Create a collaboration',
     'salon_invite_instructions':
         'Propose a collaboration and a percentage for your subscribers. The establishment will confirm.',
@@ -1364,6 +1412,7 @@ class AppTranslations {
     'unknown_address': 'Unknown Address',
     'domain': 'Domain',
     'address': 'Address',
+    'filter_address_placeholder': 'Search by address',
     'unknown': 'Unknown',
     'just_now': 'Just now',
     'day_ago': 'day',
@@ -1437,6 +1486,7 @@ class AppTranslations {
     'finished': 'Finished',
     'campaigns_will_appear_here':
         'Campaign invitations and collaborations will appear here',
+    'refresh': 'Refresh',
 
     // Campaigns Screen Additional
     'no_message': 'No message',
@@ -1444,7 +1494,8 @@ class AppTranslations {
     'no_more_campaigns': 'No more campaigns to load',
 
     'no_campaigns_found': 'No campaigns found',
-    'refresh': 'Refresh',
+    'no_campaigns_for_filters':
+        'No campaigns match your filters. Change or clear the filter to see more.',
     'try_again': 'Try again',
     'message': 'Message',
 
@@ -1543,6 +1594,8 @@ class AppTranslations {
         'You didn\'t link your Stripe account yet !',
     'stripe_not_linked_invite_body':
         'This campaign will be created after you link your Stripe account to your profile.',
+    'stripe_not_linked_accept_body':
+        'You need to link your Stripe account before you can accept this campaign invitation.',
     'link_stripe': 'Link Stripe',
     'click_button_below_to_open':
         'Click the button below to open the Stripe setup page in your browser.',

@@ -27,7 +27,6 @@ import '../../../../core/bloc/influencer_report/influencer_report_bloc.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_event.dart';
 import '../../../../core/bloc/influencer_report/influencer_report_state.dart';
 import '../../../../core/bloc/delete_campaign/delete_campaign_bloc.dart';
-import '../../../../core/bloc/influencer_account_deletion/influencer_account_deletion_bloc.dart';
 import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/common/account_deletion_dialog.dart';
@@ -152,6 +151,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.getScaffoldBackground(brightness),
       resizeToAvoidBottomInset: false,
+      extendBody: true,
       bottomNavigationBar: _buildBottomNavigation(),
       body: Stack(
         children: [
@@ -169,10 +169,8 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
                     center: const Alignment(0, -0.6),
                     radius: 0.8,
                     colors: [
-                      AppTheme.greenPrimary.withOpacity(0.35),
-                      brightness == Brightness.dark
-                          ? AppTheme.transparentBackground
-                          : AppTheme.textWhite54,
+                      AppTheme.greenPrimary.withValues(alpha: 0.35),
+                      Colors.transparent,
                     ],
                     stops: const [0.0, 1.0],
                   ),
@@ -1387,82 +1385,45 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
   /// BOTTOM NAVIGATION WITH GREEN HALF-CIRCLE GLOW
   Widget _buildBottomNavigation() {
-    final width = MediaQuery.of(context).size.width;
-    final itemWidth = width / 5;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.only(top: 8, bottom: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.getScaffoldBackground(Theme.of(context).brightness),
-        border: Border(
-          top: BorderSide(
-              color: AppTheme.getBorderColor(Theme.of(context).brightness)
-                  .withOpacity(0.08),
-              width: 1),
-        ),
-      ),
-      child: SizedBox(
-        height: 64,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // GREEN HALF-CIRCLE LIGHT ABOVE SELECTED NAV ITEM
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOut,
-              left: _selectedIndex * itemWidth + (itemWidth / 2) - 40,
-              top: 10,
-              child: IgnorePointer(
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    heightFactor: 0.5,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          radius: 0.6,
-                          colors: [
-                            AppTheme.greenPrimary.withOpacity(0.6),
-                            Theme.of(context).brightness == Brightness.dark
-                                ? AppTheme.transparentBackground
-                                : AppTheme.textWhite54,
-                          ],
-                          stops: const [0.0, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 16, 10, 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF3A3A3C) : Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
             ),
-
-            // NAV ITEMS ROW
-            Row(
-              children: [
-                Expanded(
-                  child: _navItem(0, LucideIcons.clipboardList,
-                      AppTranslations.getString(context, 'home')),
-                ),
-                Expanded(
-                  child: _navItem(1, LucideIcons.store,
-                      AppTranslations.getString(context, 'saloons')),
-                ),
-                Expanded(
-                  child: _navItem(2, LucideIcons.ticket,
-                      AppTranslations.getString(context, 'campaign')),
-                ),
-                Expanded(
-                  child: _navItem(3, LucideIcons.wallet,
-                      AppTranslations.getString(context, 'wallet')),
-                ),
-                Expanded(
-                  child: _navItem(4, LucideIcons.user,
-                      AppTranslations.getString(context, 'profile')),
-                ),
-              ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _navItem(0, LucideIcons.clipboardList,
+                  AppTranslations.getString(context, 'home')),
+            ),
+            Expanded(
+              child: _navItem(1, LucideIcons.store,
+                  AppTranslations.getString(context, 'saloons')),
+            ),
+            Expanded(
+              child: _navItem(2, LucideIcons.ticket,
+                  AppTranslations.getString(context, 'campaign')),
+            ),
+            Expanded(
+              child: _navItem(3, LucideIcons.wallet,
+                  AppTranslations.getString(context, 'wallet')),
+            ),
+            Expanded(
+              child: _navItem(4, LucideIcons.user,
+                  AppTranslations.getString(context, 'profile')),
             ),
           ],
         ),
@@ -1472,6 +1433,11 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
 
   Widget _navItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isSelected
+        ? (isDark ? Colors.white : const Color(0xFF111827))
+        : (isDark ? const Color(0xFF757575) : const Color(0xFF9CA3AF));
+
     return GestureDetector(
       onTap: () {
         setState(() => _selectedIndex = index);
@@ -1483,28 +1449,20 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
         children: [
           Icon(
             icon,
-            color: isSelected
-                ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
-                : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
+            color: color,
             size: 24,
           ),
-          SizedBox(height: 4),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isSelected
-                      ? AppTheme.getTextPrimaryColor(Theme.of(context).brightness)
-                      : AppTheme.getNavBarTextColor(Theme.of(context).brightness),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-                maxLines: 2,
-              ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1729,13 +1687,7 @@ class _InfluencerHomeScreenState extends State<InfluencerHomeScreen> {
   }
 
   void _showAccountDeletionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => BlocProvider(
-        create: (context) => InfluencerAccountDeletionBloc(),
-        child: const AccountDeletionDialog(userType: 'influencer'),
-      ),
-    );
+    AccountDeletionDialog.show(context, userType: 'influencer');
   }
 
   /// Get the last ongoing campaign

@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/influencers_service.dart';
+import '../bloc_error_helper.dart';
 import 'influencer_campaigns_event.dart';
 import 'influencer_campaigns_state.dart';
 
@@ -57,13 +58,12 @@ class InfluencerCampaignsBloc
       } else {
         print('❌ Failed to load campaigns: ${result['message']}');
         emit(InfluencerCampaignsError(
-            result['message'] ?? 'Failed to load campaigns',
+            BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Error loading campaigns: $e');
-      emit(
-          InfluencerCampaignsError('Error loading campaigns: ${e.toString()}'));
+    } catch (e, st) {
+      emit(InfluencerCampaignsError(
+          BlocErrorHelper.messageFrom(e, st, 'loadInfluencerCampaigns')));
     }
   }
 
@@ -128,13 +128,12 @@ class InfluencerCampaignsBloc
       } else {
         print('❌ Failed to load more campaigns: ${result['message']}');
         emit(InfluencerCampaignsError(
-            result['message'] ?? 'Failed to load more campaigns',
+            BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Error loading more campaigns: $e');
+    } catch (e, st) {
       emit(InfluencerCampaignsError(
-          'Error loading more campaigns: ${e.toString()}'));
+          BlocErrorHelper.messageFrom(e, st, 'loadMoreInfluencerCampaigns')));
     }
   }
 
@@ -176,13 +175,13 @@ class InfluencerCampaignsBloc
         ));
       } else {
         print('❌ Search failed: ${result['message']}');
-        emit(InfluencerCampaignsError(result['message'] ?? 'Search failed',
+        emit(InfluencerCampaignsError(
+            BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Error searching campaigns: $e');
+    } catch (e, st) {
       emit(InfluencerCampaignsError(
-          'Error searching campaigns: ${e.toString()}'));
+          BlocErrorHelper.messageFrom(e, st, 'searchInfluencerCampaigns')));
     }
   }
 
@@ -223,13 +222,13 @@ class InfluencerCampaignsBloc
         ));
       } else {
         print('❌ Refresh failed: ${result['message']}');
-        emit(InfluencerCampaignsError(result['message'] ?? 'Refresh failed',
+        emit(InfluencerCampaignsError(
+            BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Error refreshing campaigns: $e');
+    } catch (e, st) {
       emit(InfluencerCampaignsError(
-          'Error refreshing campaigns: ${e.toString()}'));
+          BlocErrorHelper.messageFrom(e, st, 'refreshInfluencerCampaigns')));
     }
   }
 
@@ -272,13 +271,13 @@ class InfluencerCampaignsBloc
         ));
       } else {
         print('❌ Filter failed: ${result['message']}');
-        emit(InfluencerCampaignsError(result['message'] ?? 'Filter failed',
+        emit(InfluencerCampaignsError(
+            BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Error filtering campaigns: $e');
+    } catch (e, st) {
       emit(InfluencerCampaignsError(
-          'Error filtering campaigns: ${e.toString()}'));
+          BlocErrorHelper.messageFrom(e, st, 'filterInfluencerCampaigns')));
     }
   }
 }

@@ -6,12 +6,18 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
-import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
+
+abstract final class _EditServiceUi {
+  static const double radius = 16;
+  static const double buttonRadius = 14;
+  static const double buttonSize = 48;
+  static const double horizontalPadding = 16;
+}
 
 class EditServiceScreen extends StatefulWidget {
   final String serviceId;
@@ -43,39 +49,28 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   final GlobalKey<FormFieldState> serviceDescriptionFormKey =
       GlobalKey<FormFieldState>();
 
-  // Picture handling
-  final List<File> _selectedPictures = []; // New pictures to upload
-  final List<String> _existingPictureUrls =
-      []; // Existing pictures from server (URLs)
-  final Map<String, File> _existingPictureFilesMap =
-      {}; // Map URL -> File for existing pictures
-  final List<String> _removedPictureUrls =
-      []; // Existing pictures marked for removal
+  final List<File> _selectedPictures = [];
+  final List<String> _existingPictureUrls = [];
+  final Map<String, File> _existingPictureFilesMap = {};
+  final List<String> _removedPictureUrls = [];
   final ImagePicker _picker = ImagePicker();
   bool _isLoadingPictures = false;
   bool _isDownloadingExistingPictures = false;
-  bool _hasDownloadedExistingPictures =
-      false; // Track if we've already downloaded
+  bool _hasDownloadedExistingPictures = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill the form with existing service data
     serviceNameController.text = widget.serviceName;
     servicePriceController.text = widget.servicePrice.replaceAll(' €', '');
     serviceDescriptionController.text = widget.serviceDescription;
-
-    // Load existing pictures from bloc
     _loadExistingPictures();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Reload pictures when screen becomes visible again (e.g., after update)
-    // Reset download flag to allow re-downloading if data changed
     if (_hasDownloadedExistingPictures) {
-      // Check if we need to reload (e.g., after coming back from update)
       final state = context.read<SalonServicesBloc>().state;
       if (state is SalonServicesLoaded) {
         final service = state.services.firstWhere(
@@ -89,7 +84,6 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
               .where((url) => url.isNotEmpty)
               .toList();
 
-          // If URLs changed, reset and reload
           if (currentUrls.length != _existingPictureUrls.length ||
               !currentUrls.every((url) => _existingPictureUrls.contains(url))) {
             setState(() {
@@ -125,7 +119,6 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           }
         });
 
-        // Download existing pictures as files to preserve them (only once)
         if (_existingPictureUrls.isNotEmpty &&
             !_hasDownloadedExistingPictures) {
           _downloadExistingPictures();
@@ -136,7 +129,6 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
 
   Future<void> _downloadExistingPictures() async {
     if (_isDownloadingExistingPictures || _hasDownloadedExistingPictures) {
-      print('📥 Skipping download - already downloaded or in progress');
       return;
     }
 
@@ -145,31 +137,17 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
       _existingPictureFilesMap.clear();
     });
 
-    print('📥 === DOWNLOADING EXISTING PICTURES ===');
-    print('📥 Converting ${_existingPictureUrls.length} URLs to files');
-
     final Map<String, File> downloadedFilesMap = {};
 
     for (int i = 0; i < _existingPictureUrls.length; i++) {
       try {
         final url = _existingPictureUrls[i];
+        if (_removedPictureUrls.contains(url)) continue;
 
-        // Skip if this picture was marked for removal
-        if (_removedPictureUrls.contains(url)) {
-          print('📥 Skipping removed picture: $url');
-          continue;
-        }
-
-        print('📥 Downloading image $i: $url');
-
-        // Download the image
         final response = await http.get(Uri.parse(url));
-
         if (response.statusCode == 200) {
-          // Create a temporary file with proper extension
           final tempDir = await getTemporaryDirectory();
 
-          // Extract file extension from URL
           String extension = 'jpg';
           if (url.contains('.')) {
             final urlParts = url.split('.');
@@ -181,7 +159,6 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
             }
           }
 
-          // Create a cleaner filename for storage
           String cleanName = 'service_image_${i + 1}';
           if (url.contains('/')) {
             final originalName = url.split('/').last.split('?').first;
@@ -193,29 +170,21 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           final fileName =
               '${cleanName}_${DateTime.now().millisecondsSinceEpoch}.$extension';
           final tempFile = File('${tempDir.path}/$fileName');
-
-          // Write the downloaded bytes to file
           await tempFile.writeAsBytes(response.bodyBytes);
-          downloadedFilesMap[url] = tempFile; // Store with URL as key
-
-          print('📥 ✅ Converted: ${tempFile.path}');
-        } else {
-          print('📥 ❌ Failed to download $url: ${response.statusCode}');
+          downloadedFilesMap[url] = tempFile;
         }
       } catch (e) {
-        print('📥 ❌ Error converting picture $i: $e');
+        print('📥 Error converting picture $i: $e');
       }
     }
 
     setState(() {
-      _existingPictureFilesMap.clear();
-      _existingPictureFilesMap.addAll(downloadedFilesMap);
+      _existingPictureFilesMap
+        ..clear()
+        ..addAll(downloadedFilesMap);
       _isDownloadingExistingPictures = false;
-      _hasDownloadedExistingPictures = true; // Mark as downloaded
+      _hasDownloadedExistingPictures = true;
     });
-
-    print('📥 === DOWNLOAD COMPLETE ===');
-    print('📥 Converted ${_existingPictureFilesMap.length} pictures to files');
   }
 
   @override
@@ -227,60 +196,37 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
   }
 
   void _updateService() {
-    print('🆔 === EDITING SERVICE ===');
-    print('🆔 Service ID: ${widget.serviceId}');
-    print('📝 Service Name: ${serviceNameController.text}');
-    print('💰 Service Price: ${servicePriceController.text}');
-    print('📄 Service Description: ${serviceDescriptionController.text}');
-
-    // Validate fields
     serviceNameFormKey.currentState?.validate();
     servicePriceFormKey.currentState?.validate();
     serviceDescriptionFormKey.currentState?.validate();
 
-    // Check if all fields are valid
     if (serviceNameController.text.isNotEmpty &&
         servicePriceController.text.isNotEmpty &&
         serviceDescriptionController.text.isNotEmpty) {
-      // Parse price to integer
       final price = int.tryParse(servicePriceController.text);
       if (price == null) {
-        // Show error for invalid price
         TopNotificationService.showError(
           context: context,
-          message: 'Please enter a valid price',
+          message: AppTranslations.getString(
+            context,
+            'please_enter_valid_number',
+          ),
         );
         return;
       }
 
-      // Combine existing pictures (downloaded as files) + new pictures
-      // Filter out removed pictures from existing files
-      List<File> allPictures = [];
-
-      // Add existing pictures that are NOT removed
-      for (var url in _existingPictureUrls) {
+      final List<File> allPictures = [];
+      for (final url in _existingPictureUrls) {
         if (!_removedPictureUrls.contains(url) &&
             _existingPictureFilesMap.containsKey(url)) {
           allPictures.add(_existingPictureFilesMap[url]!);
         }
       }
-
-      // Add new uploaded pictures
       allPictures.addAll(_selectedPictures);
 
-      print('📸 === PICTURES TO SEND ===');
-      print('📸 Existing picture URLs: ${_existingPictureUrls.length}');
-      print(
-          '📸 Existing picture files (not removed): ${allPictures.length - _selectedPictures.length}');
-      print('📸 New pictures: ${_selectedPictures.length}');
-      print('📸 Total pictures to send: ${allPictures.length}');
-      print('📸 Removed pictures: ${_removedPictureUrls.length}');
+      final List<File>? picturesToSend =
+          allPictures.isNotEmpty ? allPictures : null;
 
-      // Only send pictures if there are any (existing + new)
-      // If no pictures at all, don't send pictures parameter
-      List<File>? picturesToSend = allPictures.isNotEmpty ? allPictures : null;
-
-      // Update service using API
       context.read<SalonServicesBloc>().add(UpdateSalonService(
             serviceId: widget.serviceId,
             name: serviceNameController.text,
@@ -293,9 +239,7 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
 
   Future<void> _pickImages() async {
     try {
-      setState(() {
-        _isLoadingPictures = true;
-      });
+      setState(() => _isLoadingPictures = true);
 
       final List<XFile> pickedFiles = await _picker.pickMultiImage(
         maxWidth: 1920,
@@ -308,25 +252,22 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           _selectedPictures
               .addAll(pickedFiles.map((xFile) => File(xFile.path)));
         });
-        print('📸 Images picked: ${_selectedPictures.length}');
       }
     } catch (e) {
-      print('❌ Error picking images: $e');
+      if (!mounted) return;
       TopNotificationService.showError(
         context: context,
         message: 'Failed to pick images: $e',
       );
     } finally {
-      setState(() {
-        _isLoadingPictures = false;
-      });
+      if (mounted) {
+        setState(() => _isLoadingPictures = false);
+      }
     }
   }
 
   void _removeImage(int index) {
-    setState(() {
-      _selectedPictures.removeAt(index);
-    });
+    setState(() => _selectedPictures.removeAt(index));
   }
 
   void _removeExistingImage(int index) {
@@ -334,151 +275,323 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
     setState(() {
       _removedPictureUrls.add(urlToRemove);
       _existingPictureUrls.removeAt(index);
-      // Also remove from the map using URL as key
       _existingPictureFilesMap.remove(urlToRemove);
     });
-    print('🗑️ Removed existing image at index $index');
-    print('🗑️ URL removed: $urlToRemove');
-    print('🗑️ Remaining existing images: ${_existingPictureUrls.length}');
-    print('🗑️ Remaining existing files: ${_existingPictureFilesMap.length}');
+  }
+
+  InputDecoration _fieldDecoration({
+    required String hintText,
+    required SalonUiTheme ui,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(
+        color: ui.textMuted,
+        fontSize: 16,
+      ),
+      filled: true,
+      fillColor: Colors.transparent,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_EditServiceUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_EditServiceUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_EditServiceUi.radius),
+        borderSide: BorderSide(color: ui.textPrimary, width: 1),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_EditServiceUi.radius),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_EditServiceUi.radius),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+      ),
+    );
+  }
+
+  Widget _buildLabeledField({
+    required String label,
+    required Widget child,
+    required SalonUiTheme ui,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Force dark mode for salon - wrap in Theme with dark brightness
-    return Theme(
-      data: ThemeData.dark(),
-      child: BlocListener<SalonServicesBloc, SalonServicesState>(
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: BlocListener<SalonServicesBloc, SalonServicesState>(
         listener: (context, state) {
           if (state is SalonServiceUpdated) {
-            // Show success message as top-dropping dialog with service name
             TopNotificationService.showSuccess(
               context: context,
               message:
                   '${AppTranslations.getString(context, 'service_updated')} - ${widget.serviceName}',
             );
-
-            // Navigate back to service details screen
             Navigator.of(context).pop();
           } else if (state is SalonServicesError) {
-            // Show error message as top-dropping dialog
             TopNotificationService.showError(
               context: context,
               message: state.message,
             );
           }
         },
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E), // Bottom color (darker)
-                Color(0xFF3B3B3B), // Top color (lighter)
-              ],
-            ),
-          ),
+        child: ColoredBox(
+          color: ui.bg,
           child: Scaffold(
-            backgroundColor: Colors.transparent,
+            backgroundColor: ui.bg,
             body: SafeArea(
+              top: false,
               child: GestureDetector(
-                onTap: () {
-                  // Close keyboard when tapping outside text fields
-                  FocusScope.of(context).unfocus();
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: Stack(
                   children: [
-                    // Header
-                    _buildHeader(),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Text(
-                        AppTranslations.getString(context, 'edit_service'),
-                        style: AppTheme.headingStyle,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-
-                    // Content
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(left: 24.0, right: 24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Information Banner
-
-                            const SizedBox(height: 32),
-
-                            // Service Name Field
-                            CustomTextField(
-                              label: AppTranslations.getString(
-                                  context, 'service_name'),
-                              placeholder: AppTranslations.getString(
-                                  context, 'enter_service_name'),
-                              controller: serviceNameController,
-                              keyboardType: TextInputType.text,
-                              formFieldKey: serviceNameFormKey,
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Service Pictures Field
-                            _buildPicturesSection(),
-
-                            const SizedBox(height: 20),
-
-                            // Service Price Field
-                            CustomTextField(
-                              label:
-                                  '${AppTranslations.getString(context, 'service_price')} (TTC)',
-                              placeholder: AppTranslations.getString(
-                                  context, 'enter_service_price'),
-                              controller: servicePriceController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9.]')),
-                              ],
-                              formFieldKey: servicePriceFormKey,
-                            ),
-
-                            const SizedBox(height: 20),
-
-                            // Service Description Field
-                            CustomTextField(
-                              label: AppTranslations.getString(
-                                  context, 'service_description'),
-                              placeholder: AppTranslations.getString(
-                                  context, 'describe_service'),
-                              controller: serviceDescriptionController,
-                              keyboardType: TextInputType.multiline,
-                              maxLines: 5,
-                              formFieldKey: serviceDescriptionFormKey,
-                            ),
-
-                            const SizedBox(height: 40),
-
-                            // Save Changes Button
-                            BlocBuilder<SalonServicesBloc, SalonServicesState>(
-                              builder: (context, state) {
-                                return CustomButton(
-                                  text: AppTranslations.getString(
-                                      context, 'save_changes'),
-                                  onPressed: _updateService,
-                                  isLoading: state is SalonServiceUpdating,
-                                  leadingIcon: LucideIcons.save,
-                                );
-                              },
-                            ),
-                          ],
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: topInset + 160,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: ui.fullSheetGradient,
+                            stops: ui.fullSheetStops,
+                          ),
                         ),
                       ),
+                    ),
+                    Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            _EditServiceUi.horizontalPadding,
+                            topInset + 8,
+                            _EditServiceUi.horizontalPadding,
+                            0,
+                          ),
+                          child: Row(
+                            children: [
+                              _buildBackButton(ui),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  AppTranslations.getString(
+                                    context,
+                                    'edit_service',
+                                  ),
+                                  style: TextStyle(
+                                    color: ui.textPrimary,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(
+                              _EditServiceUi.horizontalPadding,
+                              24,
+                              _EditServiceUi.horizontalPadding,
+                              28,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabeledField(
+                                  ui: ui,
+                                  label: AppTranslations.getString(
+                                    context,
+                                    'service_name',
+                                  ),
+                                  child: TextFormField(
+                                    key: serviceNameFormKey,
+                                    controller: serviceNameController,
+                                    style: TextStyle(color: ui.textPrimary),
+                                    cursorColor: ui.textPrimary,
+                                    decoration: _fieldDecoration(
+                                      hintText: AppTranslations.getString(
+                                        context,
+                                        'enter_service_name',
+                                      ),
+                                      ui: ui,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return AppTranslations.getString(
+                                          context,
+                                          'service_name_required',
+                                        );
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                _buildPicturesSection(ui),
+                                const SizedBox(height: 20),
+                                _buildLabeledField(
+                                  ui: ui,
+                                  label:
+                                      '${AppTranslations.getString(context, 'service_price')} (TTC)',
+                                  child: TextFormField(
+                                    key: servicePriceFormKey,
+                                    controller: servicePriceController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    style: TextStyle(color: ui.textPrimary),
+                                    cursorColor: ui.textPrimary,
+                                    decoration: _fieldDecoration(
+                                      hintText: AppTranslations.getString(
+                                        context,
+                                        'enter_service_price',
+                                      ),
+                                      ui: ui,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return AppTranslations.getString(
+                                          context,
+                                          'please_enter_valid_number',
+                                        );
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                _buildLabeledField(
+                                  ui: ui,
+                                  label: AppTranslations.getString(
+                                    context,
+                                    'service_description',
+                                  ),
+                                  child: TextFormField(
+                                    key: serviceDescriptionFormKey,
+                                    controller: serviceDescriptionController,
+                                    maxLines: 5,
+                                    style: TextStyle(color: ui.textPrimary),
+                                    cursorColor: ui.textPrimary,
+                                    decoration: _fieldDecoration(
+                                      hintText: AppTranslations.getString(
+                                        context,
+                                        'describe_service',
+                                      ),
+                                      ui: ui,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return AppTranslations.getString(
+                                          context,
+                                          'please_enter_message',
+                                        );
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                BlocBuilder<SalonServicesBloc,
+                                    SalonServicesState>(
+                                  builder: (context, state) {
+                                    final isLoading =
+                                        state is SalonServiceUpdating;
+                                    return SizedBox(
+                                      width: double.infinity,
+                                      height: 52,
+                                      child: ElevatedButton(
+                                        onPressed:
+                                            isLoading ? null : _updateService,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: ui.primaryButtonBg,
+                                          foregroundColor: ui.primaryButtonFg,
+                                          disabledBackgroundColor: ui
+                                              .primaryButtonBg
+                                              .withValues(alpha: 0.7),
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              _EditServiceUi.radius,
+                                            ),
+                                          ),
+                                        ),
+                                        child: isLoading
+                                            ? SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: ui.primaryButtonFg,
+                                                ),
+                                              )
+                                            : Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    AppTranslations.getString(
+                                                      context,
+                                                      'save_changes',
+                                                    ),
+                                                    style: TextStyle(
+                                                      color: ui.primaryButtonFg,
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Icon(
+                                                    LucideIcons.save,
+                                                    size: 18,
+                                                    color: ui.primaryButtonFg,
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -487,109 +600,76 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
           ),
         ),
       ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(5.0),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(
-              LucideIcons.arrowLeft,
-              color: AppTheme.textPrimaryColor,
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+  Widget _buildBackButton(SalonUiTheme ui) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        width: _EditServiceUi.buttonSize,
+        height: _EditServiceUi.buttonSize,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              ui.buttonFillTop,
+              ui.buttonFillBottom,
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInformationBanner() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.borderColor,
-          width: 1,
+          borderRadius: BorderRadius.circular(_EditServiceUi.buttonRadius),
+          border: ui.isDark
+              ? null
+              : Border.all(color: ui.cardBorder, width: 1),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.accentColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              LucideIcons.edit3,
-              color: AppTheme.accentColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: RichText(
-              text: const TextSpan(
-                style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-                children: [
-                  TextSpan(text: 'Edit your service details. '),
-                  TextSpan(text: 'All fields are optional.'),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildPicturesSection() {
+  Widget _buildPicturesSection(SalonUiTheme ui) {
+    final placeholder =
+        ui.isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E7EB);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Service Pictures',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
+          AppTranslations.getString(context, 'service_pictures'),
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 10),
-        // Upload Button
         GestureDetector(
           onTap: _isLoadingPictures ? null : _pickImages,
           child: Container(
             width: double.infinity,
-            height: 50,
+            height: 52,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1,
-              ),
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(_EditServiceUi.radius),
+              border: Border.all(color: ui.borderSubtle, width: 1),
             ),
             child: Center(
               child: _isLoadingPictures
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(ui.textPrimary),
                       ),
                     )
                   : Row(
@@ -597,14 +677,17 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                       children: [
                         Icon(
                           LucideIcons.image,
-                          color: AppTheme.textPrimaryColor,
+                          color: ui.textPrimary,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Upload Pictures',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          AppTranslations.getString(
+                            context,
+                            'upload_pictures',
+                          ),
+                          style: TextStyle(
+                            color: ui.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
@@ -614,7 +697,6 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
             ),
           ),
         ),
-        // All Images Preview (Existing + New) - Horizontal Scroll
         if (_existingPictureUrls.isNotEmpty ||
             _selectedPictures.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -644,14 +726,16 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius:
+                              BorderRadius.circular(_EditServiceUi.radius),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: ui.cardBorder,
                             width: 1,
                           ),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius:
+                              BorderRadius.circular(_EditServiceUi.radius),
                           child: isExistingImage
                               ? Image.network(
                                   _existingPictureUrls[imageIndex],
@@ -660,10 +744,10 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                                     return Container(
                                       width: 100,
                                       height: 100,
-                                      color: AppTheme.border2,
+                                      color: placeholder,
                                       child: Icon(
                                         Icons.image_outlined,
-                                        color: AppTheme.textSecondaryColor,
+                                        color: ui.textMuted,
                                         size: 32,
                                       ),
                                     );
@@ -674,19 +758,15 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                                     return Container(
                                       width: 100,
                                       height: 100,
-                                      color: AppTheme.border2,
+                                      color: placeholder,
                                       child: Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress
-                                                      .expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                          strokeWidth: 2,
-                                          color: AppTheme.accentColor,
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: ui.textMuted,
+                                          ),
                                         ),
                                       ),
                                     );
@@ -712,13 +792,13 @@ class _EditServiceScreenState extends State<EditServiceScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                              color: Colors.red,
+                              color: Colors.black87,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
                               Icons.close,
                               color: Colors.white,
-                              size: 16,
+                              size: 14,
                             ),
                           ),
                         ),

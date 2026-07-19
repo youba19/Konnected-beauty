@@ -149,94 +149,61 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: AppTheme.getScaffoldBackground(
-          brightness), // Deep black background as in image
+      // Let the shared home glow show through on this navbar tab.
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          // TOP GREEN GLOW
-          Positioned(
-            top: -120,
-            left: -60,
-            right: -60,
-            child: IgnorePointer(
-              child: Container(
-                height: 280,
-                decoration: BoxDecoration(
-                  // soft radial green halo like the screenshot
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -0.6),
-                    radius: 0.8,
-                    colors: [
-                      AppTheme.greenPrimary.withOpacity(0.35),
-                      brightness == Brightness.dark
-                          ? AppTheme.transparentBackground
-                          : AppTheme.textWhite54,
-                    ],
-                    stops: const [0.0, 1.0],
-                  ),
+      body: GestureDetector(
+        onTap: () {
+          // Close keyboard when tapping outside text fields
+          FocusScope.of(context).unfocus();
+        },
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child:
+                  BlocListener<InfluencerCampaignsBloc, InfluencerCampaignsState>(
+                listener: (context, state) {
+                  if (state is InfluencerCampaignsLoaded) {
+                    _isLoadingMore = false;
+                  } else if (state is InfluencerCampaignsError) {
+                    _isLoadingMore = false;
+                  }
+                },
+                child:
+                    BlocBuilder<InfluencerCampaignsBloc, InfluencerCampaignsState>(
+                  builder: (context, state) {
+                    if (state is InfluencerCampaignsLoading) {
+                      return _buildLoadingState();
+                    } else if (state is InfluencerCampaignsError) {
+                      return _buildErrorState(state);
+                    } else if (state is InfluencerCampaignsLoaded) {
+                      final filteredCampaigns = _filterCampaigns(
+                          state.campaigns.cast<Map<String, dynamic>>());
+                      if (filteredCampaigns.isEmpty) {
+                        return _buildNoCampaignsState();
+                      } else {
+                        return _buildCampaignsList(state, filteredCampaigns);
+                      }
+                    } else if (state is InfluencerCampaignsLoadingMore) {
+                      final filteredCampaigns = _filterCampaigns(
+                          state.campaigns.cast<Map<String, dynamic>>());
+                      if (filteredCampaigns.isEmpty) {
+                        return _buildNoCampaignsState();
+                      } else {
+                        return _buildCampaignsListWithLoading(
+                            state, filteredCampaigns);
+                      }
+                    } else {
+                      return _buildInitialState();
+                    }
+                  },
                 ),
               ),
             ),
-          ),
-          SafeArea(
-            child: GestureDetector(
-              onTap: () {
-                // Close keyboard when tapping outside text fields
-                FocusScope.of(context).unfocus();
-              },
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: BlocListener<InfluencerCampaignsBloc,
-                        InfluencerCampaignsState>(
-                      listener: (context, state) {
-                        if (state is InfluencerCampaignsLoaded) {
-                          _isLoadingMore = false;
-                        } else if (state is InfluencerCampaignsError) {
-                          _isLoadingMore = false;
-                        }
-                      },
-                      child: BlocBuilder<InfluencerCampaignsBloc,
-                          InfluencerCampaignsState>(
-                        builder: (context, state) {
-                          if (state is InfluencerCampaignsLoading) {
-                            return _buildLoadingState();
-                          } else if (state is InfluencerCampaignsError) {
-                            return _buildErrorState(state);
-                          } else if (state is InfluencerCampaignsLoaded) {
-                            final filteredCampaigns = _filterCampaigns(
-                                state.campaigns.cast<Map<String, dynamic>>());
-                            if (filteredCampaigns.isEmpty) {
-                              return _buildNoCampaignsState();
-                            } else {
-                              return _buildCampaignsList(
-                                  state, filteredCampaigns);
-                            }
-                          } else if (state is InfluencerCampaignsLoadingMore) {
-                            final filteredCampaigns = _filterCampaigns(
-                                state.campaigns.cast<Map<String, dynamic>>());
-                            if (filteredCampaigns.isEmpty) {
-                              return _buildNoCampaignsState();
-                            } else {
-                              return _buildCampaignsListWithLoading(
-                                  state, filteredCampaigns);
-                            }
-                          } else {
-                            return _buildInitialState();
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,29 +1,36 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
 import '../../../../core/bloc/auth/auth_bloc.dart';
 import '../../../../core/services/storage/token_storage_service.dart';
-import '../../../../core/services/api/salon_services_service.dart';
+import '../../../../core/services/api/salon_profile_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../auth/presentation/pages/welcome_screen.dart';
 import 'create_service_screen.dart';
 import 'service_details_screen.dart';
-import 'edit_service_screen.dart';
 import 'service_filter_screen.dart';
 import 'influencers_screen.dart';
 import 'qr_scanner_screen.dart';
 import '../../../../widgets/common/motivational_banner.dart';
-import 'salon_notifications_screen.dart';
+import 'salon_settings_screen.dart';
+
+/// Salon services tab — layout radius tokens (colors via [SalonUiTheme]).
+abstract final class _SalonServicesUi {
+  static const double radius = 16;
+  static const double searchRadius = 16;
+  static const double buttonRadius = 14;
+  static const double serviceCardRadius = 16;
+}
 
 class SalonHomeScreen extends StatefulWidget {
   final bool showDeleteSuccess;
@@ -43,6 +50,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
   int? _currentMaxPrice;
   bool _isLoadingMore = false; // Flag to prevent duplicate load more requests
   Timer? _refreshTimer; // Timer for checking data after refresh
+  String _profileInitial = 'K';
 
   @override
   void initState() {
@@ -66,6 +74,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     // Load salon services on app start
     print('🔄 === LOADING SERVICES ON APP START ===');
     context.read<SalonServicesBloc>().add(LoadSalonServices());
+    _loadProfileInitial();
 
     // Add search listener
     searchController.addListener(_onSearchChanged);
@@ -86,6 +95,22 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
         timer.cancel();
       }
     });
+  }
+
+  Future<void> _loadProfileInitial() async {
+    try {
+      final result = await SalonProfileService().getSalonProfile();
+      if (!mounted || result['success'] != true) return;
+      final data = result['data'] as Map<String, dynamic>?;
+      final salonName = data?['salonInfo']?['name']?.toString() ?? '';
+      final personalName = data?['name']?.toString() ?? '';
+      final source = salonName.isNotEmpty ? salonName : personalName;
+      if (source.isNotEmpty) {
+        setState(() => _profileInitial = source[0].toUpperCase());
+      }
+    } catch (_) {
+      // Keep default initial.
+    }
   }
 
   @override
@@ -252,28 +277,17 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [
-            Color(0xFF1F1E1E), // Bottom color (darker)
-            Color(0xFF3B3B3B), // Top color (lighter)
-          ],
-        ),
-      ),
+    final ui = SalonUiTheme.of(context);
+    return ColoredBox(
+      color: ui.bg,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
+          top: false,
           child: GestureDetector(
-            onTap: () {
-              // Close keyboard when tapping outside text fields
-              FocusScope.of(context).unfocus();
-            },
+            onTap: () => FocusScope.of(context).unfocus(),
             child: Column(
               children: [
-                // Content based on selected tab
                 Expanded(
                   child: selectedIndex == 3
                       ? const InfluencersScreen()
@@ -379,14 +393,20 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
       }
     }, child: BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
-        return RefreshIndicator(
-          onRefresh: () async {
-            _resetScrollAndLoadingState();
-            context.read<SalonServicesBloc>().add(RefreshSalonServices());
-          },
-          color: AppTheme.textPrimaryColor,
-          backgroundColor: AppTheme.transparentBackground,
-          child: NotificationListener<ScrollNotification>(
+        final ui = SalonUiTheme.of(context);
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            overscroll: false,
+          ),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _resetScrollAndLoadingState();
+              context.read<SalonServicesBloc>().add(RefreshSalonServices());
+            },
+            color: Colors.white,
+            backgroundColor: SalonUiTheme.blueUpper,
+            displacement: MediaQuery.paddingOf(context).top + 52,
+            child: NotificationListener<ScrollNotification>(
             onNotification: (ScrollNotification scrollInfo) {
               // Check if user has scrolled to the bottom
               final isNearBottom = scrollInfo.metrics.pixels >=
@@ -415,7 +435,9 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
             },
             child: CustomScrollView(
               controller: _listController,
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: ClampingScrollPhysics(),
+              ),
               slivers: [
                 // Success Banner (if needed)
                 if (_showDeleteSuccess)
@@ -431,22 +453,39 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                 // Motivational Banner
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: MotivationalBanner(
                       text: AppTranslations.getString(
                           context, 'offers_attractive_message'),
+                      icon: LucideIcons.lamp,
+                      backgroundColor: ui.bannerFill,
+                      textColor: ui.textPrimary,
+                      fontWeight: FontWeight.w400,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
                     ),
                   ),
                 ),
                 const SliverToBoxAdapter(
-                  child: SizedBox(height: 16),
+                  child: SizedBox(height: 24),
                 ),
 
-                // Create Service Button
+                // Section title
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: _buildCreateServiceButton(),
+                    child: Text(
+                      AppTranslations.getString(context, 'services'),
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(
@@ -455,8 +494,12 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
 
                 // Services List
                 _buildServiceCardsSliver(),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 96),
+                ),
               ],
             ),
+          ),
           ),
         );
       },
@@ -464,135 +507,184 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title and Notification Button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final ui = SalonUiTheme.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ui.headerGradient,
+              stops: ui.headerStops,
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(16, topInset + 6, 16, 0),
+          child: Column(
             children: [
-              Expanded(
-                child: Text(
-                  AppTranslations.getString(context, 'services'),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/images/Konected beauty - Logo white.png',
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
                   ),
-                ),
-              ),
-              // Notification Button
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SalonNotificationsScreen(),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SalonSettingsScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: SalonUiTheme.profileBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _profileInitial,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  );
-                },
-                icon: Icon(
-                  LucideIcons.bell,
-                  color: AppTheme.textPrimaryColor,
-                  size: 24,
-                ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 64),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Search Bar and Filter
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: AppTheme.transparentBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.textPrimaryColor,
-                      width: 1,
+        ),
+        ColoredBox(
+          color: ui.bg,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        _SalonServicesUi.searchRadius,
+                      ),
+                      border: Border.all(
+                        color: ui.borderSubtle,
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  child: TextField(
-                    controller: searchController,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: AppTranslations.getString(context, 'search'),
-                      hintStyle: const TextStyle(
-                        color: AppTheme.textSecondaryColor,
+                    child: TextField(
+                      controller: searchController,
+                      style: TextStyle(
+                        color: ui.textPrimary,
                         fontSize: 16,
+                        fontWeight: FontWeight.w400,
                       ),
-                      suffixIcon: const Icon(
-                        Icons.search,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
+                      decoration: InputDecoration(
+                        hintText: AppTranslations.getString(
+                          context,
+                          'search_services',
+                        ),
+                        hintStyle: TextStyle(
+                          color: ui.textSecondary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        prefixIcon: Icon(
+                          LucideIcons.search,
+                          color: ui.textSecondary,
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: (_currentMinPrice != null || _currentMaxPrice != null)
-                      ? AppTheme.textPrimaryColor
-                      : AppTheme.secondaryColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppTheme.textPrimaryColor,
-                    width: 1,
-                  ),
+                const SizedBox(width: 10),
+                _buildHeaderIconButton(
+                  icon: LucideIcons.listFilter,
+                  isActive:
+                      _currentMinPrice != null || _currentMaxPrice != null,
+                  onTap: _showFilterScreen,
                 ),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.filter_list,
-                    color:
-                        (_currentMinPrice != null || _currentMaxPrice != null)
-                            ? AppTheme.primaryColor
-                            : AppTheme.textPrimaryColor,
-                  ),
-                  onPressed: () {
-                    _showFilterScreen();
+                const SizedBox(width: 10),
+                _buildHeaderIconButton(
+                  icon: LucideIcons.plusCircle,
+                  filled: true,
+                  iconColor: const Color(0xFF1F1F1F),
+                  iconSize: 26,
+                  fillColor: const Color(0xFFE9E9EB),
+                  borderColor: Colors.transparent,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CreateServiceScreen(),
+                      ),
+                    );
                   },
                 ),
-              ),
-              if (_currentMinPrice != null || _currentMaxPrice != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.red.withOpacity(0.3),
-                      width: 1,
-                    ),
+                if (_currentMinPrice != null || _currentMaxPrice != null) ...[
+                  const SizedBox(width: 8),
+                  _buildHeaderIconButton(
+                    icon: LucideIcons.x,
+                    onTap: _clearFilters,
                   ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.clear,
-                      color: Colors.red,
-                    ),
-                    onPressed: _clearFilters,
-                  ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool filled = false,
+    bool isActive = false,
+    double iconSize = 22,
+    Color? fillColor,
+    Color? iconColor,
+    Color? borderColor,
+  }) {
+    final ui = SalonUiTheme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: filled
+              ? (fillColor ?? ui.iconButtonBg)
+              : (isActive ? ui.card : Colors.transparent),
+          borderRadius: BorderRadius.circular(_SalonServicesUi.buttonRadius),
+          border: Border.all(
+            color: borderColor ?? ui.borderSubtle,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: iconColor ?? ui.textPrimary,
+          size: iconSize,
+        ),
       ),
     );
   }
@@ -633,6 +725,7 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     return BlocBuilder<SalonServicesBloc, SalonServicesState>(
       builder: (context, state) {
         if (state is SalonServicesLoading) {
+          final ui = SalonUiTheme.of(context);
           return SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             sliver: SliverList(
@@ -642,8 +735,9 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     bottom: index < 4 ? 16.0 : 0.0,
                   ),
                   child: Shimmer.fromColors(
-                    baseColor: Colors.grey[800]!,
-                    highlightColor: Colors.grey[600]!,
+                    baseColor: ui.isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                    highlightColor:
+                        ui.isDark ? Colors.grey[600]! : Colors.grey[100]!,
                     child: _buildShimmerServiceCard(),
                   ),
                 ),
@@ -716,38 +810,8 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                       );
                     }
 
-                    // End-of-data message
-                    if (!state.hasMoreData) {
-                      return Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.check_circle_outline,
-                              color: AppTheme.textSecondaryColor,
-                              size: 32,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'All services loaded',
-                              style: TextStyle(
-                                color: AppTheme.textSecondaryColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${state.services.length} total services',
-                              style: const TextStyle(
-                                color: AppTheme.textSecondaryColor,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                    // End-of-data message intentionally hidden (per design).
+                    if (!state.hasMoreData) return const SizedBox.shrink();
                     return const SizedBox.shrink();
                   }
 
@@ -756,10 +820,10 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
                     final service =
                         state.services[index] as Map<String, dynamic>;
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.only(bottom: 12.0),
                       child: _buildServiceCard(
                         title: service['name'] ?? 'Service',
-                        price: '${service['price'] ?? 0} € (TTC)',
+                        price: '${service['price'] ?? 0} €',
                         description: service['description'] ??
                             'No description available',
                         serviceId: service['id']?.toString(),
@@ -808,278 +872,41 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     );
   }
 
-  Widget _buildCreateServiceButton() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const CreateServiceScreen(),
-          ),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        decoration: BoxDecoration(
-          color: AppTheme.textPrimaryColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.textPrimaryColor.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              AppTranslations.getString(context, 'create_new_service'),
-              style: const TextStyle(
-                color: AppTheme.secondaryColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppTheme.textPrimaryColor,
-                shape: BoxShape.circle, // Makes it perfectly circular
-                border: Border.all(
-                  color: AppTheme
-                      .secondaryColor, // Change to your desired border color
-                  width: 2, // Border thickness
-                ),
-              ),
-              child: const Icon(
-                Icons.add,
-                color: AppTheme.secondaryColor,
-                size: 20,
-              ),
-            ),
-          ],
+  Widget _buildShimmerServiceCard() {
+    final ui = SalonUiTheme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        color: ui.cardAlt,
+        borderRadius: BorderRadius.circular(_SalonServicesUi.serviceCardRadius),
+        border: Border.all(
+          color: ui.cardBorder,
+          width: 1,
         ),
       ),
-    );
-  }
-
-  Widget _buildServiceCards() {
-    return BlocBuilder<SalonServicesBloc, SalonServicesState>(
-      builder: (context, state) {
-        if (state is SalonServicesLoading) {
-          return _buildShimmerList();
-        } else if (state is SalonServicesLoaded) {
-          if (state.services.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.spa_outlined,
-                      size: 64,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppTranslations.getString(context, 'no_services_found'),
-                      style: const TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          // Debug info - show current page and services count
-          print('📊 === UI DEBUG INFO ===');
-          print('📊 Current Page: ${state.currentPage}');
-          print('📊 Services Count: ${state.services.length}');
-          print('📊 Has More Data: ${state.hasMoreData}');
-
-          return ListView.builder(
-            controller: _listController,
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            // Only services + bottom loader/end message (create button is now outside)
-            itemCount: state.services.length +
-                1, // Services + bottom loader/end message
-            itemBuilder: (context, index) {
-              // Debug: Print index information
-              print('📋 === LISTVIEW BUILDER ===');
-              print('📋 Index: $index');
-              print('📋 Services Length: ${state.services.length}');
-              print('📋 Has More Data: ${state.hasMoreData}');
-              print('📋 Item Count: ${state.services.length + 1}');
-
-              // Services start from index 0 now (no create button in ListView)
-              final serviceIndex = index;
-              if (serviceIndex >= state.services.length) {
-                return const SizedBox.shrink(); // Safety check
-              }
-
-              // Show loading indicator or end message at the bottom
-              if (index == state.services.length) {
-                if (state.hasMoreData && _isLoadingMore) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        const CircularProgressIndicator(
-                          color: AppTheme.textPrimaryColor,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Loading page ${state.currentPage + 1}...',
-                          style: const TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${state.services.length} services loaded so far',
-                          style: const TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // End-of-data message (or just spacer if still more data but not currently loading)
-                if (!state.hasMoreData) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.check_circle_outline,
-                          color: AppTheme.textSecondaryColor,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'All services loaded',
-                          style: TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${state.services.length} total services',
-                          style: const TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return const SizedBox.shrink();
-              }
-
-              final service =
-                  state.services[serviceIndex] as Map<String, dynamic>;
-
-              // Debug: Print service details
-              print('🆔 === SERVICE ${serviceIndex + 1} ===');
-              print('🆔 Service ID: ${service['id']}');
-              print('📝 Service Name: ${service['name']}');
-              print('💰 Service Price: ${service['price']}');
-              print('📄 Service Description: ${service['description']}');
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: serviceIndex < state.services.length - 1 ? 16.0 : 0.0,
-                ),
-                child: _buildServiceCard(
-                  title: service['name'] ?? 'Service',
-                  price: '${service['price'] ?? 0} € (TTC)',
-                  description:
-                      service['description'] ?? 'No description available',
-                  serviceId: service['id'],
-                ),
-              );
-            },
-          );
-        } else if (state is SalonServicesError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.wifi_off,
-                    size: 64,
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Connection Problem',
-                    style: TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Please check your internet connection and try again.',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      context
-                          .read<SalonServicesBloc>()
-                          .add(LoadSalonServices());
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: Text(AppTranslations.getString(context, 'retry')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accentColor,
-                      foregroundColor: AppTheme.primaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        // Default state - show loading
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(32.0),
-            child: CircularProgressIndicator(
-              color: AppTheme.textPrimaryColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 18,
+            width: 180,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Container(
+            height: 16,
+            width: 72,
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1089,270 +916,63 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
     required String description,
     String? serviceId,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.textPrimaryColor,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title and Price
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppTheme.getTextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
-                  ),
+    final ui = SalonUiTheme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_SalonServicesUi.serviceCardRadius),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => BlocProvider.value(
+                value: context.read<SalonServicesBloc>(),
+                child: ServiceDetailsScreen(
+                  serviceId: serviceId ?? '',
+                  serviceName: title,
+                  servicePrice: price,
+                  serviceDescription: description,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 5),
-
-          Text(
-            price,
-            style: AppTheme.getTextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimaryColor,
+            ),
+          );
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          decoration: BoxDecoration(
+            color: ui.cardAlt,
+            borderRadius:
+                BorderRadius.circular(_SalonServicesUi.serviceCardRadius),
+            border: Border.all(
+              color: ui.cardBorder,
+              width: 1,
             ),
           ),
-          const SizedBox(height: 5),
-
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final maxWidth = constraints.maxWidth;
-              final textStyle = AppTheme.getTextStyle(
-                fontSize: 14,
-                height: 1.4,
-                color: AppTheme.textPrimaryColor,
-              );
-
-              final seeMoreText =
-                  '... ${AppTranslations.getString(context, 'see_more')}';
-
-              // Function to measure how many characters fit in 2 lines
-              String truncateToTwoLines(String text) {
-                final textPainter = TextPainter(
-                  text: TextSpan(text: '$text$seeMoreText', style: textStyle),
-                  textDirection: TextDirection.ltr,
-                  maxLines: 2,
-                );
-
-                String temp = text;
-                textPainter.layout(maxWidth: maxWidth);
-
-                while (textPainter.didExceedMaxLines && temp.isNotEmpty) {
-                  temp = temp.substring(0, temp.length - 1);
-                  textPainter.text =
-                      TextSpan(text: '$temp$seeMoreText', style: textStyle);
-                  textPainter.layout(maxWidth: maxWidth);
-                }
-                return temp;
-              }
-
-              final truncatedDescription = truncateToTwoLines(description);
-
-              return RichText(
-                maxLines: 2,
-                overflow: TextOverflow.clip,
-                text: TextSpan(
-                  children: [
-                    TextSpan(text: truncatedDescription, style: textStyle),
-                    TextSpan(
-                      text: seeMoreText,
-                      style: AppTheme.getTextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.accentColor,
-                        decoration: TextDecoration.underline,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => BlocProvider.value(
-                                value: context.read<SalonServicesBloc>(),
-                                child: ServiceDetailsScreen(
-                                  serviceId: serviceId ?? '',
-                                  serviceName: title,
-                                  servicePrice: price,
-                                  serviceDescription: description,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          // Description
-
-          const SizedBox(height: 16),
-
-          // Action Buttons
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider.value(
-                            value: context.read<SalonServicesBloc>(),
-                            child: ServiceDetailsScreen(
-                              serviceId: serviceId ?? '',
-                              serviceName: title,
-                              servicePrice: price,
-                              serviceDescription: description,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: AppTheme.textPrimaryColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(
-                          color: AppTheme.textPrimaryColor,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      AppTranslations.getString(context, 'view_details'),
-                      style: AppTheme.getTextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                  ),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: ui.textPrimary,
+                  height: 1.2,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      print('🆔 === NAVIGATING TO EDIT SERVICE ===');
-                      print('🆔 Service ID: $serviceId');
-                      print('📝 Service Name: $title');
-                      print('💰 Service Price: $price');
-                      print('📄 Service Description: $description');
-
-                      // SECURITY: Check if user owns this service before allowing edit
-                      if (serviceId != null) {
-                        print('🔒 === UI OWNERSHIP CHECK ===');
-                        print('🔒 Service ID: $serviceId');
-                        print('🔒 About to check ownership...');
-
-                        // Use the current state data instead of making a separate API call
-                        final currentState =
-                            context.read<SalonServicesBloc>().state;
-                        bool isOwned = false;
-
-                        if (currentState is SalonServicesLoaded) {
-                          // Check if the service exists in the current loaded services
-                          final serviceExists = currentState.services.any(
-                              (service) =>
-                                  service['id']?.toString() ==
-                                      serviceId.toString() ||
-                                  service['_id']?.toString() ==
-                                      serviceId.toString());
-
-                          if (serviceExists) {
-                            print(
-                                '✅ Service found in current state - ownership verified');
-                            isOwned = true;
-                          } else {
-                            print(
-                                '❌ Service not found in current state - ownership check failed');
-                            isOwned = false;
-                          }
-                        } else {
-                          print(
-                              '⚠️ Current state is not SalonServicesLoaded, falling back to API check');
-                          // Fallback to API check if state is not loaded
-                          isOwned = await SalonServicesService
-                              .isServiceOwnedByCurrentUser(serviceId);
-                        }
-
-                        print('🔒 Ownership check result: $isOwned');
-
-                        if (!isOwned) {
-                          print('❌ UI: Ownership check failed, blocking edit');
-                          TopNotificationService.showError(
-                            context: context,
-                            message: 'You can only edit your own services',
-                          );
-                          return;
-                        } else {
-                          print('✅ UI: Ownership check passed, allowing edit');
-                        }
-                      }
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider.value(
-                            value: context.read<SalonServicesBloc>(),
-                            child: EditServiceScreen(
-                              serviceId: serviceId ?? '',
-                              serviceName: title,
-                              servicePrice: price,
-                              serviceDescription: description,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: AppTheme.textPrimaryColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(
-                          color: AppTheme.textPrimaryColor,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      AppTranslations.getString(context, 'edit'),
-                      style: AppTheme.getTextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                  ),
+              const SizedBox(height: 6),
+              Text(
+                price,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: ui.textPrimary,
+                  height: 1.2,
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1724,134 +1344,6 @@ class _SalonHomeScreenState extends State<SalonHomeScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildShimmerList() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        itemCount: 5, // Show 5 shimmer items
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < 4 ? 16.0 : 0.0,
-            ),
-            child: _buildShimmerServiceCard(),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildShimmerServiceCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.transparentBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.textPrimaryColor,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row (matching actual service card layout)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Container(
-                  height: 20,
-                  width: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-
-          // Price row (separate from title, matching actual layout)
-          Container(
-            height: 16,
-            width: 80,
-            decoration: BoxDecoration(
-              color: Colors.grey[700],
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          const SizedBox(height: 5),
-
-          // Description shimmer (matching actual description layout)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 14,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                height: 14,
-                width: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Action Buttons row (matching actual button layout)
-          Row(
-            children: [
-              // View Details button shimmer
-              Expanded(
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.grey[600]!,
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Edit button shimmer
-              Expanded(
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.grey[600]!,
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

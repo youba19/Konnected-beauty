@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/services/api/qr_scan_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'order_detail_screen.dart';
+
+abstract final class _QrScannerUi {
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+}
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -50,15 +58,25 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     required String message,
     String? availableDate,
   }) async {
+    final ui = SalonUiTheme.of(context);
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: ui.isDark ? AppTheme.primaryColor : ui.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: ui.isDark
+                ? BorderSide.none
+                : BorderSide(color: ui.cardBorder, width: 1),
+          ),
           title: Text(
             message,
-            style: const TextStyle(color: Colors.white, fontSize: 18),
+            style: TextStyle(
+              color: ui.isDark ? Colors.white : Colors.black,
+              fontSize: 18,
+            ),
             textAlign: TextAlign.center,
           ),
           content: availableDate != null && availableDate.isNotEmpty
@@ -68,8 +86,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                   children: [
                     Text(
                       '${AppTranslations.getString(context, "qr_scan_available_date")}: $availableDate',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: ui.isDark ? Colors.white70 : Colors.black,
                         fontSize: 14,
                       ),
                     ),
@@ -81,8 +99,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text(
                 'OK',
-                style: const TextStyle(
-                  color: AppTheme.greenColor,
+                style: TextStyle(
+                  color: ui.isDark ? AppTheme.greenColor : SalonUiTheme.accentBlue,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -226,172 +244,256 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     }
   }
 
+  Widget _buildBackButton(SalonUiTheme ui) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        width: _QrScannerUi.buttonSize,
+        height: _QrScannerUi.buttonSize,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ui.buttonFillTop, ui.buttonFillBottom],
+          ),
+          borderRadius: BorderRadius.circular(_QrScannerUi.buttonRadius),
+          border: ui.isDark
+              ? null
+              : Border.all(color: ui.cardBorder, width: 1),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          AppTranslations.getString(context, 'scan_qr_code'),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          // QR Scanner View (only show if camera working)
-          if (_cameraWorking)
-            QRView(
-              key: qrKey,
-              onQRViewCreated: _onQRViewCreated,
-              overlay: QrScannerOverlayShape(
-                borderColor: AppTheme.greenColor,
-                borderRadius: 10,
-                borderLength: 30,
-                borderWidth: 10,
-                cutOutSize: 250,
-              ),
-            )
-          else
-            // Camera not working overlay
-            Container(
-              color: Colors.black,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+    final ui = SalonUiTheme.of(context);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: ui.systemOverlay,
+      child: Scaffold(
+        backgroundColor: ui.isDark ? Colors.black : ui.bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Row(
                   children: [
-                    const Icon(
-                      Icons.camera_alt,
-                      size: 80,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      AppTranslations.getString(context, 'initializing_camera'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _status,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    ElevatedButton(
-                      onPressed: _retryCamera,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.greenColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 30,
-                          vertical: 15,
+                    _buildBackButton(ui),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        AppTranslations.getString(context, 'scan_qr_code'),
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      child: Text(
-                        AppTranslations.getString(
-                            context, 'open_camera_directly'),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(
-                        AppTranslations.getString(context, 'go_back'),
-                        style: const TextStyle(color: Colors.white70),
-                      ),
                     ),
                   ],
                 ),
               ),
-            ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: ui.isDark
+                      ? BorderRadius.zero
+                      : const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // QR Scanner View (only show if camera working)
+                      if (_cameraWorking)
+                        QRView(
+                          key: qrKey,
+                          onQRViewCreated: _onQRViewCreated,
+                          overlay: QrScannerOverlayShape(
+                            borderColor: ui.isDark
+                                ? AppTheme.greenColor
+                                : SalonUiTheme.accentBlue,
+                            borderRadius: 10,
+                            borderLength: 30,
+                            borderWidth: 10,
+                            cutOutSize: 250,
+                          ),
+                        )
+                      else
+                        // Camera not working overlay
+                        Container(
+                          color: ui.isDark ? Colors.black : ui.bg,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.camera_alt,
+                                  size: 80,
+                                  color: ui.isDark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'initializing_camera'),
+                                  style: TextStyle(
+                                    color: ui.isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _status,
+                                  style: TextStyle(
+                                    color: ui.isDark
+                                        ? Colors.white70
+                                        : Colors.black,
+                                    fontSize: 16,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 30),
+                                ElevatedButton(
+                                  onPressed: _retryCamera,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: ui.isDark
+                                        ? AppTheme.greenColor
+                                        : SalonUiTheme.accentBlue,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 30,
+                                      vertical: 15,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    AppTranslations.getString(
+                                        context, 'open_camera_directly'),
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(),
+                                  child: Text(
+                                    AppTranslations.getString(
+                                        context, 'go_back'),
+                                    style: TextStyle(
+                                      color: ui.isDark
+                                          ? Colors.white70
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
-          // Processing overlay
-          if (_isProcessing)
-            Container(
-              color: Colors.black.withOpacity(0.7),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(
-                      color: AppTheme.greenColor,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      AppTranslations.getString(context, 'processing_voucher'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                      // Processing overlay
+                      if (_isProcessing)
+                        Container(
+                          color: (ui.isDark ? Colors.black : Colors.white)
+                              .withValues(alpha: 0.75),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  color: ui.isDark
+                                      ? AppTheme.greenColor
+                                      : SalonUiTheme.accentBlue,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'processing_voucher'),
+                                  style: TextStyle(
+                                    color: ui.isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
-          // Instructions (only show if camera working)
-          if (_cameraWorking)
-            Positioned(
-              bottom: 50,
-              left: 20,
-              right: 20,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.qr_code_scanner,
-                      color: AppTheme.greenColor,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppTranslations.getString(context, 'scan_instructions'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppTranslations.getString(
-                          context, 'scan_instructions_detail'),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      // Instructions (only show if camera working)
+                      if (_cameraWorking)
+                        Positioned(
+                          bottom: 50,
+                          left: 20,
+                          right: 20,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: ui.isDark
+                                  ? Colors.black.withValues(alpha: 0.7)
+                                  : Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(12),
+                              border: ui.isDark
+                                  ? null
+                                  : Border.all(
+                                      color: ui.cardBorder, width: 1),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.qr_code_scanner,
+                                  color: ui.isDark
+                                      ? AppTheme.greenColor
+                                      : SalonUiTheme.accentBlue,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'scan_instructions'),
+                                  style: TextStyle(
+                                    color: ui.isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  AppTranslations.getString(
+                                      context, 'scan_instructions_detail'),
+                                  style: TextStyle(
+                                    color: ui.isDark
+                                        ? Colors.white70
+                                        : Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

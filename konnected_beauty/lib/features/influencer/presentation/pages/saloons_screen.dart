@@ -25,6 +25,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   bool _isLoadingMore = false;
   String? _selectedDomainFilter; // Selected domain for filtering
   String _nameSearchQuery = ''; // Name search query for client-side filtering
+  String _addressFilterQuery = ''; // Address query from the filter sheet
 
   @override
   void initState() {
@@ -99,14 +100,16 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
     });
   }
 
-  void _onDomainFilterChanged(String? value) {
+  void _applyFilters(String? domain, String address) {
     setState(() {
-      _selectedDomainFilter = value;
+      _selectedDomainFilter = domain;
+      _addressFilterQuery = address.trim();
     });
 
     // Convert selected domain text to domain key for API
-    final domainKey =
-        value != null ? DomainUtils.getDomainKeyFromText(value, context) : null;
+    final domainKey = domain != null
+        ? DomainUtils.getDomainKeyFromText(domain, context)
+        : null;
 
     // Don't clear search - keep search text and apply domain filter
     // Load salons with domain filter (search by name is handled separately)
@@ -119,6 +122,8 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
   void _showDomainFilterMenu(BuildContext context) {
     String? tempSelectedDomain = _selectedDomainFilter;
+    String? tempAddress =
+        _addressFilterQuery.isEmpty ? null : _addressFilterQuery;
 
     final brightness = Theme.of(context).brightness;
     final isLightMode = brightness == Brightness.light;
@@ -175,7 +180,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                   ),
                   // Title
                   Text(
-                    AppTranslations.getString(context, 'filter_by_domain'),
+                    AppTranslations.getString(context, 'filter'),
                     style: TextStyle(
                       color: textColor,
                       fontSize: 24,
@@ -197,6 +202,51 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                     },
                     textColor: textColor,
                     borderColor: borderColor,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    AppTranslations.getString(context, 'address'),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    initialValue: tempAddress,
+                    onChanged: (value) => tempAddress = value,
+                    style: TextStyle(color: textColor, fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: AppTranslations.getString(
+                        context,
+                        'filter_address_placeholder',
+                      ),
+                      hintStyle: TextStyle(
+                        color: textColor.withValues(alpha: 0.55),
+                      ),
+                      prefixIcon: Icon(
+                        LucideIcons.mapPin,
+                        color: textColor,
+                        size: 20,
+                      ),
+                      filled: true,
+                      fillColor:
+                          isLightMode ? Colors.white : Colors.transparent,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: borderColor),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: isLightMode
+                              ? Colors.black
+                              : AppTheme.greenPrimary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 32),
                   // Buttons Row
@@ -234,14 +284,12 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            if (tempSelectedDomain == allDomainsText ||
-                                tempSelectedDomain == null) {
-                              // Clear filter
-                              _onDomainFilterChanged(null);
-                            } else {
-                              // Apply filter
-                              _onDomainFilterChanged(tempSelectedDomain);
-                            }
+                            final domain =
+                                tempSelectedDomain == allDomainsText
+                                    ? null
+                                    : tempSelectedDomain;
+                            final address = tempAddress ?? '';
+                            _applyFilters(domain, address);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: buttonBgColor,
@@ -274,79 +322,47 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
     return Scaffold(
-      backgroundColor: AppTheme.getScaffoldBackground(brightness),
+      // Transparent so the parent home green glow shows through (same as home tab)
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -120,
-            left: -60,
-            right: -60,
-            child: IgnorePointer(
-              child: Container(
-                height: 280,
-                decoration: BoxDecoration(
-                  // soft radial green halo like the screenshot
-                  gradient: RadialGradient(
-                    center: const Alignment(0, -0.6),
-                    radius: 0.8,
-                    colors: [
-                      AppTheme.greenPrimary.withOpacity(0.35),
-                      brightness == Brightness.dark
-                          ? AppTheme.transparentBackground
-                          : AppTheme.textWhite54,
-                    ],
-                    stops: const [0.0, 1.0],
-                  ),
-                ),
-              ),
-            ),
+      body: GestureDetector(
+        onTap: () {
+          // Close keyboard when tapping outside text fields
+          FocusScope.of(context).unfocus();
+        },
+        child: BlocListener<SaloonsBloc, SaloonsState>(
+          listener: (context, state) {
+            if (state is SaloonsLoaded) {
+              _isLoadingMore = false;
+            } else if (state is SaloonsError) {
+              _isLoadingMore = false;
+            }
+          },
+          child: BlocBuilder<SaloonsBloc, SaloonsState>(
+            builder: (context, state) {
+              if (state is SaloonsLoading) {
+                return _buildLoadingState();
+              } else if (state is SaloonsError) {
+                return _buildErrorState(state);
+              } else if (state is SaloonsLoaded) {
+                if (state.saloons.isEmpty) {
+                  return _buildNoSaloonsState();
+                } else {
+                  return _buildSaloonsList(state);
+                }
+              } else if (state is SaloonsLoadingMore) {
+                if (state.saloons.isEmpty) {
+                  return _buildNoSaloonsState();
+                } else {
+                  return _buildSaloonsListWithLoading(state);
+                }
+              } else {
+                return _buildInitialState();
+              }
+            },
           ),
-
-          // CONTENT
-          SafeArea(
-            child: GestureDetector(
-              onTap: () {
-                // Close keyboard when tapping outside text fields
-                FocusScope.of(context).unfocus();
-              },
-              child: BlocListener<SaloonsBloc, SaloonsState>(
-                listener: (context, state) {
-                  if (state is SaloonsLoaded) {
-                    _isLoadingMore = false;
-                  } else if (state is SaloonsError) {
-                    _isLoadingMore = false;
-                  }
-                },
-                child: BlocBuilder<SaloonsBloc, SaloonsState>(
-                  builder: (context, state) {
-                    if (state is SaloonsLoading) {
-                      return _buildLoadingState();
-                    } else if (state is SaloonsError) {
-                      return _buildErrorState(state);
-                    } else if (state is SaloonsLoaded) {
-                      if (state.saloons.isEmpty) {
-                        return _buildNoSaloonsState();
-                      } else {
-                        return _buildSaloonsList(state);
-                      }
-                    } else if (state is SaloonsLoadingMore) {
-                      if (state.saloons.isEmpty) {
-                        return _buildNoSaloonsState();
-                      } else {
-                        return _buildSaloonsListWithLoading(state);
-                      }
-                    } else {
-                      return _buildInitialState();
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -447,15 +463,28 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
     );
   }
 
+  List<dynamic> _filterSaloons(List<dynamic> saloons) {
+    if (_nameSearchQuery.isEmpty && _addressFilterQuery.isEmpty) {
+      return saloons;
+    }
+
+    return saloons.where((salon) {
+      final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
+      final name = (salonInfo['name'] as String? ?? '').toLowerCase();
+      final address = (salonInfo['address'] as String? ?? '').toLowerCase();
+      final matchesName =
+          _nameSearchQuery.isEmpty || name.contains(_nameSearchQuery);
+      final matchesAddress = _addressFilterQuery.isEmpty ||
+          address.contains(_addressFilterQuery.toLowerCase());
+      return matchesName && matchesAddress;
+    }).toList();
+  }
+
+  bool get _hasClientFilters =>
+      _nameSearchQuery.isNotEmpty || _addressFilterQuery.isNotEmpty;
+
   Widget _buildSaloonsList(SaloonsLoaded state) {
-    // Filter salons by name if search query exists
-    final filteredSaloons = _nameSearchQuery.isEmpty
-        ? state.saloons
-        : state.saloons.where((salon) {
-            final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
-            final name = (salonInfo['name'] as String? ?? '').toLowerCase();
-            return name.contains(_nameSearchQuery);
-          }).toList();
+    final filteredSaloons = _filterSaloons(state.saloons);
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -471,7 +500,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
         controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(child: _buildHeader()),
-          if (filteredSaloons.isEmpty && _nameSearchQuery.isNotEmpty)
+          if (filteredSaloons.isEmpty && _hasClientFilters)
             SliverFillRemaining(
               child: Center(
                 child: Padding(
@@ -505,14 +534,13 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
                   if (index == filteredSaloons.length) {
-                    if (state.hasMore && _nameSearchQuery.isEmpty) {
+                    if (state.hasMore && !_hasClientFilters) {
                       return SizedBox(height: 32);
                     }
                     return _buildListFooter(
                       loaded: filteredSaloons.length,
-                      total: _nameSearchQuery.isEmpty
-                          ? state.total
-                          : filteredSaloons.length,
+                      total:
+                          _hasClientFilters ? filteredSaloons.length : state.total,
                     );
                   }
                   return Column(
@@ -543,14 +571,7 @@ class _SaloonsScreenState extends State<SaloonsScreen> {
   }
 
   Widget _buildSaloonsListWithLoading(SaloonsLoadingMore state) {
-    // Filter salons by name if search query exists
-    final filteredSaloons = _nameSearchQuery.isEmpty
-        ? state.saloons
-        : state.saloons.where((salon) {
-            final salonInfo = salon['salonInfo'] as Map<String, dynamic>? ?? {};
-            final name = (salonInfo['name'] as String? ?? '').toLowerCase();
-            return name.contains(_nameSearchQuery);
-          }).toList();
+    final filteredSaloons = _filterSaloons(state.saloons);
 
     return RefreshIndicator(
       onRefresh: () async {

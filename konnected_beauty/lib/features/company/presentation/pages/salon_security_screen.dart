@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:konnected_beauty/core/theme/app_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_password/salon_password_bloc.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+
+abstract final class _SalonSecurityUi {
+  static const double radius = 16;
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+}
 
 class SalonSecurityScreen extends StatefulWidget {
   const SalonSecurityScreen({super.key});
@@ -24,7 +32,6 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
 
-  // Track if text fields have content for color changes
   bool _hasCurrentPassword = false;
   bool _hasNewPassword = false;
   bool _hasConfirmPassword = false;
@@ -33,7 +40,6 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
   void initState() {
     super.initState();
 
-    // Add listeners to track text changes for color updates
     _currentPasswordController.addListener(() {
       setState(() {
         _hasCurrentPassword = _currentPasswordController.text.isNotEmpty;
@@ -63,122 +69,156 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Color(0xFF1F1E1E),
-              Color(0xFF3B3B3B),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: GestureDetector(
-            onTap: () {
-              // Close keyboard when tapping outside text fields
-              FocusScope.of(context).unfocus();
-            },
-            child: BlocConsumer<SalonPasswordBloc, SalonPasswordState>(
-              listener: (context, state) {
-                if (state is SalonPasswordChanged) {
-                  TopNotificationService.showSuccess(
-                    context: context,
-                    message: state.message,
-                  );
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
 
-                  // Clear the form after successful password change
-                  _currentPasswordController.clear();
-                  _newPasswordController.clear();
-                  _confirmPasswordController.clear();
-                  setState(() {
-                    _showCurrentPassword = false;
-                    _showNewPassword = false;
-                    _showConfirmPassword = false;
-                  });
-
-                  // Navigate back to settings screen after successful password change
-                  Navigator.of(context).pop();
-                } else if (state is SalonPasswordError) {
-                  // Show only the clean error message (no API response details)
-                  TopNotificationService.showError(
-                    context: context,
-                    message: state.error,
-                  );
-                }
-              },
-              builder: (context, state) {
-                return Column(
-                  children: [
-                    _buildHeader(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildPasswordSection(),
-                          ],
-                        ),
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: Scaffold(
+            backgroundColor: ui.bg,
+            body: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: topInset + 220,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: ui.fullSheetGradient,
+                        stops: ui.fullSheetStops,
                       ),
                     ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
-              LucideIcons.arrowLeft,
-              color: AppTheme.textPrimaryColor,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Icon(
-                LucideIcons.shield,
-                color: AppTheme.textPrimaryColor,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                AppTranslations.getString(context, 'security'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+                SafeArea(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: BlocConsumer<SalonPasswordBloc, SalonPasswordState>(
+                      listener: (context, state) {
+                        if (state is SalonPasswordChanged) {
+                          TopNotificationService.showSuccess(
+                            context: context,
+                            message: state.message,
+                          );
+
+                          _currentPasswordController.clear();
+                          _newPasswordController.clear();
+                          _confirmPasswordController.clear();
+                          setState(() {
+                            _showCurrentPassword = false;
+                            _showNewPassword = false;
+                            _showConfirmPassword = false;
+                          });
+
+                          Navigator.of(context).pop();
+                        } else if (state is SalonPasswordError) {
+                          TopNotificationService.showError(
+                            context: context,
+                            message: state.error,
+                          );
+                        }
+                      },
+                      builder: (context, state) {
+                        return SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.only(
+                            left: 20,
+                            top: 8,
+                            right: 20,
+                            bottom:
+                                MediaQuery.viewInsetsOf(context).bottom + 28,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(ui),
+                              const SizedBox(height: 22),
+                              _buildPasswordSection(ui),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildPasswordSection() {
+  Widget _buildHeader(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Current Password
+        _buildBackButton(ui),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Icon(
+              LucideIcons.shield,
+              color: ui.textPrimary,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              AppTranslations.getString(context, 'security'),
+              style: TextStyle(
+                color: ui.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackButton(SalonUiTheme ui) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        width: _SalonSecurityUi.buttonSize,
+        height: _SalonSecurityUi.buttonSize,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              ui.buttonFillTop,
+              ui.buttonFillBottom,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(_SalonSecurityUi.buttonRadius),
+          border: ui.isDark
+              ? null
+              : Border.all(color: ui.cardBorder, width: 1),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordSection(SalonUiTheme ui) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         _buildPasswordField(
+          ui: ui,
           label: AppTranslations.getString(context, 'current_password'),
           controller: _currentPasswordController,
           hintText:
@@ -192,9 +232,8 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           },
         ),
         const SizedBox(height: 24),
-
-        // New Password
         _buildPasswordField(
+          ui: ui,
           label: AppTranslations.getString(context, 'new_password'),
           controller: _newPasswordController,
           hintText: AppTranslations.getString(context, 'set_new_password'),
@@ -207,9 +246,8 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           },
         ),
         const SizedBox(height: 24),
-
-        // Confirm New Password
         _buildPasswordField(
+          ui: ui,
           label: AppTranslations.getString(context, 'confirm_new_password'),
           controller: _confirmPasswordController,
           hintText: AppTranslations.getString(context, 'confirm_new_password'),
@@ -222,14 +260,13 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
           },
         ),
         const SizedBox(height: 32),
-
-        // Save Changes Button
-        _buildSaveButton(),
+        _buildSaveButton(ui),
       ],
     );
   }
 
   Widget _buildPasswordField({
+    required SalonUiTheme ui,
     required String label,
     required TextEditingController controller,
     required String hintText,
@@ -243,46 +280,42 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
         Text(
           label,
           style: TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
+            color: ui.textPrimary,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.textPrimaryColor,
-              width: 1,
-            ),
+            color: ui.card,
+            borderRadius: BorderRadius.circular(_SalonSecurityUi.radius),
+            border: Border.all(color: ui.cardBorder, width: 1),
           ),
           child: TextFormField(
             controller: controller,
             obscureText: !showPassword,
             style: TextStyle(
-              color: AppTheme.textPrimaryColor,
+              color: ui.textPrimary,
               fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
-                color: hasText
-                    ? Colors.white.withOpacity(0.7)
-                    : AppTheme.textSecondaryColor,
+                color: hasText ? ui.textSecondary : ui.textMuted,
                 fontSize: 16,
               ),
               prefixIcon: Icon(
                 LucideIcons.lock,
-                color: AppTheme.textSecondaryColor,
+                color: ui.textSecondary,
                 size: 20,
               ),
               suffixIcon: IconButton(
                 onPressed: onTogglePassword,
                 icon: Icon(
                   showPassword ? LucideIcons.eyeOff : LucideIcons.eye,
-                  color: AppTheme.textPrimaryColor,
+                  color: ui.textPrimary,
                   size: 20,
                 ),
               ),
@@ -298,31 +331,23 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(SalonUiTheme ui) {
     return BlocBuilder<SalonPasswordBloc, SalonPasswordState>(
       builder: (context, state) {
         final isLoading = state is SalonPasswordChanging;
 
-        // Check if any text field has content to determine button colors
-        final hasAnyText =
-            _hasCurrentPassword || _hasNewPassword || _hasConfirmPassword;
-
         return SizedBox(
           width: double.infinity,
-          height: 56,
+          height: 52,
           child: ElevatedButton(
             onPressed: isLoading ? null : _savePasswordChanges,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.transparentBackground,
-              foregroundColor:
-                  hasAnyText ? Colors.white : AppTheme.textSecondaryColor,
+              backgroundColor: ui.primaryButtonBg,
+              disabledBackgroundColor: ui.primaryButtonBg.withValues(alpha: 0.7),
+              foregroundColor: ui.primaryButtonFg,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: hasAnyText ? Colors.white : AppTheme.secondaryColor,
-                  width: 1,
-                ),
+                borderRadius: BorderRadius.circular(_SalonSecurityUi.radius),
               ),
             ),
             child: isLoading
@@ -331,16 +356,14 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppTheme.border2),
+                      color: ui.primaryButtonFg,
                     ),
                   )
                 : Text(
                     AppTranslations.getString(context, 'save_changes'),
-                    style: TextStyle(
-                      color: hasAnyText ? Colors.white : AppTheme.border2,
+                    style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
           ),
@@ -350,7 +373,6 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
   }
 
   void _savePasswordChanges() {
-    // Validate inputs
     if (_currentPasswordController.text.isEmpty) {
       TopNotificationService.showError(
         context: context,
@@ -393,7 +415,6 @@ class _SalonSecurityScreenState extends State<SalonSecurityScreen> {
       return;
     }
 
-    // Use BLoC to change password
     context.read<SalonPasswordBloc>().add(ChangeSalonPassword(
           oldPassword: _currentPasswordController.text.trim(),
           newPassword: _newPasswordController.text.trim(),

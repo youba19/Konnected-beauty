@@ -9,6 +9,7 @@ class MotivationalBanner extends StatelessWidget {
   final Color? backgroundColor;
   final Color? textColor;
   final EdgeInsetsGeometry? padding;
+  final FontWeight? fontWeight;
 
   const MotivationalBanner({
     super.key,
@@ -17,6 +18,7 @@ class MotivationalBanner extends StatelessWidget {
     this.backgroundColor,
     this.textColor,
     this.padding,
+    this.fontWeight,
   });
 
   @override
@@ -37,7 +39,7 @@ class MotivationalBanner extends StatelessWidget {
           padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -56,7 +58,7 @@ class MotivationalBanner extends StatelessWidget {
               style: TextStyle(
                 color: txtColor,
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: fontWeight ?? FontWeight.w600,
               ),
             ),
           ),

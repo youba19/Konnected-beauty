@@ -1,11 +1,21 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/services/api/salon_wallet_service.dart';
 import '../../../../core/services/api/influencers_service.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import 'package:shimmer/shimmer.dart';
+
+/// Reports screen layout tokens (colors via [SalonUiTheme]).
+abstract final class _SalonReportsUi {
+  static const double radius = 16;
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+  static const double metricCardHeight = 120;
+}
 
 class SalonReportsScreen extends StatefulWidget {
   const SalonReportsScreen({super.key});
@@ -241,95 +251,153 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
     return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(0)}%';
   }
 
-  String _formatDate(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      return DateFormat('MM/dd/yyyy').format(date);
-    } catch (e) {
-      return dateString;
-    }
-  }
-
   Color _getChangeColor(double change) {
-    if (change > 0) return const Color(0xFF22C55E); // Green
-    if (change < 0) return const Color(0xFFEF4444); // Red
-    return Colors.white.withOpacity(0.7); // Neutral
+    return const Color(0xFF5B8FD9);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.dark(),
+    final ui = SalonUiTheme.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: ui.systemOverlay,
       child: Scaffold(
-        backgroundColor: const Color(0xFF1F1E1E),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E),
-                Color(0xFF3B3B3B),
-              ],
+        backgroundColor: ui.bg,
+        body: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: topInset + 220,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: ui.fullSheetGradient,
+                    stops: ui.fullSheetStops,
+                  ),
+                ),
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: _isLoading ? _buildShimmerContent() : _buildContent(),
-          ),
+            SafeArea(
+              child: _isLoading
+                  ? _buildShimmerContent(ui)
+                  : _buildContent(ui),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildShimmerContent() {
+  Widget _buildShimmerContent(SalonUiTheme ui) {
+    final baseColor = ui.isDark ? Colors.grey[850]! : Colors.grey[300]!;
+    final highlightColor = ui.isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    final placeholderColor =
+        ui.isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.08);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildBackButton(ui),
+          const SizedBox(height: 20),
           Shimmer.fromColors(
-            baseColor: Colors.grey[800]!,
-            highlightColor: Colors.grey[600]!,
+            baseColor: baseColor,
+            highlightColor: highlightColor,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(height: 24, width: 100, color: Colors.white),
-                const SizedBox(height: 8),
-                Container(height: 16, width: 150, color: Colors.white),
+                Container(
+                  height: 28,
+                  width: 140,
+                  decoration: BoxDecoration(
+                    color: placeholderColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  height: 16,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: placeholderColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
-                        child: Container(height: 120, color: Colors.white)),
+                      child: Container(
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: placeholderColor,
+                          borderRadius:
+                              BorderRadius.circular(_SalonReportsUi.radius),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
-                        child: Container(height: 120, color: Colors.white)),
+                      child: Container(
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: placeholderColor,
+                          borderRadius:
+                              BorderRadius.circular(_SalonReportsUi.radius),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                        child: Container(height: 120, color: Colors.white)),
+                      child: Container(
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: placeholderColor,
+                          borderRadius:
+                              BorderRadius.circular(_SalonReportsUi.radius),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
-                        child: Container(height: 120, color: Colors.white)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                        child: Container(height: 120, color: Colors.white)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: Container(height: 120, color: Colors.white)),
+                      child: Container(
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: placeholderColor,
+                          borderRadius:
+                              BorderRadius.circular(_SalonReportsUi.radius),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                Container(height: 200, color: Colors.white),
-                const SizedBox(height: 24),
-                Container(height: 200, color: Colors.white),
+                Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: placeholderColor,
+                    borderRadius: BorderRadius.circular(_SalonReportsUi.radius),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: placeholderColor,
+                    borderRadius: BorderRadius.circular(_SalonReportsUi.radius),
+                  ),
+                ),
               ],
             ),
           ),
@@ -338,83 +406,112 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(SalonUiTheme ui) {
     return RefreshIndicator(
       onRefresh: _loadReportData,
       color: Colors.white,
-      backgroundColor: const Color(0xFF3A3A3A),
+      backgroundColor: SalonUiTheme.blueUpper,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            _buildHeader(),
+            _buildHeader(ui),
             const SizedBox(height: 24),
-
-            // Metrics Grid
-            _buildMetricsGrid(),
-            const SizedBox(height: 24),
-
-            // Charts
-            _buildChartsSection(),
+            _buildMetricsGrid(ui),
+            const SizedBox(height: 28),
+            _buildChartsSection(ui),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildBackButton(SalonUiTheme ui) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        width: _SalonReportsUi.buttonSize,
+        height: _SalonReportsUi.buttonSize,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              ui.buttonFillTop,
+              ui.buttonFillBottom,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(_SalonReportsUi.buttonRadius),
+          border: Border.all(color: ui.cardBorder, width: 1),
+        ),
+        child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Back Button
-        IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          icon: const Icon(
-            LucideIcons.arrowLeft,
-            color: Colors.white,
-            size: 24,
+        Row(
+          children: [
+            _buildBackButton(ui),
+            const Spacer(),
+            GestureDetector(
+              onTap: _showFilterDialog,
+              child: Container(
+                width: _SalonReportsUi.buttonSize,
+                height: _SalonReportsUi.buttonSize,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      ui.buttonFillTop,
+                      ui.buttonFillBottom,
+                    ],
+                  ),
+                  borderRadius:
+                      BorderRadius.circular(_SalonReportsUi.buttonRadius),
+                  border: Border.all(
+                    color: ui.cardBorder,
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  LucideIcons.listFilter,
+                  color: ui.buttonIcon,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Text(
+          AppTranslations.getString(context, 'reports'),
+          style: TextStyle(
+            color: ui.isDark ? Colors.white : Colors.black,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 8),
-        // Title and Filter Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppTranslations.getString(context, 'reports'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${AppTranslations.getString(context, 'filter_from')} ${_getStartDate()} ${AppTranslations.getString(context, 'filter_to')} ${_getEndDate()}',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            IconButton(
-              icon: const Icon(
-                Icons.filter_list,
-                color: Colors.white,
-              ),
-              onPressed: () {
-                _showFilterDialog();
-              },
-            ),
-          ],
+        Text(
+          '${AppTranslations.getString(context, 'filter_from')} ${_getStartDate()} ${AppTranslations.getString(context, 'filter_to')} ${_getEndDate()}',
+          style: TextStyle(
+            color: ui.isDark ? Colors.white70 : Colors.black,
+            fontSize: 14,
+          ),
         ),
       ],
     );
@@ -451,40 +548,62 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
 
     return StatefulBuilder(
       builder: (context, setModalState) {
+        final ui = SalonUiTheme.of(context);
+
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ui.fullSheetGradient,
+              stops: ui.headerStops,
+            ),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
             ),
           ),
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      AppTranslations.getString(context, 'reports_filter'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        AppTranslations.getString(context, 'reports_filter'),
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: ui.sheetOverlayButton,
+                          borderRadius: BorderRadius.circular(
+                            _SalonReportsUi.buttonRadius,
+                          ),
+                          border: Border.all(
+                            color: ui.cardBorder,
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          LucideIcons.x,
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ],
@@ -494,7 +613,7 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                   AppTranslations.getString(
                       context, 'select_influencer_period'),
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: ui.isDark ? Colors.white70 : Colors.black,
                     fontSize: 14,
                   ),
                 ),
@@ -503,8 +622,8 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                 // Start Date
                 Text(
                   AppTranslations.getString(context, 'filter_start'),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -518,8 +637,21 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                       firstDate: DateTime(2020),
                       lastDate: DateTime.now(),
                       builder: (context, child) {
+                        final pickerUi = SalonUiTheme.of(context);
                         return Theme(
-                          data: ThemeData.dark(),
+                          data: pickerUi.isDark
+                              ? ThemeData.dark().copyWith(
+                                  colorScheme: ColorScheme.dark(
+                                    primary: SalonUiTheme.accentBlue,
+                                    surface: pickerUi.card,
+                                  ),
+                                )
+                              : ThemeData.light().copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: SalonUiTheme.accentBlue,
+                                    surface: pickerUi.card,
+                                  ),
+                                ),
                           child: child!,
                         );
                       },
@@ -537,10 +669,11 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                       vertical: 16,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      color: ui.card,
+                      borderRadius:
+                          BorderRadius.circular(_SalonReportsUi.radius),
                       border: Border.all(
-                        color: Colors.white,
+                        color: ui.cardBorder,
                         width: 1,
                       ),
                     ),
@@ -550,8 +683,8 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                           : AppTranslations.getString(context, 'filter_start'),
                       style: TextStyle(
                         color: tempStartDate != null
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.5),
+                            ? (ui.isDark ? Colors.white : Colors.black)
+                            : (ui.isDark ? Colors.white54 : Colors.black),
                         fontSize: 16,
                       ),
                     ),
@@ -562,8 +695,8 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                 // End Date
                 Text(
                   AppTranslations.getString(context, 'filter_end'),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -577,8 +710,21 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                       firstDate: DateTime(2020),
                       lastDate: DateTime.now(),
                       builder: (context, child) {
+                        final pickerUi = SalonUiTheme.of(context);
                         return Theme(
-                          data: ThemeData.dark(),
+                          data: pickerUi.isDark
+                              ? ThemeData.dark().copyWith(
+                                  colorScheme: ColorScheme.dark(
+                                    primary: SalonUiTheme.accentBlue,
+                                    surface: pickerUi.card,
+                                  ),
+                                )
+                              : ThemeData.light().copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: SalonUiTheme.accentBlue,
+                                    surface: pickerUi.card,
+                                  ),
+                                ),
                           child: child!,
                         );
                       },
@@ -596,10 +742,11 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                       vertical: 16,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      color: ui.card,
+                      borderRadius:
+                          BorderRadius.circular(_SalonReportsUi.radius),
                       border: Border.all(
-                        color: Colors.white,
+                        color: ui.cardBorder,
                         width: 1,
                       ),
                     ),
@@ -613,8 +760,8 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                           : AppTranslations.getString(context, 'filter_end'),
                       style: TextStyle(
                         color: tempEndDate != null
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.5),
+                            ? (ui.isDark ? Colors.white : Colors.black)
+                            : (ui.isDark ? Colors.white54 : Colors.black),
                         fontSize: 16,
                       ),
                     ),
@@ -625,8 +772,8 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                 // Influencer Dropdown
                 Text(
                   AppTranslations.getString(context, 'filter_influencer'),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -639,10 +786,10 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
+                    color: ui.card,
+                    borderRadius: BorderRadius.circular(_SalonReportsUi.radius),
                     border: Border.all(
-                      color: Colors.white,
+                      color: ui.cardBorder,
                       width: 1,
                     ),
                   ),
@@ -653,19 +800,20 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                       hint: Text(
                         AppTranslations.getString(context, 'search_by_name'),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: ui.isDark ? Colors.white54 : Colors.black,
                           fontSize: 16,
                         ),
                       ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.white,
+                      icon: Icon(
+                        LucideIcons.chevronDown,
+                        color: ui.isDark ? Colors.white : Colors.black,
+                        size: 18,
                       ),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: ui.isDark ? Colors.white : Colors.black,
                         fontSize: 16,
                       ),
-                      dropdownColor: const Color(0xFF2A2A2A),
+                      dropdownColor: ui.card,
                       items: [
                         DropdownMenuItem<String>(
                           value: null,
@@ -673,13 +821,12 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                             AppTranslations.getString(
                                 context, 'search_by_name'),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
+                              color: ui.isDark ? Colors.white54 : Colors.black,
                             ),
                           ),
                         ),
                         ..._influencersList
                             .map((influencer) {
-                              // Try different possible ID fields
                               final id = influencer['id']?.toString() ??
                                   influencer['_id']?.toString() ??
                                   '';
@@ -687,14 +834,11 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                               final pseudo = profile['pseudo'] ??
                                   AppTranslations.getString(context, 'unknown');
 
-                              print(
-                                  '👤 Influencer in dropdown: pseudo=$pseudo, id=$id');
-
                               return DropdownMenuItem<String>(
                                 value: id.isNotEmpty ? id : null,
                                 child: Text(
                                   pseudo,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(color: ui.isDark ? Colors.white : Colors.black),
                                 ),
                               );
                             })
@@ -702,10 +846,6 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                             .toList(),
                       ],
                       onChanged: (String? newValue) {
-                        print('🔍 === INFLUENCER SELECTED IN DROPDOWN ===');
-                        print('🔍 Selected Value: $newValue');
-                        print('🔍 Type: ${newValue.runtimeType}');
-
                         setModalState(() {
                           tempSelectedInfluencerId = newValue;
                           if (newValue != null && newValue.isNotEmpty) {
@@ -718,18 +858,10 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                               },
                               orElse: () => {},
                             );
-
-                            print('🔍 Found Influencer: $influencer');
-                            print(
-                                '🔍 Influencer ID: ${influencer['id'] ?? influencer['_id']}');
-
                             tempSelectedInfluencerName =
                                 influencer['profile']?['pseudo'] ?? '';
-                            print(
-                                '🔍 Influencer Name: $tempSelectedInfluencerName');
                           } else {
                             tempSelectedInfluencerName = null;
-                            print('🔍 No influencer selected');
                           }
                         });
                       },
@@ -747,16 +879,22 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                           Navigator.pop(context);
                         },
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white, width: 1),
+                          side: BorderSide(
+                            color: ui.outlinedButtonBorder,
+                            width: 1,
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              _SalonReportsUi.buttonRadius,
+                            ),
                           ),
                           backgroundColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Text(
                           AppTranslations.getString(context, 'cancel'),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: ui.isDark ? Colors.white : Colors.black,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -767,12 +905,6 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          print('🔍 === APPLYING FILTERS ===');
-                          print('🔍 Temp Start Date: $tempStartDate');
-                          print('🔍 Temp End Date: $tempEndDate');
-                          print(
-                              '🔍 Temp Influencer ID: $tempSelectedInfluencerId');
-
                           setState(() {
                             _startDate = tempStartDate;
                             _endDate = tempEndDate;
@@ -781,21 +913,19 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
                                 tempSelectedInfluencerName;
                           });
 
-                          print('🔍 Applied Start Date: $_startDate');
-                          print('🔍 Applied End Date: $_endDate');
-                          print(
-                              '🔍 Applied Influencer ID: $_selectedInfluencerId');
-
                           Navigator.pop(context);
                           _loadReportData();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
+                          backgroundColor: ui.primaryButtonBg,
+                          foregroundColor: ui.primaryButtonFg,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                              _SalonReportsUi.buttonRadius,
+                            ),
                           ),
                           elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Text(
                           AppTranslations.getString(context, 'apply_filter'),
@@ -816,16 +946,13 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
     );
   }
 
-  Widget _buildMetricsGrid() {
+  Widget _buildMetricsGrid(SalonUiTheme ui) {
     final totalRevenue = _stats['totalRevenue'] ?? 0.0;
     final totalRevenueChange = _stats['totalRevenueChange'] ?? 0.0;
     final totalOrderCount = _stats['totalOrderCount'] ?? 0;
     final totalOrderCountChange = _stats['totalOrderCountChange'] ?? 0.0;
     final totalCampaigns = _stats['totalCampaigns'] ?? 0;
     final totalCampaignsChange = _stats['totalCampaignsChange'] ?? 0.0;
-    final pendingWithdrawl = _stats['pendingWithdrawl'] ?? {};
-    final pendingAmount = (pendingWithdrawl['amoount'] ?? 0.0).toDouble();
-    final pendingSince = pendingWithdrawl['since'] ?? '';
     final avgOrderValue = _stats['averageOrderValue'] ?? 0.0;
     final avgOrderValueChange = _stats['averageOrderValueChange'] ?? 0.0;
     final avgPromotion = _stats['avgPromotion'] ?? 0.0;
@@ -835,163 +962,166 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
 
     return Column(
       children: [
-        // First row
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                title: AppTranslations.getString(context, 'total_revenue'),
-                value: _formatCurrency(totalRevenue),
-                change: totalRevenueChange,
-                changeLabel:
-                    AppTranslations.getString(context, 'from_last_month'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title: AppTranslations.getString(context, 'number_orders'),
-                value: _formatNumber(totalOrderCount),
-                change: totalOrderCountChange,
-                changeLabel:
-                    AppTranslations.getString(context, 'from_last_month'),
-              ),
-            ),
-          ],
-        ),
+        _buildMetricRow([
+          _buildMetricCard(
+            ui: ui,
+            title: AppTranslations.getString(context, 'total_revenue'),
+            value: _formatCurrency(totalRevenue),
+            change: totalRevenueChange,
+            changeLabel: AppTranslations.getString(context, 'from_last_month'),
+          ),
+          _buildMetricCard(
+            ui: ui,
+            title: AppTranslations.getString(context, 'number_orders'),
+            value: _formatNumber(totalOrderCount),
+            change: totalOrderCountChange,
+            changeLabel: AppTranslations.getString(context, 'from_last_month'),
+          ),
+        ]),
         const SizedBox(height: 12),
-        // Second row
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                title: AppTranslations.getString(context, 'total_campaigns'),
-                value: totalCampaigns.toString(),
-                change: totalCampaignsChange,
-                changeLabel:
-                    AppTranslations.getString(context, 'from_last_month'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title: AppTranslations.getString(context, 'pending_withdraw'),
-                value: _formatCurrency(pendingAmount),
-                subtitle: pendingSince.isNotEmpty
-                    ? '${AppTranslations.getString(context, 'since')} ${_formatDate(pendingSince)}'
-                    : null,
-              ),
-            ),
-          ],
-        ),
+        _buildMetricRow([
+          _buildMetricCard(
+            ui: ui,
+            title: AppTranslations.getString(context, 'total_campaigns'),
+            value: totalCampaigns.toString(),
+            change: totalCampaignsChange,
+            changeLabel: AppTranslations.getString(context, 'from_last_month'),
+          ),
+          _buildMetricCard(
+            ui: ui,
+            title: AppTranslations.getString(context, 'avg_order_value'),
+            value: _formatCurrency(avgOrderValue),
+            change: avgOrderValueChange,
+            changeLabel: AppTranslations.getString(context, 'from_last_month'),
+          ),
+        ]),
         const SizedBox(height: 12),
-        // Third row
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                title: AppTranslations.getString(context, 'avg_order_value'),
-                value: _formatCurrency(avgOrderValue),
-                change: avgOrderValueChange,
-                changeLabel:
-                    AppTranslations.getString(context, 'from_last_month'),
-              ),
+        _buildMetricRow([
+          _buildMetricCard(
+            ui: ui,
+            title: AppTranslations.getString(context, 'avg_promotion_percent'),
+            value: '${avgPromotion.toStringAsFixed(0)}%',
+            change: avgPromotionChange,
+            changeLabel: AppTranslations.getString(context, 'from_last_month'),
+          ),
+          _buildMetricCard(
+            ui: ui,
+            title: AppTranslations.getString(
+              context,
+              'total_influencers_worked_with',
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title:
-                    AppTranslations.getString(context, 'avg_promotion_percent'),
-                value: '${avgPromotion.toStringAsFixed(0)}%',
-                change: avgPromotionChange,
-                changeLabel:
-                    AppTranslations.getString(context, 'from_last_month'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Fourth row - full width
-        _buildMetricCard(
-          title: AppTranslations.getString(
-              context, 'total_influencers_worked_with'),
-          value: totalInfluencers.toString(),
-          change: totalInfluencersChange,
-          changeLabel: AppTranslations.getString(context, 'from_last_month'),
-        ),
+            value: totalInfluencers.toString(),
+            change: totalInfluencersChange,
+            changeLabel: AppTranslations.getString(context, 'from_last_month'),
+          ),
+        ]),
       ],
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    double? change,
-    String? changeLabel,
-    String? subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildMetricRow(List<Widget> cards) {
+    return SizedBox(
+      height: _SalonReportsUi.metricCardHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (change != null && changeLabel != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              '${_formatPercentage(change)} $changeLabel',
-              style: TextStyle(
-                color: _getChangeColor(change),
-                fontSize: 12,
-              ),
-            ),
-          ],
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 12,
-              ),
-            ),
+          for (int i = 0; i < cards.length; i++) ...[
+            if (i > 0) const SizedBox(width: 12),
+            Expanded(child: cards[i]),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildChartsSection() {
+  Widget _buildMetricCard({
+    required SalonUiTheme ui,
+    required String title,
+    required String value,
+    double? change,
+    String? changeLabel,
+    String? subtitle,
+    bool accentSubtitle = false,
+  }) {
+    final footerText = change != null && changeLabel != null
+        ? '${_formatPercentage(change)} $changeLabel'
+        : subtitle;
+    final footerColor = change != null
+        ? _getChangeColor(change)
+        : (accentSubtitle
+            ? SalonUiTheme.profileBlue
+            : (ui.isDark ? Colors.white54 : Colors.black));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_SalonReportsUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 34,
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ui.isDark ? Colors.white70 : Colors.black,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                height: 1.25,
+              ),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white : Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 16,
+            child: footerText == null
+                ? const SizedBox.shrink()
+                : Text(
+                    footerText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: footerColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartsSection(SalonUiTheme ui) {
     return Column(
       children: [
-        // Orders Chart
         _buildChartCard(
+          ui: ui,
           title: AppTranslations.getString(context, 'orders'),
           subtitle: AppTranslations.getString(context, 'from_last_3_months'),
           trend: _threeMonthsStats['orderTrend'],
         ),
-        const SizedBox(height: 24),
-        // Revenue Chart
+        const SizedBox(height: 16),
         _buildChartCard(
+          ui: ui,
           title: AppTranslations.getString(context, 'revenue'),
           subtitle: AppTranslations.getString(context, 'from_last_3_months'),
           trend: _threeMonthsStats['revenueTrend'],
@@ -1001,44 +1131,50 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
   }
 
   Widget _buildChartCard({
+    required SalonUiTheme ui,
     required String title,
     required String subtitle,
     required Map<String, dynamic>? trend,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_SalonReportsUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: ui.isDark ? Colors.white : Colors.black,
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: ui.isDark ? Colors.white70 : Colors.black,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 16),
           SizedBox(
             height: 200,
+            width: double.infinity,
             child: CustomPaint(
               painter: _ReportChartPainter(
                 trend: trend,
-                isRevenue: title.toLowerCase() == 'revenue',
+                isRevenue: title.toLowerCase() == 'revenue' ||
+                    title.toLowerCase() == 'revenus',
+                labelColor: ui.isDark ? Colors.white : Colors.black,
+                axisLabelColor: ui.isDark ? Colors.white54 : Colors.black,
+                gridColor: (ui.isDark ? Colors.white54 : Colors.black).withValues(alpha: 0.25),
               ),
-              child: Container(),
             ),
           ),
         ],
@@ -1050,22 +1186,28 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
 class _ReportChartPainter extends CustomPainter {
   final Map<String, dynamic>? trend;
   final bool isRevenue;
+  final Color labelColor;
+  final Color axisLabelColor;
+  final Color gridColor;
 
   _ReportChartPainter({
     required this.trend,
     required this.isRevenue,
+    required this.labelColor,
+    required this.axisLabelColor,
+    required this.gridColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final textStyle = TextStyle(
-      color: Colors.white,
+      color: labelColor,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
 
     final axisPaint = Paint()
-      ..color = Colors.white.withOpacity(0.25)
+      ..color = gridColor
       ..strokeWidth = 1;
 
     // Horizontal grid lines
@@ -1120,7 +1262,7 @@ class _ReportChartPainter extends CustomPainter {
         text: TextSpan(
           text: label,
           style: textStyle.copyWith(
-            color: Colors.white.withOpacity(0.4),
+            color: axisLabelColor,
             fontSize: 10,
           ),
         ),
@@ -1172,7 +1314,7 @@ class _ReportChartPainter extends CustomPainter {
 
     // Draw line
     final linePaint = Paint()
-      ..color = const Color(0xFF22C55E)
+      ..color = const Color(0xFF3B6FD4)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
@@ -1186,7 +1328,7 @@ class _ReportChartPainter extends CustomPainter {
 
       // Draw points
       final pointPaint = Paint()
-        ..color = const Color(0xFF22C55E)
+        ..color = const Color(0xFF3B6FD4)
         ..style = PaintingStyle.fill;
       for (final point in dataPoints) {
         canvas.drawCircle(point, 4, pointPaint);
@@ -1195,5 +1337,11 @@ class _ReportChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _ReportChartPainter oldDelegate) {
+    return oldDelegate.trend != trend ||
+        oldDelegate.isRevenue != isRevenue ||
+        oldDelegate.labelColor != labelColor ||
+        oldDelegate.axisLabelColor != axisLabelColor ||
+        oldDelegate.gridColor != gridColor;
+  }
 }

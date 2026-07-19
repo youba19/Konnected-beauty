@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../core/translations/app_translations.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/api/qr_scan_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
+import 'qr_scanner_screen.dart';
+
+abstract final class _OrderDetailUi {
+  static const double radius = 16;
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+  static const double horizontalPadding = 16;
+}
 
 class OrderDetailScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -29,6 +43,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _fetchOrderDetails();
   }
 
+  Map<String, dynamic> get _data => _orderDetails ?? widget.order;
+
+  Map<String, dynamic> get _clientInfo {
+    final info = _data['clientInfo'];
+    if (info is Map<String, dynamic>) return info;
+    if (info is Map) return Map<String, dynamic>.from(info);
+    return {};
+  }
+
+  Map<String, dynamic> get _influencerProfile {
+    final campaign = _data['campaign'];
+    final influencer = campaign is Map ? campaign['influencer'] : null;
+    final profile = influencer is Map ? influencer['profile'] : null;
+    if (profile is Map<String, dynamic>) return profile;
+    if (profile is Map) return Map<String, dynamic>.from(profile);
+
+    final fallback = widget.order['influencer'];
+    final fallbackProfile = fallback is Map ? fallback['profile'] : null;
+    if (fallbackProfile is Map<String, dynamic>) return fallbackProfile;
+    if (fallbackProfile is Map) return Map<String, dynamic>.from(fallbackProfile);
+    return {};
+  }
+
   Future<void> _fetchOrderDetails() async {
     try {
       setState(() {
@@ -37,27 +74,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         _errorMessage = '';
       });
 
-      // Extract order ID from the passed order data
       final orderId = widget.order['id'] ?? widget.order['_id'];
-
       if (orderId == null || orderId.toString().isEmpty) {
         throw Exception('Order ID not found');
       }
 
-      print('🔍 === FETCHING ORDER DETAILS ===');
-      print('🆔 Order ID: $orderId');
-
-      // Fetch complete order details from API
       final result = await QRScanService.getOrderDetails(orderId.toString());
 
       if (result['success'] == true && result['data'] != null) {
-        print('✅ Order details fetched successfully');
         setState(() {
           _orderDetails = result['data'];
           _isLoading = false;
         });
       } else {
-        print('❌ Failed to fetch order details: ${result['message']}');
         setState(() {
           _hasError = true;
           _errorMessage = result['message'] ?? 'Failed to fetch order details';
@@ -65,7 +94,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         });
       }
     } catch (e) {
-      print('❌ Error fetching order details: $e');
       setState(() {
         _hasError = true;
         _errorMessage = 'Error loading order details: $e';
@@ -76,236 +104,182 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Color(0xFF1F1E1E), // Bottom color (darker)
-                  Color(0xFF3B3B3B), // Top color (lighter)
-                ],
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: ColoredBox(
+            color: ui.bg,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              floatingActionButton: FloatingActionButton(
+                onPressed: _openQrScanner,
+                backgroundColor: ui.fabBg,
+                elevation: 4,
+                shape: CircleBorder(
+                  side: BorderSide(color: ui.fabBorder, width: 1),
+                ),
+                child: Icon(
+                  LucideIcons.scanLine,
+                  color: ui.isDark ? Colors.white : Colors.black,
+                  size: 24,
+                ),
               ),
-            ),
-            child: SafeArea(
-              child: Column(
+              body: Stack(
                 children: [
-                  Expanded(
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: topInset + 180,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: ui.headerGradient,
+                          stops: ui.headerStops,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    top: false,
                     child: _isLoading
-                        ? _buildLoadingContent()
+                        ? Padding(
+                            padding: EdgeInsets.only(top: topInset),
+                            child: _buildLoadingContent(ui),
+                          )
                         : _hasError
-                            ? _buildErrorContent()
-                            : _buildContent(),
+                            ? Padding(
+                                padding: EdgeInsets.only(top: topInset),
+                                child: _buildErrorContent(ui),
+                              )
+                            : SingleChildScrollView(
+                                padding: EdgeInsets.fromLTRB(
+                                  _OrderDetailUi.horizontalPadding,
+                                  topInset + 8,
+                                  _OrderDetailUi.horizontalPadding,
+                                  110,
+                                ),
+                                child: _buildContent(ui),
+                              ),
                   ),
                 ],
               ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildLoadingContent() {
+  Future<void> _openQrScanner() async {
+    final status = await Permission.camera.status;
+    if (status.isGranted) {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+      );
+      return;
+    }
+
+    final result = await Permission.camera.request();
+    if (!mounted) return;
+    if (result.isGranted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const QRScannerScreen()),
+      );
+    } else {
+      TopNotificationService.showError(
+        context: context,
+        message: 'Camera permission is required to scan QR codes',
+      );
+    }
+  }
+
+  Widget _buildLoadingContent(SalonUiTheme ui) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[600]!,
-      child: SingleChildScrollView(
+      baseColor: ui.isDark ? Colors.grey[800]! : Colors.grey[300]!,
+      highlightColor: ui.isDark ? Colors.grey[600]! : Colors.grey[100]!,
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header shimmer
-            _buildShimmerHeader(),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: ui.bannerFill,
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              height: 28,
+              width: 220,
+              decoration: BoxDecoration(
+                color: ui.bannerFill,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 16,
+              width: 180,
+              decoration: BoxDecoration(
+                color: ui.bannerFill,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             const SizedBox(height: 24),
-
-            // Client info shimmer
-            _buildShimmerClientInfo(),
-            const SizedBox(height: 24),
-
-            // Services shimmer
-            _buildShimmerServices(),
-            const SizedBox(height: 24),
-
-            // Total shimmer
-            _buildShimmerTotal(),
+            Container(
+              height: 140,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: ui.bannerFill,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 160,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: ui.bannerFill,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildShimmerHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Back button shimmer
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Order ID shimmer
-        Container(
-          width: 200,
-          height: 32,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Campaign info shimmer
-        Container(
-          width: 150,
-          height: 20,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 4),
-
-        // Date shimmer
-        Container(
-          width: 180,
-          height: 16,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildShimmerClientInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 100,
-          height: 16,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: 150,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: 100,
-          height: 16,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: 200,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildShimmerServices() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 80,
-          height: 16,
-          decoration: BoxDecoration(
-            color: Colors.grey[700],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...List.generate(
-            2,
-            (index) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                )),
-      ],
-    );
-  }
-
-  Widget _buildShimmerTotal() {
-    return Container(
-      height: 20,
-      decoration: BoxDecoration(
-        color: Colors.grey[700],
-        borderRadius: BorderRadius.circular(4),
-      ),
-    );
-  }
-
-  Widget _buildErrorContent() {
+  Widget _buildErrorContent(SalonUiTheme ui) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: AppTheme.errorColor,
-              size: 64,
-            ),
+            Icon(Icons.error_outline, color: ui.isDark ? Colors.white54 : Colors.black, size: 56),
             const SizedBox(height: 16),
             Text(
-              'Error Loading Order',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
               _errorMessage,
-              style: const TextStyle(
-                color: AppTheme.textSecondaryColor,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: ui.isDark ? Colors.white70 : Colors.black, fontSize: 15),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _fetchOrderDetails,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.greenColor,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                backgroundColor: ui.primaryButtonBg,
+                foregroundColor: ui.primaryButtonFg,
               ),
               child: const Text('Retry'),
             ),
@@ -315,349 +289,423 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+  Widget _buildContent(SalonUiTheme ui) {
+    final clientName = _clientInfo['name']?.toString() ?? 'Unknown Client';
+    final email = _clientInfo['email']?.toString() ?? '';
+    final phone = _clientInfo['phoneNumber']?.toString() ??
+        _clientInfo['phone']?.toString() ??
+        '';
+    final dateRaw = _data['updatedAt'] ??
+        _data['createdAt'] ??
+        widget.order['updatedAt'] ??
+        widget.order['createdAt'] ??
+        '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildBackButton(ui),
+        const SizedBox(height: 18),
+        Text(
+          '${AppTranslations.getString(context, 'order')} ${_getTruncatedOrderId()}',
+          style: TextStyle(
+            color: ui.isDark ? Colors.white : Colors.black,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildCampaignWithRow(ui),
+        const SizedBox(height: 22),
+        Text(
+          AppTranslations.getString(context, 'client_name'),
+          style: TextStyle(
+            color: ui.isDark ? Colors.white54 : Colors.black,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          clientName,
+          style: TextStyle(
+            color: ui.isDark ? Colors.white : Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _formatDate(dateRaw.toString()),
+          style: TextStyle(
+            color: ui.isDark ? Colors.white : Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildContactCard(ui: ui, email: email, phone: phone),
+        const SizedBox(height: 12),
+        _buildServicesCard(ui),
+      ],
+    );
+  }
+
+  Widget _buildBackButton(SalonUiTheme ui) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        width: _OrderDetailUi.buttonSize,
+        height: _OrderDetailUi.buttonSize,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ui.buttonFillTop, ui.buttonFillBottom],
+          ),
+          borderRadius: BorderRadius.circular(_OrderDetailUi.buttonRadius),
+          border: ui.isDark
+              ? null
+              : Border.all(color: ui.cardBorder, width: 1),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCampaignWithRow(SalonUiTheme ui) {
+    final pseudo = _influencerProfile['pseudo']?.toString() ?? 'Unknown';
+
+    return Row(
+      children: [
+        Text(
+          AppTranslations.getString(context, 'campaign_with'),
+          style: TextStyle(
+            color: ui.isDark ? Colors.white70 : Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(width: 8),
+        _buildInfluencerAvatar(ui),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            '@$pseudo',
+            style: TextStyle(
+              color: ui.isDark ? Colors.white : Colors.black,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfluencerAvatar(SalonUiTheme ui) {
+    final profilePicture = _influencerProfile['profilePicture'];
+
+    return ClipOval(
+      child: SizedBox(
+        width: 22,
+        height: 22,
+        child: profilePicture != null && profilePicture.toString().isNotEmpty
+            ? Image.network(
+                profilePicture.toString(),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildDefaultAvatar(ui);
+                },
+              )
+            : _buildDefaultAvatar(ui),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar(SalonUiTheme ui) {
+    return ColoredBox(
+      color: ui.bannerFill,
+      child: Center(
+        child: Icon(Icons.person, color: ui.isDark ? Colors.white54 : Colors.black, size: 14),
+      ),
+    );
+  }
+
+  Widget _buildContactCard({
+    required SalonUiTheme ui,
+    required String email,
+    required String phone,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_OrderDetailUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          _buildHeader(),
-          const SizedBox(height: 20),
-
-          // Client Information
-          _buildClientInfo(),
-          const SizedBox(height: 24),
-
-          // Services
-          _buildServices(),
-          const SizedBox(height: 24),
-
-          // Total
-          _buildTotal(),
-          const SizedBox(height: 40), // Extra padding at bottom
+          Text(
+            AppTranslations.getString(context, 'contact'),
+            style: TextStyle(
+              color: ui.isDark ? Colors.white70 : Colors.black,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildContactRow(
+            ui: ui,
+            label: AppTranslations.getString(context, 'client_email'),
+            value: email.isEmpty ? '—' : email,
+            icon: LucideIcons.copy,
+            onTap: email.isEmpty ? null : () => _copyEmail(email),
+          ),
+          const SizedBox(height: 16),
+          _buildContactRow(
+            ui: ui,
+            label: AppTranslations.getString(context, 'client_phone_number'),
+            value: phone.isEmpty ? '—' : phone,
+            icon: LucideIcons.phone,
+            onTap: phone.isEmpty ? null : () => _callPhone(phone),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
+  Widget _buildContactRow({
+    required SalonUiTheme ui,
+    required String label,
+    required String value,
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 20),
-
-        // Back button
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: ui.isDark ? Colors.white54 : Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  color: ui.isDark ? Colors.white : Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
         GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: const Icon(
-            Icons.arrow_back,
-            color: AppTheme.textPrimaryColor,
-            size: 32,
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Order ID
-        Text(
-          '${AppTranslations.getString(context, 'order')} ${_getTruncatedOrderId()}',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        // Campaign with section
-        Row(
-          children: [
-            Text(
-              AppTranslations.getString(context, 'campaign_with'),
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w200,
-              ),
-            ),
-            const SizedBox(width: 8),
-            _buildInfluencerAvatar(),
-            const SizedBox(width: 8),
-            Text(
-              '@${_orderDetails?['campaign']?['influencer']?['profile']?['pseudo'] ?? widget.order['influencer']?['profile']?['pseudo'] ?? 'Unknown'}',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // Date and time
-        Text(
-          _formatDate(_orderDetails?['updatedAt'] ??
-              _orderDetails?['createdAt'] ??
-              widget.order['updatedAt'] ??
-              widget.order['createdAt'] ??
-              ''),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.w200,
+          onTap: onTap,
+          child: Icon(
+            icon,
+            color: ui.isDark ? Colors.white : Colors.black,
+            size: 20,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildInfluencerAvatar() {
-    final profilePicture = _orderDetails?['campaign']?['influencer']?['profile']
-            ?['profilePicture'] ??
-        widget.order['influencer']?['profile']?['profilePicture'];
+  Future<void> _copyEmail(String email) async {
+    await Clipboard.setData(ClipboardData(text: email));
+    if (!mounted) return;
+    TopNotificationService.showSuccess(
+      context: context,
+      message: AppTranslations.getString(context, 'email_copied'),
+    );
+  }
 
-    if (profilePicture != null && profilePicture.toString().isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          profilePicture.toString(),
-          width: 20,
-          height: 20,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildDefaultAvatar();
-          },
-        ),
+  Future<void> _callPhone(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    final launched = await launchUrl(uri);
+    if (!launched && mounted) {
+      TopNotificationService.showError(
+        context: context,
+        message: 'Unable to open phone dialer',
       );
-    } else {
-      return _buildDefaultAvatar();
     }
   }
 
-  Widget _buildDefaultAvatar() {
+  Widget _buildServicesCard(SalonUiTheme ui) {
+    final services = _data['services'] as List<dynamic>? ??
+        widget.order['services'] as List<dynamic>? ??
+        [];
+
     return Container(
-      width: 20,
-      height: 20,
-      decoration: const BoxDecoration(
-        color: Colors.orange,
-        shape: BoxShape.circle,
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_OrderDetailUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
-      child: const Icon(
-        Icons.person,
-        color: Colors.white,
-        size: 12,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppTranslations.getString(context, 'services'),
+            style: TextStyle(
+              color: ui.isDark ? Colors.white70 : Colors.black,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (services.isEmpty)
+            Text(
+              'No services',
+              style: TextStyle(
+                color: ui.isDark ? Colors.white54 : Colors.black,
+                fontSize: 15,
+              ),
+            )
+          else
+            ...services.asMap().entries.map((entry) {
+              final index = entry.key;
+              final service = entry.value;
+              final serviceName =
+                  service['serviceName']?.toString() ?? 'Unknown Service';
+              final quantity = service['quantity'] ?? 1;
+              final unitPrice = service['priceAfterDiscount'] ??
+                  service['priceAtTimeOfOrder'] ??
+                  0;
+              final lineTotal = (unitPrice is num ? unitPrice.toDouble() : 0) *
+                  (quantity is num ? quantity.toDouble() : 1);
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < services.length - 1 ? 12 : 0,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        serviceName,
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        'x$quantity',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 72,
+                      child: Text(
+                        'EUR ${lineTotal.toStringAsFixed(0)}',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: ui.isDark ? Colors.white : Colors.black,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppTranslations.getString(context, 'total'),
+                style: TextStyle(
+                  color: ui.isDark ? Colors.white : Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                'EUR ${_calculateTotal().toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: ui.isDark ? Colors.white : Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildClientInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Client name
-        Text(
-          AppTranslations.getString(context, 'client_name'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w200,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _orderDetails?['clientInfo']?['name'] ??
-              widget.order['clientInfo']?['name'] ??
-              'Unknown Client',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Client phone number
-        Text(
-          AppTranslations.getString(context, 'phone_number'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w200,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _orderDetails?['clientInfo']?['phoneNumber'] ??
-              widget.order['clientInfo']?['phoneNumber'] ??
-              'Unknown Phone',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildServices() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          AppTranslations.getString(context, 'services'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w200,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Service items
-        _buildServiceItems(),
-      ],
-    );
-  }
-
-  Widget _buildServiceItem(String serviceName, int quantity, String price) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          serviceName,
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Row(
-          children: [
-            Text(
-              'x$quantity',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(width: 50),
-            Text(
-              '$price',
-              style: const TextStyle(
-                color: AppTheme.textPrimaryColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTotal() {
-    // Calculate total from services if we have detailed order data
-    double totalAmount = 0;
+  double _calculateTotal() {
     if (_orderDetails != null) {
       final services = _orderDetails?['services'] as List<dynamic>? ?? [];
+      double totalAmount = 0;
       for (final service in services) {
         final priceAfterDiscount =
             service['priceAfterDiscount'] ?? service['priceAtTimeOfOrder'] ?? 0;
         final quantity = service['quantity'] ?? 1;
-        totalAmount += (priceAfterDiscount * quantity);
+        totalAmount += (priceAfterDiscount is num
+                ? priceAfterDiscount.toDouble()
+                : 0) *
+            (quantity is num ? quantity.toDouble() : 1);
       }
-    } else {
-      // Fallback to the old format
-      totalAmount =
-          double.parse(widget.order['discountedAmount']?.toString() ?? '0');
+      return totalAmount;
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          AppTranslations.getString(context, 'total'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          '${totalAmount.toStringAsFixed(0)} EUR',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildServiceItems() {
-    final services = _orderDetails?['services'] as List<dynamic>? ??
-        widget.order['services'] as List<dynamic>? ??
-        [];
-
-    if (services.isEmpty) {
-      return Text(
-        'No services',
-        style: const TextStyle(
-          color: AppTheme.textPrimaryColor,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-    }
-
-    return Column(
-      children: services.asMap().entries.map((entry) {
-        final index = entry.key;
-        final service = entry.value;
-        final serviceName =
-            service['serviceName']?.toString() ?? 'Unknown Service';
-        final quantity = service['quantity'] ?? 1;
-
-        // Use the new API response format for pricing
-        String servicePrice;
-        if (_orderDetails != null) {
-          // Use the detailed pricing from the API response
-          final priceAfterDiscount = service['priceAfterDiscount'] ??
-              service['priceAtTimeOfOrder'] ??
-              0;
-          servicePrice = '${priceAfterDiscount.toStringAsFixed(0)} EUR';
-        } else {
-          // Fallback to the old format
-          final discountedAmount =
-              widget.order['discountedAmount']?.toString() ?? '0';
-          servicePrice =
-              '${(int.parse(discountedAmount)).toStringAsFixed(0)} EUR';
-        }
-
-        return Column(
-          children: [
-            _buildServiceItem(serviceName, quantity, servicePrice),
-            if (index < services.length - 1) const SizedBox(height: 12),
-          ],
-        );
-      }).toList(),
-    );
+    return double.tryParse(
+          widget.order['discountedAmount']?.toString() ?? '0',
+        ) ??
+        0;
   }
 
   String _getTruncatedOrderId() {
-    final fullOrderId = _orderDetails?['id']?.toString() ??
-        widget.order['id']?.toString() ??
-        'N/A';
-    return fullOrderId.length > 8 ? fullOrderId.substring(0, 8) : fullOrderId;
+    final fullOrderId =
+        _data['id']?.toString() ?? widget.order['id']?.toString() ?? 'N/A';
+    return fullOrderId.length > 9 ? fullOrderId.substring(0, 9) : fullOrderId;
   }
 
   String _formatDate(String dateString) {
     if (dateString.isEmpty) return 'Unknown Date';
     try {
       final date = DateTime.parse(dateString);
-      return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      final second = date.second.toString().padLeft(2, '0');
+      return '$day/$month/${date.year} $hour:$minute:$second';
     } catch (e) {
       return 'Unknown Date';
     }

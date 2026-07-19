@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/translations/app_translations.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/api/salon_profile_service.dart';
 import '../../../../widgets/common/shimmer_loading.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../core/services/api/salon_wallet_service.dart';
 import '../../../../core/services/api/stripe_service.dart';
 import 'salon_reports_screen.dart';
+import 'salon_settings_screen.dart';
+
+/// Revenue tab — layout radius tokens (colors via [SalonUiTheme]).
+abstract final class _SalonRevenueUi {
+  static const double radius = 16;
+  static const double buttonRadius = 14;
+}
 
 class SalonWalletScreen extends StatefulWidget {
   const SalonWalletScreen({super.key});
@@ -20,9 +27,10 @@ class SalonWalletScreen extends StatefulWidget {
 
 class _SalonWalletScreenState extends State<SalonWalletScreen> {
   bool _isLoading = true;
-  bool _hasPendingWithdrawRequest = false;
   bool _isLoadingStripe = false;
   double _balance = 0.0;
+  String _profileInitial = 'K';
+  final ScrollController _scrollController = ScrollController();
 
   // Stats data
   Map<String, dynamic> _stats = {};
@@ -33,11 +41,38 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
   @override
   void initState() {
     super.initState();
-    _loadWalletData();
+    _loadProfileInitial();
+    _loadWalletData(showLoading: true);
   }
 
-  Future<void> _loadWalletData() async {
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProfileInitial() async {
     try {
+      final result = await SalonProfileService().getSalonProfile();
+      if (!mounted || result['success'] != true) return;
+      final data = result['data'] as Map<String, dynamic>?;
+      final salonName = data?['salonInfo']?['name']?.toString() ?? '';
+      final personalName = data?['name']?.toString() ?? '';
+      final source = salonName.isNotEmpty ? salonName : personalName;
+      if (source.isNotEmpty) {
+        setState(() => _profileInitial = source[0].toUpperCase());
+      }
+    } catch (_) {
+      // Keep default initial.
+    }
+  }
+
+  Future<void> _loadWalletData({bool showLoading = false}) async {
+    try {
+      if (showLoading && mounted) {
+        setState(() => _isLoading = true);
+      }
+
       print('💰 === LOADING SALON WALLET DATA ===');
 
       // Fetch balance, stats, and three-months stats in parallel
@@ -51,136 +86,169 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
       final statsResult = results[1];
       final threeMonthsResult = results[2];
 
-      if (mounted) {
-        // Handle balance result
+      if (!mounted) return;
+
+      setState(() {
         if (balanceResult['success'] == true) {
           _balance = (balanceResult['balance'] as num).toDouble();
           print('💰 Balance loaded successfully: €$_balance');
-        } else {
-          _balance = 0.0; // Set to 0 if failed to load
+        } else if (showLoading) {
+          _balance = 0.0;
           print('❌ Failed to load balance: ${balanceResult['message']}');
         }
 
-        // Handle stats result
         if (statsResult['success'] == true) {
           _stats = statsResult['stats'] as Map<String, dynamic>;
           print('📊 Stats loaded successfully: $_stats');
-        } else {
-          _stats = {}; // Set to empty if failed to load
+        } else if (showLoading) {
+          _stats = {};
           print('❌ Failed to load stats: ${statsResult['message']}');
         }
 
-        // Handle three-months stats result
         if (threeMonthsResult['success'] == true) {
           _threeMonthsStats =
               threeMonthsResult['threeMonthsStats'] as Map<String, dynamic>;
           print(
               '📈 Three-months stats loaded successfully: $_threeMonthsStats');
-        } else {
-          _threeMonthsStats = {}; // Set to empty if failed to load
+        } else if (showLoading) {
+          _threeMonthsStats = {};
           print(
               '❌ Failed to load three-months stats: ${threeMonthsResult['message']}');
         }
 
-        setState(() {
-          _isLoading = false;
-        });
-      }
+        _isLoading = false;
+      });
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _balance = 0.0; // Set to 0 on error
-          _stats = {}; // Set to empty on error
-          _threeMonthsStats = {}; // Set to empty on error
+          // Keep existing data on refresh errors so the screen stays fixed.
+          if (showLoading) {
+            _balance = 0.0;
+            _stats = {};
+            _threeMonthsStats = {};
+          }
         });
       }
       print('❌ Error loading wallet data: $e');
     }
   }
 
+  Future<void> _onRefresh() async {
+    // Silent refresh: keep current UI, update values in place.
+    await _loadWalletData(showLoading: false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Force dark mode for salon - wrap in Theme with dark brightness
-    return Theme(
-      data: ThemeData.dark(),
-      child: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadWalletData,
-          color: Colors.white,
-          backgroundColor: const Color(0xFF3A3A3A),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppTranslations.getString(context, 'wallet'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                      ),
+    final ui = SalonUiTheme.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+
+    return ColoredBox(
+      color: ui.bg,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          top: false,
+          child: RefreshIndicator(
+            onRefresh: _onRefresh,
+            color: Colors.white,
+            backgroundColor: SalonUiTheme.blueUpper,
+            displacement: topInset + 40,
+            edgeOffset: topInset,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: ClampingScrollPhysics(),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppTranslations.getString(
-                          context, 'track_earnings_realtime'),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(topInset),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppTranslations.getString(context, 'revenue'),
+                                style: TextStyle(
+                                  color: ui.textPrimary,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                AppTranslations.getString(
+                                  context,
+                                  'track_earnings_realtime',
+                                ),
+                                style: TextStyle(
+                                  color: ui.isDark ? ui.textSecondary : Colors.black,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              _isLoading
+                                  ? const ShimmerCard(
+                                      height: 88,
+                                      borderRadius: BorderRadius.all(
+                                        Radius.circular(16),
+                                      ),
+                                    )
+                                  : _buildBalanceCard(ui),
+                              const SizedBox(height: 16),
+                              _isLoading
+                                  ? _buildMetricsShimmer()
+                                  : _buildMetricsGrid(context, ui),
+                              const SizedBox(height: 20),
+                              _buildActionButtons(ui),
+                              const SizedBox(height: 28),
+                              _buildChartSection(
+                                ui: ui,
+                                title: AppTranslations.getString(
+                                  context,
+                                  'orders',
+                                ),
+                                subtitle: AppTranslations.getString(
+                                  context,
+                                  'from_last_3_months',
+                                ),
+                                isLoading: _isLoading,
+                                child: _buildOrdersChart(ui),
+                              ),
+                              const SizedBox(height: 28),
+                              _buildChartSection(
+                                ui: ui,
+                                title: AppTranslations.getString(
+                                  context,
+                                  'revenue',
+                                ),
+                                subtitle: AppTranslations.getString(
+                                  context,
+                                  'from_last_3_months',
+                                ),
+                                isLoading: _isLoading,
+                                child: _buildRevenueChart(ui),
+                              ),
+                              const SizedBox(height: 120),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Balance card (dark gray)
-                _isLoading
-                    ? const ShimmerCard(
-                        height: 72,
-                        borderRadius: BorderRadius.all(Radius.circular(12)))
-                    : _buildBalanceCard(),
-
-                const SizedBox(height: 16),
-
-                // Metrics grid (2 columns)
-                _isLoading
-                    ? _buildMetricsShimmer()
-                    : _buildMetricsGrid(context),
-
-                const SizedBox(height: 16),
-
-                // Action Buttons
-                _buildActionButtons(),
-
-                const SizedBox(height: 24),
-
-                // Orders section
-                _buildChartSection(
-                  title: AppTranslations.getString(context, 'orders'),
-                  subtitle:
-                      AppTranslations.getString(context, 'from_last_3_months'),
-                  isLoading: _isLoading,
-                  child: _buildOrdersChart(),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Revenue section
-                _buildChartSection(
-                  title: AppTranslations.getString(context, 'revenue'),
-                  subtitle:
-                      AppTranslations.getString(context, 'from_last_3_months'),
-                  isLoading: _isLoading,
-                  child: _buildRevenueChart(),
-                ),
-              ],
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -188,13 +256,70 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildHeader(double topInset) {
+    final ui = SalonUiTheme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: ui.headerGradient,
+          stops: ui.headerStops,
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(16, topInset + 6, 16, 0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Image.asset(
+                'assets/images/Konected beauty - Logo white.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.contain,
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SalonSettingsScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: SalonUiTheme.profileBlue,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _profileInitial,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 64),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(SalonUiTheme ui) {
     return Column(
       children: [
-        // View Reports button
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: 52,
           child: OutlinedButton(
             onPressed: () {
               Navigator.of(context).push(
@@ -204,16 +329,20 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
               );
             },
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
+              side: BorderSide(
+                color: ui.outlinedButtonBorder,
+                width: 1,
+              ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius:
+                    BorderRadius.circular(_SalonRevenueUi.buttonRadius),
               ),
               backgroundColor: Colors.transparent,
             ),
             child: Text(
               AppTranslations.getString(context, 'view_reports'),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: ui.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -221,109 +350,13 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        // Open Stripe dashboard button
-        _buildStripeButton(),
-        // Withdraw buttons are hidden
-        // const SizedBox(height: 12),
-        // // Withdraw history button
-        // SizedBox(
-        //   width: double.infinity,
-        //   height: 48,
-        //   child: OutlinedButton(
-        //     onPressed: () {
-        //       Navigator.of(context).push(
-        //         MaterialPageRoute(
-        //           builder: (context) => const WithdrawalHistoryScreen(),
-        //         ),
-        //       );
-        //     },
-        //     style: OutlinedButton.styleFrom(
-        //       side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
-        //       shape: RoundedRectangleBorder(
-        //         borderRadius: BorderRadius.circular(12),
-        //       ),
-        //       backgroundColor: Colors.transparent,
-        //     ),
-        //     child: Text(
-        //       AppTranslations.getString(context, 'withdraw_history'),
-        //       style: const TextStyle(
-        //         color: Colors.white,
-        //         fontSize: 16,
-        //         fontWeight: FontWeight.w600,
-        //       ),
-        //     ),
-        //   ),
-        // ),
-        // // Only show request withdraw button if no pending request
-        // if (!_hasPendingWithdrawRequest) ...[
-        //   const SizedBox(height: 12),
-        //   // Request withdraw button
-        //   SizedBox(
-        //     width: double.infinity,
-        //     height: 48,
-        //     child: ElevatedButton(
-        //       onPressed: () {
-        //         _showWithdrawRequestDialog(context);
-        //       },
-        //       style: ElevatedButton.styleFrom(
-        //         backgroundColor: Colors.white,
-        //         shape: RoundedRectangleBorder(
-        //           borderRadius: BorderRadius.circular(12),
-        //         ),
-        //         elevation: 0,
-        //       ),
-        //       child: Text(
-        //         AppTranslations.getString(context, 'request_withdraw'),
-        //         style: const TextStyle(
-        //           color: Colors.black,
-        //           fontSize: 16,
-        //           fontWeight: FontWeight.w600,
-        //         ),
-        //       ),
-        //     ),
-        //   ),
-        // ],
-        // Show pending request message if request was submitted
-        if (_hasPendingWithdrawRequest) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3A3A3A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.orange.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.access_time,
-                  color: Colors.orange,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Withdraw request pending approval',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        _buildStripeButton(ui),
       ],
     );
   }
 
   Widget _buildChartSection({
+    required SalonUiTheme ui,
     required String title,
     required String subtitle,
     required bool isLoading,
@@ -334,8 +367,8 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: ui.textPrimary,
             fontSize: 22,
             fontWeight: FontWeight.w700,
           ),
@@ -344,84 +377,118 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
         Text(
           subtitle,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: ui.isDark ? ui.textSecondary : Colors.black,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         isLoading
             ? const ShimmerCard(
-                height: 160, borderRadius: BorderRadius.all(Radius.circular(8)))
-            : child,
+                height: 180,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              )
+            : Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+                decoration: BoxDecoration(
+                  color: ui.card,
+                  borderRadius: BorderRadius.circular(_SalonRevenueUi.radius),
+                  border: Border.all(
+                    color: ui.cardBorder,
+                    width: 1,
+                  ),
+                ),
+                child: child,
+              ),
       ],
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(SalonUiTheme ui) {
     return Container(
-      height: 72,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFF3A3A3A),
-        borderRadius: BorderRadius.circular(12),
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_SalonRevenueUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  AppTranslations.getString(context, 'balance'),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '€ ${_balance.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+          Text(
+            AppTranslations.getString(context, 'balance'),
+            style: TextStyle(
+              color: ui.isDark ? ui.textSecondary : Colors.black,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(height: 8),
+          Text(
+            '€ ${_balance.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildMetricsShimmer() {
-    return Row(
-      children: const [
-        Expanded(
-            child: ShimmerCard(
-                height: 76,
-                borderRadius: BorderRadius.all(Radius.circular(8)))),
-        SizedBox(width: 12),
-        Expanded(
-            child: ShimmerCard(
-                height: 76,
-                borderRadius: BorderRadius.all(Radius.circular(8)))),
+    return const Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ShimmerCard(
+                height: 110,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: ShimmerCard(
+                height: 110,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ShimmerCard(
+                height: 110,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: ShimmerCard(
+                height: 110,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildMetricsGrid(BuildContext context) {
+  Widget _buildMetricsGrid(BuildContext context, SalonUiTheme ui) {
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: _MetricTile(
+                ui: ui,
                 title: AppTranslations.getString(context, 'total_revenue'),
                 value:
                     '€ ${(_stats['totalRevenue'] ?? 0.0).toStringAsFixed(2)}',
@@ -436,20 +503,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _MetricTile(
-                title: AppTranslations.getString(context, 'ready_to_withdraw'),
-                value: '€ ${_balance.toStringAsFixed(2)}',
-                subtitle: 'Available balance',
-                icon: LucideIcons.wallet,
-                isError: false,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricTile(
+                ui: ui,
                 title: AppTranslations.getString(context, 'number_orders'),
                 value: '${_stats['totalOrderCount'] ?? 0}',
                 subtitle:
@@ -460,66 +514,54 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
                     (_stats['totalOrderCountChange'] ?? 0.0).toDouble(),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _MetricTile(
-                title: AppTranslations.getString(context, 'avg_order_value'),
-                value:
-                    '€ ${(_stats['averageOrderValue'] ?? 0.0).toStringAsFixed(2)}',
-                subtitle:
-                    '${_stats['averageOrderValueChange'] ?? 0.0}% ${AppTranslations.getString(context, 'from_last_month')}',
-                icon: LucideIcons.euro,
-                isError: false,
-                changePercentage:
-                    (_stats['averageOrderValueChange'] ?? 0.0).toDouble(),
-              ),
-            ),
           ],
+        ),
+        const SizedBox(height: 12),
+        _MetricTile(
+          ui: ui,
+          title: AppTranslations.getString(context, 'avg_order_value'),
+          value:
+              '€ ${(_stats['averageOrderValue'] ?? 0.0).toStringAsFixed(2)}',
+          subtitle:
+              '${_stats['averageOrderValueChange'] ?? 0.0}% ${AppTranslations.getString(context, 'from_last_month')}',
+          icon: LucideIcons.euro,
+          isError: false,
+          changePercentage:
+              (_stats['averageOrderValueChange'] ?? 0.0).toDouble(),
         ),
       ],
     );
   }
 
-  Widget _buildOrdersChart() {
+  Widget _buildOrdersChart(SalonUiTheme ui) {
     return SizedBox(
       height: 160,
       width: double.infinity,
       child: CustomPaint(
         painter: _OrdersChartPainter(
           orderTrend: _threeMonthsStats['orderTrend'],
-          hasError: false, // Always show data, never error
+          hasError: false,
+          textColor: ui.textPrimary,
+          mutedTextColor: ui.isDark ? ui.textMuted : Colors.black,
+          gridColor: (ui.isDark ? ui.textMuted : Colors.black).withValues(alpha: 0.4),
         ),
       ),
     );
   }
 
-  Widget _buildRevenueChart() {
+  Widget _buildRevenueChart(SalonUiTheme ui) {
     return SizedBox(
       height: 160,
       width: double.infinity,
       child: CustomPaint(
         painter: _RevenueChartPainter(
           revenueTrend: _threeMonthsStats['revenueTrend'],
-          hasError: false, // Always show data, never error
+          hasError: false,
+          textColor: ui.textPrimary,
+          mutedTextColor: ui.isDark ? ui.textMuted : Colors.black,
+          gridColor: (ui.isDark ? ui.textMuted : Colors.black).withValues(alpha: 0.4),
         ),
       ),
-    );
-  }
-
-  void _showWithdrawRequestDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return _WithdrawRequestDialog(
-          onRequestSubmitted: () {
-            setState(() {
-              _hasPendingWithdrawRequest = true;
-            });
-          },
-        );
-      },
     );
   }
 
@@ -541,7 +583,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
         if (loginUrl != null && loginUrl.isNotEmpty) {
           print('🌐 Opening Stripe dashboard URL: $loginUrl');
           final uri = Uri.parse(loginUrl);
-          
+
           if (await canLaunchUrl(uri)) {
             await launchUrl(
               uri,
@@ -575,50 +617,45 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
         message: 'Error opening Stripe dashboard: ${e.toString()}',
       );
     } finally {
-      setState(() {
-        _isLoadingStripe = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingStripe = false;
+        });
+      }
     }
   }
 
-  Widget _buildStripeButton() {
-    final brightness = Theme.of(context).brightness;
+  Widget _buildStripeButton(SalonUiTheme ui) {
     return SizedBox(
       width: double.infinity,
+      height: 52,
       child: ElevatedButton(
         onPressed: _isLoadingStripe ? null : _openStripeDashboard,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: ui.primaryButtonBg,
+          foregroundColor: ui.primaryButtonFg,
+          disabledBackgroundColor: ui.primaryButtonBg.withValues(alpha: 0.7),
           elevation: 0,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: brightness == Brightness.light
-                  ? AppTheme.lightTextPrimaryColor
-                  : Colors.transparent,
-              width: 1,
-            ),
+            borderRadius: BorderRadius.circular(_SalonRevenueUi.buttonRadius),
           ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            // Stripe "S" logo
             Container(
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: ui.primaryButtonFg,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Center(
                 child: Text(
                   'S',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: ui.primaryButtonBg,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -626,13 +663,12 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            // Button text
             Text(
               _isLoadingStripe ? 'Loading...' : 'Open Stripe dashboard',
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black,
+                fontWeight: FontWeight.w600,
+                color: ui.primaryButtonFg,
               ),
             ),
             if (_isLoadingStripe) ...[
@@ -641,7 +677,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
-                  color: Colors.black,
+                  color: ui.primaryButtonFg,
                   strokeWidth: 2,
                 ),
               ),
@@ -654,6 +690,7 @@ class _SalonWalletScreenState extends State<SalonWalletScreen> {
 }
 
 class _MetricTile extends StatelessWidget {
+  final SalonUiTheme ui;
   final String title;
   final String value;
   final String subtitle;
@@ -662,6 +699,7 @@ class _MetricTile extends StatelessWidget {
   final double? changePercentage;
 
   const _MetricTile({
+    required this.ui,
     required this.title,
     required this.value,
     required this.subtitle,
@@ -673,10 +711,11 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        color: ui.card,
+        borderRadius: BorderRadius.circular(_SalonRevenueUi.radius),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,33 +725,43 @@ class _MetricTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
+                  style: TextStyle(
+                    color: ui.isDark ? ui.textSecondary : Colors.black,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ),
+              Icon(
+                icon,
+                size: 16,
+                color: ui.textPrimary,
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             value,
             style: TextStyle(
-              color: isError ? Colors.red : Colors.white,
-              fontSize: 24,
+              color: isError ? Colors.red : ui.textPrimary,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             subtitle,
             style: TextStyle(
               color:
-                  isError ? Colors.red.withOpacity(0.7) : _getSubtitleColor(),
-              fontSize: 12,
+                  isError ? Colors.red.withValues(alpha: 0.7) : _getSubtitleColor(),
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -721,38 +770,38 @@ class _MetricTile extends StatelessWidget {
 
   Color _getSubtitleColor() {
     if (changePercentage == null) {
-      return Colors.white.withOpacity(0.7);
+      return ui.isDark ? ui.textMuted : Colors.black;
     }
 
-    if (changePercentage! > 0) {
-      return Colors.green.withOpacity(0.8);
-    } else if (changePercentage! < 0) {
-      return Colors.red.withOpacity(0.8);
-    } else {
-      return Colors.white.withOpacity(0.7);
-    }
+    return SalonUiTheme.profileBlue;
   }
 }
 
 class _OrdersChartPainter extends CustomPainter {
   final Map<String, dynamic>? orderTrend;
   final bool hasError;
+  final Color textColor;
+  final Color mutedTextColor;
+  final Color gridColor;
 
   const _OrdersChartPainter({
     this.orderTrend,
     this.hasError = false,
+    required this.textColor,
+    required this.mutedTextColor,
+    required this.gridColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final textStyle = TextStyle(
-      color: Colors.white,
+      color: textColor,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
 
     final axisPaint = Paint()
-      ..color = Colors.white.withOpacity(0.25)
+      ..color = gridColor
       ..strokeWidth = 1;
 
     // Horizontal grid lines
@@ -786,7 +835,7 @@ class _OrdersChartPainter extends CustomPainter {
       final zeroTextPainter = TextPainter(
         text: TextSpan(
           text: '0',
-          style: textStyle.copyWith(color: Colors.white.withOpacity(0.7)),
+          style: textStyle.copyWith(color: mutedTextColor),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -841,8 +890,8 @@ class _OrdersChartPainter extends CustomPainter {
         text: TextSpan(
           text: label,
           style: textStyle.copyWith(
-            color: Colors.white.withOpacity(0.4), // More subtle color
-            fontSize: 10, // Smaller font size
+            color: mutedTextColor,
+            fontSize: 10,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -898,7 +947,7 @@ class _OrdersChartPainter extends CustomPainter {
 
     // Orders line
     final linePaint = Paint()
-      ..color = const Color(0xFF22C55E)
+      ..color = const Color(0xFF3B6FD4)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
@@ -963,7 +1012,7 @@ class _OrdersChartPainter extends CustomPainter {
 
       // Data point dots (drawn on top of line)
       final dotPaint = Paint()
-        ..color = const Color(0xFF22C55E)
+        ..color = const Color(0xFF3B6FD4)
         ..style = PaintingStyle.fill;
 
       for (final point in dataPoints) {
@@ -979,22 +1028,28 @@ class _OrdersChartPainter extends CustomPainter {
 class _RevenueChartPainter extends CustomPainter {
   final Map<String, dynamic>? revenueTrend;
   final bool hasError;
+  final Color textColor;
+  final Color mutedTextColor;
+  final Color gridColor;
 
   const _RevenueChartPainter({
     this.revenueTrend,
     this.hasError = false,
+    required this.textColor,
+    required this.mutedTextColor,
+    required this.gridColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final textStyle = TextStyle(
-      color: Colors.white,
+      color: textColor,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
 
     final axisPaint = Paint()
-      ..color = Colors.white.withOpacity(0.25)
+      ..color = gridColor
       ..strokeWidth = 1;
 
     // Horizontal grid lines
@@ -1028,7 +1083,7 @@ class _RevenueChartPainter extends CustomPainter {
       final zeroTextPainter = TextPainter(
         text: TextSpan(
           text: '0',
-          style: textStyle.copyWith(color: Colors.white.withOpacity(0.7)),
+          style: textStyle.copyWith(color: mutedTextColor),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -1126,7 +1181,7 @@ class _RevenueChartPainter extends CustomPainter {
 
     // Revenue line
     final linePaint = Paint()
-      ..color = const Color(0xFF22C55E)
+      ..color = const Color(0xFF3B6FD4)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
@@ -1191,7 +1246,7 @@ class _RevenueChartPainter extends CustomPainter {
 
       // Data point dots (drawn on top of line)
       final dotPaint = Paint()
-        ..color = const Color(0xFF22C55E)
+        ..color = const Color(0xFF3B6FD4)
         ..style = PaintingStyle.fill;
 
       for (final point in dataPoints) {
@@ -1202,320 +1257,4 @@ class _RevenueChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class _WithdrawRequestDialog extends StatefulWidget {
-  final VoidCallback? onRequestSubmitted;
-
-  const _WithdrawRequestDialog({this.onRequestSubmitted});
-
-  @override
-  _WithdrawRequestDialogState createState() => _WithdrawRequestDialogState();
-}
-
-class _WithdrawRequestDialogState extends State<_WithdrawRequestDialog> {
-  final TextEditingController _amountController = TextEditingController();
-  bool _isSubmitting = false;
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF2C2C2C),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title
-          Text(
-            AppTranslations.getString(context, 'request_a_withdraw'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Description
-          Text(
-            AppTranslations.getString(context, 'send_withdraw_request'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Amount input
-          Text(
-            AppTranslations.getString(context, 'enter_the_amount'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText:
-                  AppTranslations.getString(context, 'amount_placeholder'),
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: const Color(0xFF3A3A3A),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white),
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3A3A3A),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    AppTranslations.getString(context, 'cancel'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitRequest,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.black),
-                          ),
-                        )
-                      : Text(
-                          AppTranslations.getString(context, 'submit'),
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _submitRequest() async {
-    final amountText = _amountController.text.trim();
-    if (amountText.isEmpty) {
-      return;
-    }
-
-    // Parse the amount
-    final amount = double.tryParse(amountText);
-    if (amount == null || amount <= 0) {
-      // Show error message
-      TopNotificationService.showError(
-        context: context,
-        message:
-            AppTranslations.getString(context, 'please_enter_valid_amount'),
-      );
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    try {
-      // Call the API
-      final result = await SalonWalletService.submitWithdrawalRequest(amount);
-
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-
-        if (result['success'] == true) {
-          // Success - close dialog and show success message
-          Navigator.of(context).pop();
-          widget.onRequestSubmitted?.call();
-          _showThankYouDialog(context);
-        } else {
-          // Error - show error message using TopNotification
-          String errorMessage =
-              result['message'] ?? 'Failed to submit withdrawal request';
-
-          // Check if it's the specific pending withdrawal error
-          if (errorMessage.contains('pending withdrawal request')) {
-            errorMessage = AppTranslations.getString(
-                context, 'pending_withdrawal_request');
-          }
-
-          TopNotificationService.showError(
-            context: context,
-            message: errorMessage,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-
-        TopNotificationService.showError(
-          context: context,
-          message: 'Error: ${e.toString()}',
-        );
-      }
-    }
-  }
-
-  void _showThankYouDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return _ThankYouDialog();
-      },
-    );
-  }
-}
-
-class _ThankYouDialog extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF2C2C2C),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title
-          Text(
-            AppTranslations.getString(context, 'thank_you_for_request'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Description
-          Text(
-            AppTranslations.getString(context, 'team_contact_message'),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Close button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3A3A3A),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: Text(
-                AppTranslations.getString(context, 'close'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

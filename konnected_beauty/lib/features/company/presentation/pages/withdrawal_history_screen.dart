@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/services/api/salon_wallet_service.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
@@ -177,6 +178,7 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
   }
 
   Widget _buildHeader() {
+    final ui = SalonUiTheme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Column(
@@ -184,10 +186,26 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> {
         children: [
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
-            child: const Icon(
-              LucideIcons.arrowLeft,
-              color: Colors.white,
-              size: 24,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [ui.buttonFillTop, ui.buttonFillBottom],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: ui.isDark
+                    ? null
+                    : Border.all(color: ui.cardBorder, width: 1),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                LucideIcons.arrowLeft,
+                color: ui.buttonIcon,
+                size: 22,
+              ),
             ),
           ),
           const SizedBox(height: 16),

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/translations/app_translations.dart';
+import '../../core/theme/salon_ui_theme.dart';
 import '../../core/bloc/salon_account_deletion/salon_account_deletion_bloc.dart';
 import '../../core/bloc/salon_account_deletion/salon_account_deletion_event.dart';
 import '../../core/bloc/salon_account_deletion/salon_account_deletion_state.dart';
 import '../../core/bloc/influencer_account_deletion/influencer_account_deletion_bloc.dart';
 import '../../core/bloc/influencer_account_deletion/influencer_account_deletion_event.dart';
 import '../../core/bloc/influencer_account_deletion/influencer_account_deletion_state.dart';
-import '../../core/theme/app_theme.dart';
 import 'top_notification_banner.dart';
+
+abstract final class _AccountDeletionUi {
+  static const double radius = 16;
+}
 
 class AccountDeletionDialog extends StatefulWidget {
   final String userType; // 'salon' or 'influencer'
@@ -17,6 +21,29 @@ class AccountDeletionDialog extends StatefulWidget {
     super.key,
     required this.userType,
   });
+
+  static Future<void> show(
+    BuildContext context, {
+    required String userType,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        if (userType == 'salon') {
+          return BlocProvider(
+            create: (_) => SalonAccountDeletionBloc(),
+            child: const AccountDeletionDialog(userType: 'salon'),
+          );
+        }
+        return BlocProvider(
+          create: (_) => InfluencerAccountDeletionBloc(),
+          child: const AccountDeletionDialog(userType: 'influencer'),
+        );
+      },
+    );
+  }
 
   @override
   State<AccountDeletionDialog> createState() => _AccountDeletionDialogState();
@@ -60,190 +87,186 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    return Dialog(
-      backgroundColor: Colors.transparent,
+    // Light sheet + black text keeps labels readable on the blue header.
+    final ui = SalonUiTheme.from(Brightness.light);
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
-        decoration: BoxDecoration(
-          color: brightness == Brightness.light
-              ? AppTheme.lightCardBackground
-              : AppTheme.primaryColor,
-          borderRadius: BorderRadius.circular(16),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
         ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: ui.bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Stack(
           children: [
-            // Header
-            Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.red,
-                  size: 28,
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 180,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: ui.sheetHeaderGradient,
+                    stops: const [0.0, 0.35, 0.7, 1.0],
+                  ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 28, 20, 18 + bottomSafe),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     AppTranslations.getString(context, 'account_deletion'),
-                    style: TextStyle(
-                      color: brightness == Brightness.light
-                          ? AppTheme.lightTextPrimaryColor
-                          : Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
                     ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(
-                    Icons.close,
-                    color: brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : Colors.white,
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppTranslations.getString(
+                              context,
+                              'account_deletion_warning',
+                            ),
+                            style: TextStyle(
+                              color: Colors.black.withValues(alpha: 0.75),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w400,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          Text(
+                            AppTranslations.getString(
+                              context,
+                              'account_deletion_reason',
+                            ),
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _reasonController,
+                            maxLines: 4,
+                            maxLength: 500,
+                            enabled: !_isSubmitting,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            cursorColor: Colors.black,
+                            decoration: InputDecoration(
+                              hintText: AppTranslations.getString(
+                                context,
+                                'account_deletion_placeholder',
+                              ),
+                              hintStyle: TextStyle(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                fontSize: 15,
+                              ),
+                              counterStyle: TextStyle(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                fontSize: 12,
+                              ),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.all(14),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _AccountDeletionUi.radius,
+                                ),
+                                borderSide: const BorderSide(
+                                  color: Colors.black,
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _AccountDeletionUi.radius,
+                                ),
+                                borderSide: const BorderSide(
+                                  color: Colors.black,
+                                  width: 1.2,
+                                ),
+                              ),
+                              disabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  _AccountDeletionUi.radius,
+                                ),
+                                borderSide: BorderSide(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Warning message
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Colors.red,
-                    size: 20,
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: _buildSubmitButton(),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      AppTranslations.getString(
-                          context, 'account_deletion_warning'),
-                      style: TextStyle(
-                        color: Colors.red[300],
-                        fontSize: 14,
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(color: Colors.black, width: 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            _AccountDeletionUi.radius,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        AppTranslations.getString(
+                          context,
+                          'account_deletion_cancel',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Reason input
-            Text(
-              AppTranslations.getString(context, 'account_deletion_reason'),
-              style: TextStyle(
-                color: brightness == Brightness.light
-                    ? AppTheme.lightTextPrimaryColor
-                    : Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _reasonController,
-              maxLines: 4,
-              maxLength: 500,
-              style: TextStyle(
-                color: brightness == Brightness.light
-                    ? AppTheme.lightTextPrimaryColor
-                    : Colors.white,
-              ),
-              decoration: InputDecoration(
-                hintText: AppTranslations.getString(
-                    context, 'account_deletion_placeholder'),
-                hintStyle: TextStyle(
-                  color: brightness == Brightness.light
-                      ? AppTheme.lightTextSecondaryColor
-                      : Colors.grey[400],
-                ),
-                filled: true,
-                fillColor: brightness == Brightness.light
-                    ? AppTheme.lightCardBackground
-                    : Colors.grey[800],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : Colors.transparent,
-                    width: 1,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : Colors.transparent,
-                    width: 1,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: brightness == Brightness.light
-                        ? AppTheme.lightTextPrimaryColor
-                        : Colors.transparent,
-                    width: 1,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.all(12),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: _isSubmitting
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      backgroundColor: brightness == Brightness.light
-                          ? AppTheme.lightCardBackground
-                          : Colors.grey[700],
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: brightness == Brightness.light
-                              ? AppTheme.lightTextPrimaryColor
-                              : Colors.transparent,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      AppTranslations.getString(
-                          context, 'account_deletion_cancel'),
-                      style: TextStyle(
-                        color: brightness == Brightness.light
-                            ? AppTheme.lightTextPrimaryColor
-                            : Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildSubmitButton(),
-                ),
-              ],
             ),
           ],
         ),
@@ -252,101 +275,79 @@ class _AccountDeletionDialogState extends State<AccountDeletionDialog> {
   }
 
   Widget _buildSubmitButton() {
+    final label = Text(
+      AppTranslations.getString(context, 'account_deletion_confirm'),
+      style: const TextStyle(
+        color: Colors.black,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
+    final button = ElevatedButton(
+      onPressed: _isSubmitting ? null : _submitDeletionRequest,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        disabledBackgroundColor: Colors.white70,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_AccountDeletionUi.radius),
+        ),
+      ),
+      child: _isSubmitting
+          ? const SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.black,
+              ),
+            )
+          : label,
+    );
+
     if (widget.userType == 'salon') {
       return BlocListener<SalonAccountDeletionBloc, SalonAccountDeletionState>(
         listener: (context, state) {
           if (state is SalonAccountDeletionSuccess) {
-            setState(() {
-              _isSubmitting = false;
-            });
-            Navigator.of(context).pop();
+            setState(() => _isSubmitting = false);
             TopNotificationService.showSuccess(
               context: context,
               message: state.message,
             );
+            Navigator.of(context).pop();
           } else if (state is SalonAccountDeletionError) {
-            setState(() {
-              _isSubmitting = false;
-            });
+            setState(() => _isSubmitting = false);
             TopNotificationService.showError(
               context: context,
               message: state.message,
             );
           }
         },
-        child: ElevatedButton(
-          onPressed: _isSubmitting ? null : _submitDeletionRequest,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: _isSubmitting
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Text(
-                  AppTranslations.getString(
-                      context, 'account_deletion_confirm'),
-                  style: const TextStyle(color: Colors.white),
-                ),
-        ),
-      );
-    } else {
-      return BlocListener<InfluencerAccountDeletionBloc,
-          InfluencerAccountDeletionState>(
-        listener: (context, state) {
-          if (state is InfluencerAccountDeletionSuccess) {
-            setState(() {
-              _isSubmitting = false;
-            });
-            Navigator.of(context).pop();
-            TopNotificationService.showSuccess(
-              context: context,
-              message: state.message,
-            );
-          } else if (state is InfluencerAccountDeletionError) {
-            setState(() {
-              _isSubmitting = false;
-            });
-            TopNotificationService.showError(
-              context: context,
-              message: state.message,
-            );
-          }
-        },
-        child: ElevatedButton(
-          onPressed: _isSubmitting ? null : _submitDeletionRequest,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: _isSubmitting
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Text(
-                  AppTranslations.getString(
-                      context, 'account_deletion_confirm'),
-                  style: const TextStyle(color: Colors.white),
-                ),
-        ),
+        child: button,
       );
     }
+
+    return BlocListener<InfluencerAccountDeletionBloc,
+        InfluencerAccountDeletionState>(
+      listener: (context, state) {
+        if (state is InfluencerAccountDeletionSuccess) {
+          setState(() => _isSubmitting = false);
+          TopNotificationService.showSuccess(
+            context: context,
+            message: state.message,
+          );
+          Navigator.of(context).pop();
+        } else if (state is InfluencerAccountDeletionError) {
+          setState(() => _isSubmitting = false);
+          TopNotificationService.showError(
+            context: context,
+            message: state.message,
+          );
+        }
+      },
+      child: button,
+    );
   }
 }

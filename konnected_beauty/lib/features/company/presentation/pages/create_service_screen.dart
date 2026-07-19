@@ -4,13 +4,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_services/salon_services_bloc.dart';
-import '../../../../widgets/forms/custom_text_field.dart';
-import '../../../../widgets/forms/custom_button.dart';
 import '../../../../widgets/common/top_notification_banner.dart';
 import 'service_details_screen.dart';
+
+abstract final class _CreateServiceUi {
+  static const double radius = 16;
+  static const double buttonRadius = 14;
+  static const double buttonSize = 48;
+  static const double horizontalPadding = 16;
+}
 
 class CreateServiceScreen extends StatefulWidget {
   const CreateServiceScreen({super.key});
@@ -31,37 +37,9 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
   final GlobalKey<FormFieldState> serviceDescriptionFormKey =
       GlobalKey<FormFieldState>();
 
-  // Picture handling
   final List<File> _selectedPictures = [];
   final ImagePicker _picker = ImagePicker();
   bool _isLoadingPictures = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Add listeners for real-time validation
-    serviceNameController.addListener(() {
-      if (serviceNameFormKey.currentState != null) {
-        serviceNameFormKey.currentState!.validate();
-        setState(() {}); // Update UI to show validation errors
-      }
-    });
-
-    servicePriceController.addListener(() {
-      if (servicePriceFormKey.currentState != null) {
-        servicePriceFormKey.currentState!.validate();
-        setState(() {}); // Update UI to show validation errors
-      }
-    });
-
-    serviceDescriptionController.addListener(() {
-      if (serviceDescriptionFormKey.currentState != null) {
-        serviceDescriptionFormKey.currentState!.validate();
-        setState(() {}); // Update UI to show validation errors
-      }
-    });
-  }
 
   @override
   void dispose() {
@@ -73,9 +51,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
 
   Future<void> _pickImages() async {
     try {
-      setState(() {
-        _isLoadingPictures = true;
-      });
+      setState(() => _isLoadingPictures = true);
 
       final List<XFile> pickedFiles = await _picker.pickMultiImage(
         maxWidth: 1920,
@@ -88,44 +64,32 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           _selectedPictures
               .addAll(pickedFiles.map((xFile) => File(xFile.path)));
         });
-        print('📸 Images picked: ${_selectedPictures.length}');
       }
     } catch (e) {
-      print('❌ Error picking images: $e');
       TopNotificationService.showError(
         context: context,
         message: 'Failed to pick images: $e',
       );
     } finally {
-      setState(() {
-        _isLoadingPictures = false;
-      });
+      setState(() => _isLoadingPictures = false);
     }
   }
 
   void _removeImage(int index) {
-    setState(() {
-      _selectedPictures.removeAt(index);
-    });
+    setState(() => _selectedPictures.removeAt(index));
   }
 
   void _createService() {
-    // First trigger validation to show inline errors
     serviceNameFormKey.currentState?.validate();
     servicePriceFormKey.currentState?.validate();
     serviceDescriptionFormKey.currentState?.validate();
-
-    // Force UI rebuild to show validation errors
     setState(() {});
 
-    // Check if all fields are valid
     if (serviceNameController.text.isNotEmpty &&
         servicePriceController.text.isNotEmpty &&
         serviceDescriptionController.text.isNotEmpty) {
-      // Parse price to integer
       final price = int.tryParse(servicePriceController.text);
       if (price == null) {
-        // Show error for invalid price
         TopNotificationService.showError(
           context: context,
           message: 'Please enter a valid price',
@@ -133,7 +97,6 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
         return;
       }
 
-      // Create service using API
       context.read<SalonServicesBloc>().add(CreateSalonService(
             name: serviceNameController.text,
             price: price,
@@ -143,285 +106,416 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     }
   }
 
+  InputDecoration _fieldDecoration({
+    required String hintText,
+    required SalonUiTheme ui,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(
+        color: ui.textMuted,
+        fontSize: 16,
+      ),
+      filled: true,
+      fillColor: Colors.transparent,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_CreateServiceUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_CreateServiceUi.radius),
+        borderSide: BorderSide(color: ui.borderSubtle, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_CreateServiceUi.radius),
+        borderSide: BorderSide(color: ui.textPrimary, width: 1),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_CreateServiceUi.radius),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_CreateServiceUi.radius),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+      ),
+    );
+  }
+
+  Widget _buildLabeledField({
+    required String label,
+    required Widget child,
+    required SalonUiTheme ui,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Force dark mode for salon - wrap in Theme with dark brightness
-    return Theme(
-      data: ThemeData.dark(),
-      child: BlocListener<SalonServicesBloc, SalonServicesState>(
-        listener: (context, state) {
-          if (state is SalonServiceCreated) {
-            // Debug: Print the service data to see what's available
-            print('🔍 === SERVICE CREATION RESPONSE DATA ===');
-            print('📊 Full serviceData: ${state.serviceData}');
-            print('🆔 ID field: ${state.serviceData['id']}');
-            print('🆔 _id field: ${state.serviceData['_id']}');
-            print('📝 Name field: ${state.serviceData['name']}');
-            print('💰 Price field: ${state.serviceData['price']}');
-            print('📄 Description field: ${state.serviceData['description']}');
-            print('🔍 === END SERVICE CREATION RESPONSE DATA ===');
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
 
-            // Try to get the ID from different possible fields
-            String serviceId = '';
-            if (state.serviceData['id'] != null) {
-              serviceId = state.serviceData['id'].toString();
-            } else if (state.serviceData['_id'] != null) {
-              serviceId = state.serviceData['_id'].toString();
-            }
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: BlocListener<SalonServicesBloc, SalonServicesState>(
+            listener: (context, state) {
+              if (state is SalonServiceCreated) {
+                String serviceId = '';
+                if (state.serviceData['id'] != null) {
+                  serviceId = state.serviceData['id'].toString();
+                } else if (state.serviceData['_id'] != null) {
+                  serviceId = state.serviceData['_id'].toString();
+                }
 
-            print('🆔 Final Service ID: $serviceId');
-
-            // Check if we have a valid service ID
-            if (serviceId.isNotEmpty) {
-              // Navigate to service details screen with the created service data
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => ServiceDetailsScreen(
-                    serviceId: serviceId,
-                    serviceName: serviceNameController.text,
-                    servicePrice: servicePriceController.text,
-                    serviceDescription: serviceDescriptionController.text,
-                    showSuccessMessage: true,
-                  ),
-                ),
-              );
-            } else {
-              // If no service ID, show success message and go back to home
-              TopNotificationService.showSuccess(
-                context: context,
-                message:
-                    '✅ ${AppTranslations.getString(context, 'service_created')} - ${serviceNameController.text}',
-              );
-
-              // Navigate back to home screen
-              Navigator.of(context).pop();
-            }
-          } else if (state is SalonServicesError) {
-            // Show error message as top-dropping dialog
-            TopNotificationService.showError(
-              context: context,
-              message: state.message,
-            );
-          }
-        },
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E), // Bottom color (darker)
-                Color(0xFF3B3B3B), // Top color (lighter)
-              ],
-            ),
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: GestureDetector(
-                onTap: () {
-                  // Close keyboard when tapping outside text fields
-                  FocusScope.of(context).unfocus();
-                },
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      _buildHeader(),
-
-                      const SizedBox(height: 16),
-
-                      // Title
-                      Text(
-                        AppTranslations.getString(
-                            context, 'create_new_service'),
-                        style: AppTheme.headingStyle,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                if (serviceId.isNotEmpty) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => ServiceDetailsScreen(
+                        serviceId: serviceId,
+                        serviceName: serviceNameController.text,
+                        servicePrice: servicePriceController.text,
+                        serviceDescription: serviceDescriptionController.text,
+                        showSuccessMessage: true,
                       ),
-
-                      const SizedBox(height: 24),
-
-                      // Information Banner
-                      _buildInformationBanner(),
-
-                      const SizedBox(height: 32),
-
-                      // Service Name Field
-                      CustomTextField(
-                        label:
-                            AppTranslations.getString(context, 'service_name'),
-                        placeholder: AppTranslations.getString(
-                            context, 'enter_service_name'),
-                        controller: serviceNameController,
-                        keyboardType: TextInputType.text,
-                        formFieldKey: serviceNameFormKey,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppTranslations.getString(
-                                context, 'service_name_required');
-                          }
-                          return null;
-                        },
-                        autovalidateMode: true,
-                        isError:
-                            serviceNameFormKey.currentState?.hasError ?? false,
-                        errorMessage:
-                            serviceNameFormKey.currentState?.hasError == true
-                                ? AppTranslations.getString(
-                                    context, 'service_name_required')
-                                : null,
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Service Pictures Field
-                      _buildPicturesSection(),
-
-                      const SizedBox(height: 20),
-
-                      // Service Price Field
-                      CustomTextField(
-                        label:
-                            '${AppTranslations.getString(context, 'service_price')} (TTC)',
-                        placeholder: AppTranslations.getString(
-                            context, 'enter_service_price'),
-                        controller: servicePriceController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
-                        formFieldKey: servicePriceFormKey,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppTranslations.getString(
-                                context, 'service_price_required');
-                          }
-                          if (int.tryParse(value) == null) {
-                            return AppTranslations.getString(
-                                context, 'service_price_invalid');
-                          }
-                          return null;
-                        },
-                        autovalidateMode: true,
-                        isError:
-                            servicePriceFormKey.currentState?.hasError ?? false,
-                        errorMessage:
-                            servicePriceFormKey.currentState?.hasError == true
-                                ? (int.tryParse(servicePriceController.text) ==
-                                        null
-                                    ? AppTranslations.getString(
-                                        context, 'service_price_invalid')
-                                    : AppTranslations.getString(
-                                        context, 'service_price_required'))
-                                : null,
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Service Description Field
-                      CustomTextField(
-                        label: AppTranslations.getString(
-                            context, 'service_description'),
-                        placeholder: AppTranslations.getString(
-                            context, 'describe_service'),
-                        controller: serviceDescriptionController,
-                        keyboardType: TextInputType.multiline,
-                        maxLines: 5,
-                        formFieldKey: serviceDescriptionFormKey,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppTranslations.getString(
-                                context, 'service_description_required');
-                          }
-                          if (value.length < 10) {
-                            return AppTranslations.getString(
-                                context, 'service_description_too_short');
-                          }
-                          return null;
-                        },
-                        autovalidateMode: true,
-                        isError:
-                            serviceDescriptionFormKey.currentState?.hasError ??
-                                false,
-                        errorMessage: serviceDescriptionFormKey
-                                    .currentState?.hasError ==
-                                true
-                            ? (serviceDescriptionController.text.length < 10
-                                ? AppTranslations.getString(
-                                    context, 'service_description_too_short')
-                                : AppTranslations.getString(
-                                    context, 'service_description_required'))
-                            : null,
-                      ),
-
-                      const SizedBox(height: 40),
-
-                      // Create Service Button
-                      BlocBuilder<SalonServicesBloc, SalonServicesState>(
-                        builder: (context, state) {
-                          return CustomButton(
-                            text: AppTranslations.getString(
-                                context, 'create_new_service'),
-                            onPressed: _createService,
-                            isLoading: state is SalonServiceCreating,
-                            leadingIcon: LucideIcons.plus,
-                          );
-                        },
-                      ),
-                    ],
+                    ),
+                  );
+                } else {
+                  TopNotificationService.showSuccess(
+                    context: context,
+                    message:
+                        '✅ ${AppTranslations.getString(context, 'service_created')} - ${serviceNameController.text}',
+                  );
+                  Navigator.of(context).pop();
+                }
+              } else if (state is SalonServicesError) {
+                TopNotificationService.showError(
+                  context: context,
+                  message: state.message,
+                );
+              }
+            },
+            child: ColoredBox(
+              color: ui.bg,
+              child: Scaffold(
+                backgroundColor: ui.bg,
+                body: SafeArea(
+                  top: false,
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: topInset + 160,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: ui.fullSheetGradient,
+                                stops: ui.fullSheetStops,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Column(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                _CreateServiceUi.horizontalPadding,
+                                topInset + 8,
+                                _CreateServiceUi.horizontalPadding,
+                                0,
+                              ),
+                              child: Row(
+                                children: [
+                                  _buildBackButton(ui),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      AppTranslations.getString(
+                                        context,
+                                        'create_new_service',
+                                      ),
+                                      style: TextStyle(
+                                        color: ui.textPrimary,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  _CreateServiceUi.horizontalPadding,
+                                  24,
+                                  _CreateServiceUi.horizontalPadding,
+                                  28,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildInformationBanner(ui),
+                                    const SizedBox(height: 28),
+                                    _buildLabeledField(
+                                      ui: ui,
+                                      label: AppTranslations.getString(
+                                        context,
+                                        'service_name',
+                                      ),
+                                      child: TextFormField(
+                                        key: serviceNameFormKey,
+                                        controller: serviceNameController,
+                                        style:
+                                            TextStyle(color: ui.textPrimary),
+                                        cursorColor: ui.textPrimary,
+                                        decoration: _fieldDecoration(
+                                          hintText:
+                                              AppTranslations.getString(
+                                            context,
+                                            'enter_service_name',
+                                          ),
+                                          ui: ui,
+                                        ),
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.isEmpty) {
+                                            return AppTranslations.getString(
+                                              context,
+                                              'service_name_required',
+                                            );
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildPicturesSection(ui),
+                                    const SizedBox(height: 20),
+                                    _buildLabeledField(
+                                      ui: ui,
+                                      label:
+                                          '${AppTranslations.getString(context, 'service_price')} (TTC)',
+                                      child: TextFormField(
+                                        key: servicePriceFormKey,
+                                        controller: servicePriceController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                        ],
+                                        style:
+                                            TextStyle(color: ui.textPrimary),
+                                        cursorColor: ui.textPrimary,
+                                        decoration: _fieldDecoration(
+                                          hintText:
+                                              AppTranslations.getString(
+                                            context,
+                                            'enter_service_price',
+                                          ),
+                                          ui: ui,
+                                        ),
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.isEmpty) {
+                                            return AppTranslations.getString(
+                                              context,
+                                              'please_enter_valid_number',
+                                            );
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildLabeledField(
+                                      ui: ui,
+                                      label: AppTranslations.getString(
+                                        context,
+                                        'service_description',
+                                      ),
+                                      child: TextFormField(
+                                        key: serviceDescriptionFormKey,
+                                        controller:
+                                            serviceDescriptionController,
+                                        maxLines: 5,
+                                        style:
+                                            TextStyle(color: ui.textPrimary),
+                                        cursorColor: ui.textPrimary,
+                                        decoration: _fieldDecoration(
+                                          hintText:
+                                              AppTranslations.getString(
+                                            context,
+                                            'describe_service',
+                                          ),
+                                          ui: ui,
+                                        ),
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.isEmpty) {
+                                            return AppTranslations.getString(
+                                              context,
+                                              'please_enter_message',
+                                            );
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 32),
+                                    BlocBuilder<SalonServicesBloc,
+                                        SalonServicesState>(
+                                      builder: (context, state) {
+                                        final isLoading =
+                                            state is SalonServiceCreating;
+                                        return SizedBox(
+                                          width: double.infinity,
+                                          height: 52,
+                                          child: ElevatedButton(
+                                            onPressed: isLoading
+                                                ? null
+                                                : _createService,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  ui.primaryButtonBg,
+                                              foregroundColor:
+                                                  ui.primaryButtonFg,
+                                              disabledBackgroundColor: ui
+                                                  .primaryButtonBg
+                                                  .withValues(alpha: 0.7),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                  _CreateServiceUi.radius,
+                                                ),
+                                              ),
+                                            ),
+                                            child: isLoading
+                                                ? SizedBox(
+                                                    width: 22,
+                                                    height: 22,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color:
+                                                          ui.primaryButtonFg,
+                                                    ),
+                                                  )
+                                                : Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Text(
+                                                        AppTranslations
+                                                            .getString(
+                                                          context,
+                                                          'create_new_service',
+                                                        ),
+                                                        style: TextStyle(
+                                                          color: ui
+                                                              .primaryButtonFg,
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                          width: 8),
+                                                      Icon(
+                                                        LucideIcons.plus,
+                                                        size: 18,
+                                                        color: ui
+                                                            .primaryButtonFg,
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBackButton(SalonUiTheme ui) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Container(
+        width: _CreateServiceUi.buttonSize,
+        height: _CreateServiceUi.buttonSize,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ui.buttonFillTop, ui.buttonFillBottom],
+          ),
+          borderRadius: BorderRadius.circular(_CreateServiceUi.buttonRadius),
+          border: ui.isDark ? null : Border.all(color: ui.cardBorder, width: 1),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          LucideIcons.arrowLeft,
+          color: ui.buttonIcon,
+          size: 22,
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(
-            LucideIcons.arrowLeft,
-            color: AppTheme.textPrimaryColor,
-          ),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInformationBanner() {
+  Widget _buildInformationBanner(SalonUiTheme ui) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.border2,
+        color: ui.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.borderColor,
-          width: 1,
-        ),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              LucideIcons.flag,
-              color: AppTheme.accentColor,
-              size: 20,
-            ),
+          Icon(
+            LucideIcons.flag,
+            color: SalonUiTheme.accentBlue,
+            size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -430,9 +524,11 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
               children: [
                 Text(
                   AppTranslations.getString(
-                      context, 'create_only_services_you_want_to_promote'),
-                  style: const TextStyle(
-                    color: AppTheme.accentColor,
+                    context,
+                    'create_only_services_you_want_to_promote',
+                  ),
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
                     fontSize: 14,
                     height: 1.4,
                   ),
@@ -440,9 +536,11 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                 const SizedBox(height: 8),
                 Text(
                   AppTranslations.getString(
-                      context, 'discounts_applied_with_ambassadors'),
-                  style: const TextStyle(
-                    color: AppTheme.accentColor,
+                    context,
+                    'discounts_applied_with_ambassadors',
+                  ),
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
                     fontSize: 14,
                     height: 1.4,
                   ),
@@ -450,9 +548,11 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                 const SizedBox(height: 8),
                 Text(
                   AppTranslations.getString(
-                      context, 'packs_formulas_shared_more'),
-                  style: const TextStyle(
-                    color: AppTheme.accentColor,
+                    context,
+                    'packs_formulas_shared_more',
+                  ),
+                  style: TextStyle(
+                    color: ui.isDark ? Colors.white : Colors.black,
                     fontSize: 14,
                     height: 1.4,
                   ),
@@ -465,41 +565,38 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     );
   }
 
-  Widget _buildPicturesSection() {
+  Widget _buildPicturesSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Service Pictures',
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
-            fontSize: 16,
+          AppTranslations.getString(context, 'service_pictures'),
+          style: TextStyle(
+            color: ui.textPrimary,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 10),
-        // Upload Button
         GestureDetector(
           onTap: _isLoadingPictures ? null : _pickImages,
           child: Container(
             width: double.infinity,
-            height: 50,
+            height: 52,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1,
-              ),
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(_CreateServiceUi.radius),
+              border: Border.all(color: ui.borderSubtle, width: 1),
             ),
             child: Center(
               child: _isLoadingPictures
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(ui.textPrimary),
                       ),
                     )
                   : Row(
@@ -507,14 +604,17 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                       children: [
                         Icon(
                           LucideIcons.image,
-                          color: AppTheme.textPrimaryColor,
+                          color: ui.textPrimary,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Upload Pictures',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          AppTranslations.getString(
+                            context,
+                            'upload_pictures',
+                          ),
+                          style: TextStyle(
+                            color: ui.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
@@ -524,55 +624,57 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
             ),
           ),
         ),
-        // Selected Images Preview
         if (_selectedPictures.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: List.generate(_selectedPictures.length, (index) {
-              return Stack(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
+          SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _selectedPictures.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                return Stack(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(_CreateServiceUi.radius),
+                        border: Border.all(color: ui.cardBorder, width: 1),
                       ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _selectedPictures[index],
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () => _removeImage(index),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 16,
+                      child: ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(_CreateServiceUi.radius),
+                        child: Image.file(
+                          _selectedPictures[index],
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            }),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => _removeImage(index),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black87,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ],

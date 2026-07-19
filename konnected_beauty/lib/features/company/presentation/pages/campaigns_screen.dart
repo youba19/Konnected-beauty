@@ -4,12 +4,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/campaigns/campaigns_bloc.dart';
 import '../../../../core/bloc/campaigns/campaigns_event.dart';
 import '../../../../core/bloc/campaigns/campaigns_state.dart';
+import '../../../../core/services/api/salon_profile_service.dart';
 import 'campaign_details_screen.dart';
+import 'salon_settings_screen.dart';
+
+/// Campaigns tab — layout radius tokens (colors via [SalonUiTheme]).
+abstract final class _SalonCampaignsUi {
+  static const double searchRadius = 16;
+  static const double buttonRadius = 14;
+  static const double cardRadius = 24;
+  static const double imageWidth = 96;
+}
 
 class CampaignsScreen extends StatefulWidget {
   final VoidCallback? onNavigateToInfluencers;
@@ -27,10 +38,15 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   bool _isLoadingMore = false;
   String? _currentStatus;
   String _currentSearch = '';
+  String _profileInitial = 'K';
+  final PageController _carouselController = PageController();
+  int _carouselIndex = 0;
 
   @override
   void initState() {
     super.initState();
+
+    _loadProfileInitial();
 
     print('🎬 === CAMPAIGNS SCREEN INIT ===');
     print('🎬 Screen initialized, loading campaigns...');
@@ -48,11 +64,28 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         ));
   }
 
+  Future<void> _loadProfileInitial() async {
+    try {
+      final result = await SalonProfileService().getSalonProfile();
+      if (!mounted || result['success'] != true) return;
+      final data = result['data'] as Map<String, dynamic>?;
+      final salonName = data?['salonInfo']?['name']?.toString() ?? '';
+      final personalName = data?['name']?.toString() ?? '';
+      final source = salonName.isNotEmpty ? salonName : personalName;
+      if (source.isNotEmpty) {
+        setState(() => _profileInitial = source[0].toUpperCase());
+      }
+    } catch (_) {
+      // Keep default initial.
+    }
+  }
+
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
     searchController.dispose();
     _scrollController.dispose();
+    _carouselController.dispose();
     super.dispose();
   }
 
@@ -92,181 +125,234 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   Widget _buildFilterModal() {
     return StatefulBuilder(
       builder: (context, setModalState) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.secondaryColor,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
+        final ui = SalonUiTheme.of(context);
+        final options = <({String key, String label})>[
+          (
+            key: 'all',
+            label: AppTranslations.getString(context, 'all'),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      AppTranslations.getString(context, 'filter_campaigns'),
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+          (
+            key: 'pending',
+            label: AppTranslations.getString(context, 'pending'),
+          ),
+          (
+            key: 'in progress',
+            label: AppTranslations.getString(context, 'on_going'),
+          ),
+          (
+            key: 'finished',
+            label: AppTranslations.getString(context, 'finished'),
+          ),
+          (
+            key: 'rejected',
+            label: AppTranslations.getString(context, 'rejected'),
+          ),
+        ];
 
-                // Status Filter
-                Text(
-                  AppTranslations.getString(context, 'campaign_status'),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
+        final active = (_currentStatus ?? 'all');
 
-                // Status Dropdown
-                Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        return Container(
+          decoration: BoxDecoration(
+            color: ui.bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 170,
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppTheme.transparentBackground,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.textPrimaryColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _currentStatus ?? 'all',
-                      isExpanded: true,
-                      hint: Text(
-                        AppTranslations.getString(context, 'all'),
-                        style: const TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontSize: 16,
-                        ),
-                      ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      style: const TextStyle(
-                        color: AppTheme.textPrimaryColor,
-                        fontSize: 16,
-                      ),
-                      items: [
-                        DropdownMenuItem<String>(
-                          value: 'all',
-                          child:
-                              Text(AppTranslations.getString(context, 'all')),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'pending',
-                          child: Text(
-                              AppTranslations.getString(context, 'pending')),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'in progress',
-                          child: Text(
-                              AppTranslations.getString(context, 'on_going')),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'finished',
-                          child: Text(
-                              AppTranslations.getString(context, 'finished')),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'rejected',
-                          child: Text(
-                              AppTranslations.getString(context, 'rejected')),
-                        ),
-                      ],
-                      onChanged: (String? newValue) {
-                        print('🔍 === DROPDOWN CHANGED ===');
-                        print('🔍 New Value: "$newValue"');
-                        print('🔍 Current Status Before: "$_currentStatus"');
-                        if (newValue != null) {
-                          setModalState(() {
-                            _currentStatus = newValue;
-                          });
-                          print('🔍 Current Status After: "$_currentStatus"');
-                        }
-                      },
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(24)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: ui.sheetHeaderGradient,
+                      stops: const [0.0, 0.35, 0.7, 1.0],
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setModalState(() {
-                            _currentStatus = 'all';
-                          });
-                          Navigator.pop(context);
-                          _applyFilters();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: AppTheme.textSecondaryColor,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(
-                              color: AppTheme.textSecondaryColor,
-                              width: 1,
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              AppTranslations.getString(
+                                context,
+                                'filter_campaigns',
+                              ),
+                              style: TextStyle(
+                                color: ui.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                        child:
-                            Text(AppTranslations.getString(context, 'clear')),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _applyFilters();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.textPrimaryColor,
-                          foregroundColor: AppTheme.secondaryColor,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: ui.sheetOverlayButton,
+                                borderRadius: BorderRadius.circular(
+                                  _SalonCampaignsUi.buttonRadius,
+                                ),
+                                border: Border.all(
+                                  color: ui.cardBorder,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                LucideIcons.x,
+                                color: ui.textPrimary,
+                                size: 18,
+                              ),
+                            ),
                           ),
-                        ),
-                        child:
-                            Text(AppTranslations.getString(context, 'apply')),
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        AppTranslations.getString(context, 'campaign_status'),
+                        style: TextStyle(
+                          color: ui.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...options.map((o) {
+                        final isSelected = active == o.key;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: GestureDetector(
+                            onTap: () => setModalState(
+                              () => _currentStatus = o.key,
+                            ),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: ui.card,
+                                borderRadius: BorderRadius.circular(
+                                  _SalonCampaignsUi.cardRadius,
+                                ),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? ui.textPrimary
+                                      : ui.cardBorder,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      o.label,
+                                      style: TextStyle(
+                                        color: ui.textPrimary,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      LucideIcons.check,
+                                      color: ui.textPrimary,
+                                      size: 18,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setModalState(() => _currentStatus = 'all');
+                                Navigator.of(context).pop();
+                                _applyFilters();
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: ui.textPrimary,
+                                side: BorderSide(
+                                  color: ui.outlinedButtonBorder,
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    _SalonCampaignsUi.cardRadius,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: Text(
+                                AppTranslations.getString(context, 'clear'),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                _applyFilters();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ui.primaryButtonBg,
+                                foregroundColor: ui.primaryButtonFg,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    _SalonCampaignsUi.cardRadius,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: Text(
+                                AppTranslations.getString(context, 'apply'),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -277,7 +363,6 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     setState(() {
       _currentStatus = 'all';
     });
-    Navigator.pop(context);
     _applyFilters();
   }
 
@@ -355,124 +440,120 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
     return BlocBuilder<LanguageBloc, LanguageState>(
       builder: (context, languageState) {
-        return Scaffold(
-          backgroundColor: const Color(0xFF1F1E1E),
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Color(0xFF1F1E1E), // Bottom color (darker)
-                  Color(0xFF3B3B3B), // Top color (lighter)
-                ],
-              ),
-            ),
-            child: SafeArea(
+        final ui = SalonUiTheme.of(context);
+        final topInset = MediaQuery.paddingOf(context).top;
+
+        return ColoredBox(
+          color: ui.bg,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              top: false,
               child: GestureDetector(
-                onTap: () {
-                  // Close keyboard when tapping outside text fields
-                  FocusScope.of(context).unfocus();
-                },
+                onTap: () => FocusScope.of(context).unfocus(),
                 child: BlocListener<CampaignsBloc, CampaignsState>(
                   listener: (context, state) {
-                    if (state is CampaignsLoaded) {
-                      // Reset loading flag when load more completes
-                      _isLoadingMore = false;
-                    } else if (state is CampaignsError) {
-                      // Reset loading flag on error
-                      _isLoadingMore = false;
+                    if (state is CampaignsLoaded ||
+                        state is CampaignsError ||
+                        state is CampaignsLoadingMore) {
+                      setState(() => _isLoadingMore = false);
                     }
                   },
                   child: RefreshIndicator(
                     onRefresh: () async {
-                      context.read<CampaignsBloc>().add(RefreshCampaigns(
-                            status:
-                                _currentStatus == 'all' ? null : _currentStatus,
-                            limit: 10,
-                          ));
+                      context.read<CampaignsBloc>().add(
+                            RefreshCampaigns(
+                              status: _currentStatus == 'all'
+                                  ? null
+                                  : _currentStatus,
+                              limit: 10,
+                            ),
+                          );
                     },
-                    color: AppTheme.textPrimaryColor,
-                    backgroundColor: AppTheme.transparentBackground,
+                    color: Colors.white,
+                    backgroundColor: SalonUiTheme.blueUpper,
+                    displacement: topInset + 52,
                     child: NotificationListener<ScrollNotification>(
-                      onNotification: (ScrollNotification scrollInfo) {
-                        // Check if user has scrolled to the bottom
-                        final isNearBottom = scrollInfo.metrics.pixels >=
-                            scrollInfo.metrics.maxScrollExtent - 200;
-                        final isAtBottom = scrollInfo.metrics.pixels >=
-                            scrollInfo.metrics.maxScrollExtent;
-                        final isNotScrollable =
-                            scrollInfo.metrics.maxScrollExtent <= 0;
-
-                        if (isNearBottom || isAtBottom || isNotScrollable) {
-                          final currentState =
-                              context.read<CampaignsBloc>().state;
-                          if (currentState is CampaignsLoaded) {
-                            if (currentState.hasMore && !_isLoadingMore) {
-                              _isLoadingMore = true;
-                              context
-                                  .read<CampaignsBloc>()
-                                  .add(LoadMoreCampaigns(
-                                    page: currentState.currentPage + 1,
-                                    search: currentState.currentSearch,
-                                    status: currentState.currentStatus ??
-                                        (_currentStatus == 'all'
-                                            ? null
-                                            : _currentStatus),
-                                  ));
-                            }
-                          }
-                        }
-                        return false;
-                      },
+                      onNotification: _onScrollNotification,
                       child: CustomScrollView(
                         controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: ClampingScrollPhysics(),
+                        ),
                         slivers: [
-                          // Header
-                          SliverToBoxAdapter(
-                            child: _buildHeader(),
-                          ),
-
-                          // Content based on state
+                          SliverToBoxAdapter(child: _buildHeader(topInset)),
                           BlocBuilder<CampaignsBloc, CampaignsState>(
                             builder: (context, state) {
                               if (state is CampaignsLoading) {
                                 return _buildShimmerSliver();
-                              } else if (state is CampaignsError) {
+                              }
+                              if (state is CampaignsError) {
                                 return SliverToBoxAdapter(
                                   child: _buildErrorState(state),
                                 );
-                              } else if (state is CampaignsLoaded) {
-                                final filteredCampaigns = _filterCampaigns(state
-                                    .campaigns
-                                    .cast<Map<String, dynamic>>());
+                              }
+
+                              if (state is CampaignsLoaded) {
+                                final campaigns = state.campaigns
+                                    .cast<Map<String, dynamic>>();
+                                final filteredCampaigns =
+                                    _filterCampaigns(campaigns);
+
+                                final total = state.total;
+                                final totalClicks = campaigns.fold<int>(
+                                  0,
+                                  (sum, c) =>
+                                      sum + (c['clicks'] as int? ?? 0),
+                                );
+
                                 if (filteredCampaigns.isEmpty) {
                                   return SliverToBoxAdapter(
                                     child: _buildNoCampaignsState(),
                                   );
-                                } else {
-                                  return _buildCampaignsListSliver(
-                                      state, filteredCampaigns);
                                 }
-                              } else if (state is CampaignsLoadingMore) {
-                                final filteredCampaigns = _filterCampaigns(state
-                                    .campaigns
-                                    .cast<Map<String, dynamic>>());
-                                if (filteredCampaigns.isEmpty) {
-                                  return SliverToBoxAdapter(
-                                    child: _buildNoCampaignsState(),
-                                  );
-                                } else {
-                                  return _buildCampaignsListWithLoadingSliver(
-                                      state, filteredCampaigns);
-                                }
-                              } else {
-                                return SliverToBoxAdapter(
-                                  child: _buildInitialState(),
+
+                                return _buildCampaignsListSliver(
+                                  filteredCampaigns: filteredCampaigns,
+                                  totalCampaigns: total,
+                                  totalClicks: totalClicks,
+                                  isLoadingMore: false,
                                 );
                               }
+
+                              if (state is CampaignsLoadingMore) {
+                                final campaigns = state.campaigns
+                                    .cast<Map<String, dynamic>>();
+                                final filteredCampaigns =
+                                    _filterCampaigns(campaigns);
+
+                                final total = state.total;
+                                final totalClicks = campaigns.fold<int>(
+                                  0,
+                                  (sum, c) =>
+                                      sum + (c['clicks'] as int? ?? 0),
+                                );
+
+                                if (filteredCampaigns.isEmpty) {
+                                  return SliverToBoxAdapter(
+                                    child: _buildNoCampaignsState(),
+                                  );
+                                }
+
+                                return _buildCampaignsListSliver(
+                                  filteredCampaigns: filteredCampaigns,
+                                  totalCampaigns: total,
+                                  totalClicks: totalClicks,
+                                  isLoadingMore: true,
+                                );
+                              }
+
+                              return SliverToBoxAdapter(
+                                child: _buildInitialState(),
+                              );
                             },
+                          ),
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: 96),
                           ),
                         ],
                       ),
@@ -487,161 +568,186 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppTranslations.getString(context, 'campaigns'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
+  bool _onScrollNotification(ScrollNotification scrollInfo) {
+    final isNearBottom =
+        scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200;
+    final isAtBottom =
+        scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent;
+    final isNotScrollable = scrollInfo.metrics.maxScrollExtent <= 0;
 
-          // Search Bar and Filter
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: AppTheme.transparentBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.textPrimaryColor,
-                      width: 1,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: searchController,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: AppTranslations.getString(context, 'search'),
-                      hintStyle: const TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 16,
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.search,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
-                ),
+    if (isNearBottom || isAtBottom || isNotScrollable) {
+      final currentState = context.read<CampaignsBloc>().state;
+      if (currentState is CampaignsLoaded &&
+          currentState.hasMore &&
+          !_isLoadingMore) {
+        _isLoadingMore = true;
+        context.read<CampaignsBloc>().add(
+              LoadMoreCampaigns(
+                page: currentState.currentPage + 1,
+                search: currentState.currentSearch,
+                status: currentState.currentStatus ??
+                    (_currentStatus == 'all' ? null : _currentStatus),
               ),
-              const SizedBox(width: 12),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: (_currentStatus != null && _currentStatus != 'all')
-                      ? AppTheme.textPrimaryColor
-                      : AppTheme.transparentBackground,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppTheme.textPrimaryColor,
-                    width: 1,
-                  ),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.filter_list,
-                    color: (_currentStatus != null && _currentStatus != 'all')
-                        ? AppTheme.secondaryColor
-                        : AppTheme.textPrimaryColor,
-                    size: 20,
-                  ),
-                  onPressed: _showFilterScreen,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // QR Code Scan Widget
-          _buildQRScanWidget(),
-        ],
-      ),
-    );
+            );
+      }
+    }
+    return false;
   }
 
-  Widget _buildQRScanWidget() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF646464),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          // QR Code Icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.transparentBackground,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              LucideIcons.qrCode,
-              color: AppTheme.getTextPrimaryColor(Theme.of(context).brightness),
-              size: 36,
+  Widget _buildHeader(double topInset) {
+    final ui = SalonUiTheme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ui.headerGradient,
+              stops: ui.headerStops,
             ),
           ),
-          const SizedBox(width: 16),
-          // Text Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+          padding: EdgeInsets.fromLTRB(16, topInset + 6, 16, 0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/images/Konected beauty - Logo white.png',
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SalonSettingsScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: SalonUiTheme.profileBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _profileInitial,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 64),
+            ],
+          ),
+        ),
+        ColoredBox(
+          color: ui.bg,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            child: Row(
               children: [
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      AppTranslations.getString(
-                          context, 'scan_reservations_qr_title'),
-                      style: AppTheme.applyPoppins(TextStyle(
-                        color: AppTheme.getTextPrimaryColor(
-                            Theme.of(context).brightness),
+                Expanded(
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        _SalonCampaignsUi.searchRadius,
+                      ),
+                      border: Border.all(
+                        color: ui.borderSubtle,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: searchController,
+                      style: TextStyle(
+                        color: ui.textPrimary,
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      )),
-                      maxLines: 1,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: AppTranslations.getString(
+                          context,
+                          'search_campaigns',
+                        ),
+                        hintStyle: TextStyle(
+                          color: ui.textSecondary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        prefixIcon: Icon(
+                          LucideIcons.search,
+                          color: ui.textSecondary,
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 12,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  AppTranslations.getString(
-                      context, 'scan_reservations_qr_subtitle'),
-                  style: AppTheme.applyPoppins(TextStyle(
-                    color: AppTheme.getTextSecondaryColor(
-                        Theme.of(context).brightness),
-                    fontSize: 13,
-                  )),
-                  maxLines: 2,
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 10),
+                _buildHeaderIconButton(
+                  icon: LucideIcons.listFilter,
+                  isActive: _currentStatus != null && _currentStatus != 'all',
+                  onTap: _showFilterScreen,
                 ),
+                if (_currentStatus != null && _currentStatus != 'all') ...[
+                  const SizedBox(width: 8),
+                  _buildHeaderIconButton(
+                    icon: LucideIcons.x,
+                    onTap: _clearFilters,
+                  ),
+                ],
               ],
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    final ui = SalonUiTheme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: isActive ? ui.card : Colors.transparent,
+          borderRadius: BorderRadius.circular(_SalonCampaignsUi.buttonRadius),
+          border: Border.all(
+            color: ui.borderSubtle,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: ui.textPrimary,
+          size: 22,
+        ),
       ),
     );
   }
@@ -729,173 +835,163 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildCampaignsListSliver(
-      CampaignsLoaded state, List<Map<String, dynamic>> filteredCampaigns) {
-    int totalClicks = state.campaigns.fold<int>(
-        0, (sum, campaign) => sum + (campaign['clicks'] as int? ?? 0));
-
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        // Summary Cards
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: _summaryCard(
-                  icon: LucideIcons.ticket,
-                  value: '${state.total}',
-                  title: AppTranslations.getString(context, 'total_campaigns'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _summaryCard(
-                  icon: LucideIcons.mousePointerClick,
-                  value: totalClicks.toString(),
-                  title: AppTranslations.getString(context, 'total_clicks'),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Campaigns List
-        ...filteredCampaigns.asMap().entries.map((entry) {
-          final index = entry.key;
-          final campaign = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: index < filteredCampaigns.length - 1 ? 12 : 16,
-            ),
-            child: _buildCampaignCard(campaign),
-          );
-        }).toList(),
-        // End message
-        if (!state.hasMore)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const Text(
-                  'No more campaigns available',
-                  style: TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'All campaigns loaded (${filteredCampaigns.length}/${state.total})',
-                  style: const TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ]),
-    );
-  }
-
-  Widget _buildCampaignsListWithLoadingSliver(CampaignsLoadingMore state,
-      List<Map<String, dynamic>> filteredCampaigns) {
-    int totalClicks = state.campaigns.fold<int>(
-        0, (sum, campaign) => sum + (campaign['clicks'] as int? ?? 0));
-
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        // Summary Cards
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: _summaryCard(
-                  icon: Icons.confirmation_num,
-                  value: '${state.total}',
-                  title: AppTranslations.getString(context, 'total_campaigns'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _summaryCard(
-                  icon: Icons.trending_up,
-                  value: totalClicks.toString(),
-                  title: AppTranslations.getString(context, 'total_clicks'),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Campaigns List
-        ...filteredCampaigns.asMap().entries.map((entry) {
-          final index = entry.key;
-          final campaign = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: index < filteredCampaigns.length - 1 ? 12 : 16,
-            ),
-            child: _buildCampaignCard(campaign),
-          );
-        }).toList(),
-        // Loading indicator at the bottom
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: const Center(
-            child: CircularProgressIndicator(
-              color: AppTheme.accentColor,
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _summaryCard({
-    required IconData icon,
-    required String value,
-    required String title,
+  Widget _buildCampaignsListSliver({
+    required List<Map<String, dynamic>> filteredCampaigns,
+    required int totalCampaigns,
+    required int totalClicks,
+    required bool isLoadingMore,
   }) {
+    final ui = SalonUiTheme.of(context);
+
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: _buildCarousel(
+            totalCampaigns: totalCampaigns,
+            totalClicks: totalClicks,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            AppTranslations.getString(context, 'campaigns'),
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...filteredCampaigns.asMap().entries.map((entry) {
+          final index = entry.key;
+          final campaign = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: index < filteredCampaigns.length - 1 ? 12 : 0,
+            ),
+            child: _buildCampaignCard(campaign),
+          );
+        }),
+        if (isLoadingMore) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: CircularProgressIndicator(color: ui.textPrimary),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _buildCarousel({
+    required int totalCampaigns,
+    required int totalClicks,
+  }) {
+    final ui = SalonUiTheme.of(context);
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 98,
+          child: PageView(
+            controller: _carouselController,
+            onPageChanged: (value) => setState(() => _carouselIndex = value),
+            children: [
+              _buildQrTipCard(),
+              _buildStatsCards(
+                totalCampaigns: totalCampaigns,
+                totalClicks: totalClicks,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(2, (index) {
+            final isActive = _carouselIndex == index;
+            return Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isActive ? ui.textPrimary : ui.textMuted,
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQrTipCard() {
+    final ui = SalonUiTheme.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: ui.bannerFill,
+        borderRadius: BorderRadius.circular(_SalonCampaignsUi.cardRadius),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start, // Align text left
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Icon(icon, color: AppTheme.secondaryColor, size: 20),
-            ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: ui.sheetOverlayButton,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              LucideIcons.scanLine,
+              color: ui.textPrimary,
+              size: 20,
+            ),
           ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              title,
-              style: const TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  AppTranslations.getString(
+                      context, 'scan_reservations_qr_title'),
+                  style: TextStyle(
+                    color: ui.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppTranslations.getString(
+                      context, 'scan_reservations_qr_subtitle'),
+                  style: TextStyle(
+                    color: ui.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ],
@@ -903,33 +999,99 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
+  Widget _buildStatsCards({
+    required int totalCampaigns,
+    required int totalClicks,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            value: totalCampaigns.toString(),
+            title: AppTranslations.getString(context, 'total_campaigns'),
+            icon: LucideIcons.ticket,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            value: _formatInt(totalClicks),
+            title: AppTranslations.getString(context, 'total_clicks'),
+            icon: LucideIcons.mousePointerClick,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String value,
+    required String title,
+    required IconData icon,
+  }) {
+    final ui = SalonUiTheme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ui.bannerFill,
+        borderRadius: BorderRadius.circular(_SalonCampaignsUi.cardRadius),
+        border: Border.all(color: ui.cardBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: ui.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Icon(icon, color: ui.textPrimary, size: 18),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: TextStyle(
+              color: ui.textSecondary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCampaignCard(Map<String, dynamic> campaign) {
+    final ui = SalonUiTheme.of(context);
     final influencer = campaign['influencer']?['profile'] ?? {};
     final pseudo = influencer['pseudo'] ?? 'Unknown';
     final status = campaign['status'] ?? 'Unknown';
-    final initiator = campaign['initiator'] ?? 'salon'; // Get initiator
-    final clicks = campaign['clicks'] ?? 0;
+    final initiator = campaign['initiator'] ?? 'salon';
+    final clicks = campaign['clicks'];
     final promotion = campaign['promotion'] ?? 0;
     final promotionType = campaign['promotionType'] ?? 'percentage';
-    final createdAt = campaign['createdAt'] ?? '';
     final profilePicture = influencer['profilePicture'];
 
-    // Format date
-    String formattedDate = 'Unknown';
-    try {
-      final date = DateTime.parse(createdAt);
-      formattedDate = '${date.day}/${date.month}/${date.year}';
-    } catch (e) {
-      print('Error parsing date: $e');
-    }
+    final String promotionText = promotionType == 'percentage'
+        ? '$promotion%'
+        : '$promotion€';
 
-    // Format promotion value
-    String promotionText = '';
-    if (promotionType == 'percentage') {
-      promotionText = '$promotion%';
-    } else {
-      promotionText = '$promotion€ ';
-    }
+    final clicksValue = clicks is int
+        ? clicks
+        : int.tryParse(clicks?.toString() ?? '');
+    final clicksLabel = clicksValue == null || clicksValue <= 0
+        ? '--- Clicks'
+        : '${_formatInt(clicksValue)} Clicks';
 
     return GestureDetector(
       onTap: () async {
@@ -941,110 +1103,170 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
             ),
           ),
         );
-        // Refresh campaigns when returning from details screen
         if (mounted) {
           context.read<CampaignsBloc>().add(
                 RefreshCampaigns(
                   page: 1,
-                  limit: 10, // Normal page size like influencers
+                  limit: 10,
                   status: _currentStatus == 'all' ? null : _currentStatus,
                 ),
               );
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 112,
         decoration: BoxDecoration(
-          color: AppTheme.transparentBackground,
-          borderRadius: BorderRadius.circular(16),
+          color: ui.cardAlt,
+          borderRadius: BorderRadius.circular(_SalonCampaignsUi.cardRadius),
           border: Border.all(
-            color: Colors.white,
+            color: ui.cardBorder,
+            width: 1,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        clipBehavior: Clip.antiAlias,
+        child: Row(
           children: [
-            // Date + Status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    formattedDate,
-                    style: const TextStyle(
-                        color: AppTheme.textPrimaryColor, fontSize: 16),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    _getStatusTranslation(status, initiator: initiator)
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.end,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: _SalonCampaignsUi.imageWidth,
+              height: double.infinity,
+              child: profilePicture != null &&
+                      profilePicture.toString().isNotEmpty
+                  ? Image.network(
+                      profilePicture.toString(),
+                      fit: BoxFit.cover,
+                      width: _SalonCampaignsUi.imageWidth,
+                      height: double.infinity,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _campaignAvatarPlaceholder();
+                      },
+                    )
+                  : _campaignAvatarPlaceholder(),
             ),
-            const SizedBox(height: 12),
-            // Influencer row
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: Colors.grey,
-                  backgroundImage: profilePicture != null
-                      ? NetworkImage(profilePicture)
-                      : null,
-                  child: profilePicture == null
-                      ? const Icon(Icons.person, color: Colors.white, size: 32)
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '@$pseudo',
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _getStatusTranslation(
+                              status,
+                              initiator: initiator,
+                            ),
+                            style: TextStyle(
+                              color: ui.textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              height: 1.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          _statusIcon(status),
+                          size: 14,
+                          color: ui.textPrimary,
+                        ),
+                      ],
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '@$pseudo',
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _pill(label: promotionText, ui: ui),
+                        const SizedBox(width: 8),
+                        Flexible(child: _pill(label: clicksLabel, ui: ui)),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Promotion and Clicks
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$clicks Clicks',
-                  style: const TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '$promotionText Promotion',
-                  style: const TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'in progress':
+      case 'on_going':
+        return LucideIcons.circleDotDashed;
+      case 'finished':
+        return LucideIcons.checkCircle;
+      case 'rejected':
+        return LucideIcons.xCircle;
+      case 'pending':
+        return LucideIcons.userSquare;
+      default:
+        return LucideIcons.circleDotDashed;
+    }
+  }
+
+  Widget _campaignAvatarPlaceholder() {
+    return const ColoredBox(
+      color: Color(0xFF2C2C2E),
+      child: Center(
+        child: Icon(
+          Icons.person,
+          color: Colors.white54,
+          size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _pill({required String label, required SalonUiTheme ui}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: ui.bannerFill,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: ui.cardBorder, width: 1),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: ui.textPrimary,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          height: 1.1,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  String _formatInt(dynamic value) {
+    final intValue = value is int ? value : int.tryParse(value.toString()) ?? 0;
+    final raw = intValue.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < raw.length; i++) {
+      final reverseIndex = raw.length - i;
+      buf.write(raw[i]);
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) buf.write(',');
+    }
+    return buf.toString();
   }
 
   String _getStatusTranslation(String status, {String? initiator}) {
@@ -1071,87 +1293,143 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange;
-      case 'active':
-      case 'on':
-        return Colors.green;
-      case 'finished':
-      case 'completed':
-        return Colors.blue;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
   Widget _buildNoCampaignsState() {
+    final ui = SalonUiTheme.of(context);
+    final hasActiveFilter =
+        (_currentStatus != null && _currentStatus != 'all') ||
+            _currentSearch.isNotEmpty;
+
     return Padding(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.campaign, color: Colors.white, size: 60),
-          const SizedBox(height: 20),
-          Text(
-            AppTranslations.getString(context, 'no_campaigns_yet'),
-            style: const TextStyle(
-                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: ui.bannerFill,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: ui.cardBorder,
+                width: 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              hasActiveFilter ? LucideIcons.searchX : LucideIcons.ticket,
+              color: ui.textPrimary,
+              size: 32,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
           Text(
-            AppTranslations.getString(context, 'go_to_influencers_message'),
-            style: const TextStyle(color: Colors.grey, fontSize: 14),
+            AppTranslations.getString(
+              context,
+              hasActiveFilter ? 'no_campaigns_found' : 'no_campaigns_yet',
+            ),
+            style: TextStyle(
+              color: ui.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: _goToInfluencers,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+          const SizedBox(height: 10),
+          Text(
+            AppTranslations.getString(
+              context,
+              hasActiveFilter
+                  ? 'no_campaigns_for_filters'
+                  : 'go_to_influencers_message',
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  AppTranslations.getString(context, 'go_to_influencers'),
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: ui.textSecondary,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.35,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
+          if (hasActiveFilter)
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _clearFilters,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ui.primaryButtonBg,
+                  foregroundColor: ui.primaryButtonFg,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.people, size: 20)
-              ],
+                child: Text(
+                  AppTranslations.getString(context, 'clear_filters'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _goToInfluencers,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ui.primaryButtonBg,
+                  foregroundColor: ui.primaryButtonFg,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      AppTranslations.getString(context, 'go_to_influencers'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(LucideIcons.users, size: 20),
+                  ],
+                ),
+              ),
             ),
-          )
         ],
       ),
     );
   }
 
   Widget _buildShimmerSliver() {
+    final ui = SalonUiTheme.of(context);
+
     return SliverList(
       delegate: SliverChildListDelegate([
         // Shimmer summary cards
         Shimmer.fromColors(
-          baseColor: Colors.grey[800]!,
-          highlightColor: Colors.grey[600]!,
+          baseColor: ui.isDark ? Colors.grey[800]! : Colors.grey[300]!,
+          highlightColor: ui.isDark ? Colors.grey[600]! : Colors.grey[100]!,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Expanded(
-                  child: _buildShimmerSummaryCard(),
+                  child: _buildShimmerSummaryCard(ui),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildShimmerSummaryCard(),
+                  child: _buildShimmerSummaryCard(ui),
                 ),
               ],
             ),
@@ -1161,15 +1439,15 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         // Shimmer campaign cards
         ...List.generate(5, (index) {
           return Shimmer.fromColors(
-            baseColor: Colors.grey[800]!,
-            highlightColor: Colors.grey[600]!,
+            baseColor: ui.isDark ? Colors.grey[800]! : Colors.grey[300]!,
+            highlightColor: ui.isDark ? Colors.grey[600]! : Colors.grey[100]!,
             child: Padding(
               padding: EdgeInsets.only(
                 left: 16,
                 right: 16,
                 bottom: index < 4 ? 12 : 16,
               ),
-              child: _buildShimmerCard(),
+              child: _buildShimmerCard(ui),
             ),
           );
         }),
@@ -1177,12 +1455,13 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildShimmerSummaryCard() {
+  Widget _buildShimmerSummaryCard(SalonUiTheme ui) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ui.bannerFill,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ui.cardBorder, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1222,14 +1501,14 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     );
   }
 
-  Widget _buildShimmerCard() {
+  Widget _buildShimmerCard(SalonUiTheme ui) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.transparentBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white),
+        border: Border.all(color: ui.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

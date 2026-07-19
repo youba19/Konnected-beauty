@@ -1,16 +1,27 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/language/language_bloc.dart';
 import '../../../../core/bloc/influencers/influencers_bloc.dart';
 import '../../../../core/bloc/influencer_details/influencer_details_bloc.dart';
 import '../../../../core/models/filter_model.dart';
+import '../../../../core/services/api/salon_profile_service.dart';
 import '../../../../widgets/common/motivational_banner.dart';
 import 'influencer_details_screen.dart';
 import 'influencers_filter_screen.dart';
+import 'salon_settings_screen.dart';
+
+/// Influencers tab — layout radius tokens (colors via [SalonUiTheme]).
+abstract final class _SalonInfluencersUi {
+  static const double searchRadius = 16;
+  static const double buttonRadius = 14;
+  static const double cardRadius = 16;
+}
 
 class InfluencersScreen extends StatefulWidget {
   const InfluencersScreen({super.key});
@@ -23,12 +34,14 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
   final TextEditingController searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
+  String _profileInitial = 'K';
 
   Timer? _searchDebounceTimer;
 
   @override
   void initState() {
     super.initState();
+    _loadProfileInitial();
 
     print('🎬 === INFLUENCERS SCREEN INIT ===');
     print('🎬 Screen initialized, loading influencers...');
@@ -67,6 +80,22 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
 
     // Add search listener with debounce
     searchController.addListener(() => _onSearchChanged(searchController.text));
+  }
+
+  Future<void> _loadProfileInitial() async {
+    try {
+      final result = await SalonProfileService().getSalonProfile();
+      if (!mounted || result['success'] != true) return;
+      final data = result['data'] as Map<String, dynamic>?;
+      final salonName = data?['salonInfo']?['name']?.toString() ?? '';
+      final personalName = data?['name']?.toString() ?? '';
+      final source = salonName.isNotEmpty ? salonName : personalName;
+      if (source.isNotEmpty) {
+        setState(() => _profileInitial = source[0].toUpperCase());
+      }
+    } catch (_) {
+      // Keep default initial.
+    }
   }
 
   @override
@@ -236,6 +265,9 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useSafeArea: true,
       builder: (context) => InfluencersFilterScreen(
         currentZone: currentZone,
         onFilterApplied: (zone) {
@@ -309,503 +341,488 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     return false;
   }
 
+  List<FilterModel> _defaultFilters() {
+    return [
+      FilterModel(
+        key: 'page',
+        value: '1',
+        description: 'Page number',
+        enabled: true,
+        equals: true,
+        uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+      ),
+      FilterModel(
+        key: 'limit',
+        value: '50',
+        description: 'Items per page',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+      ),
+      FilterModel(
+        key: 'sortOrder',
+        value: 'DESC',
+        description: 'Sort order',
+        enabled: true,
+        equals: true,
+        uuid: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    print('🎨 === INFLUENCERS SCREEN BUILD ===');
-    print('🎨 Screen is being built...');
-    print('🎨 Timestamp: ${DateTime.now().millisecondsSinceEpoch}');
+    final ui = SalonUiTheme.of(context);
 
-    return BlocBuilder<LanguageBloc, LanguageState>(
-      builder: (context, languageState) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E), // Bottom color (darker)
-                Color(0xFF3B3B3B), // Top color (lighter)
-              ],
-            ),
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
-              child: GestureDetector(
-                onTap: () {
-                  // Close keyboard when tapping outside text fields
-                  FocusScope.of(context).unfocus();
-                },
-                child: BlocListener<InfluencersBloc, InfluencersState>(
-                  listener: (context, state) {
-                    // Reset loading flag when state changes
-                    if (state is InfluencersLoaded ||
-                        state is InfluencersError) {
-                      setState(() {
-                        _isLoadingMore = false;
-                      });
-                    }
-                  },
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      final currentState =
-                          context.read<InfluencersBloc>().state;
-                      if (currentState is InfluencersLoaded) {
-                        final filters =
-                            List<FilterModel>.from(currentState.currentFilters);
-                        final pageFilterIndex = filters
-                            .indexWhere((filter) => filter.key == 'page');
-                        if (pageFilterIndex != -1) {
-                          filters[pageFilterIndex] =
-                              filters[pageFilterIndex].copyWith(
-                            value: '1',
-                            enabled: true,
-                          );
-                        }
-                        context
-                            .read<InfluencersBloc>()
-                            .add(FilterInfluencers(filters: filters));
-                      } else {
-                        final defaultFilters = [
-                          FilterModel(
-                            key: 'page',
-                            value: '1',
-                            description: 'Page number',
-                            enabled: true,
-                            equals: true,
-                            uuid: DateTime.now()
-                                .millisecondsSinceEpoch
-                                .toString(),
-                          ),
-                          FilterModel(
-                            key: 'limit',
-                            value: '50',
-                            description: 'Items per page',
-                            enabled: true,
-                            equals: true,
-                            uuid: (DateTime.now().millisecondsSinceEpoch + 1)
-                                .toString(),
-                          ),
-                          FilterModel(
-                            key: 'sortOrder',
-                            value: 'DESC',
-                            description: 'Sort order',
-                            enabled: true,
-                            equals: true,
-                            uuid: (DateTime.now().millisecondsSinceEpoch + 2)
-                                .toString(),
-                          ),
-                        ];
-                        context
-                            .read<InfluencersBloc>()
-                            .add(FilterInfluencers(filters: defaultFilters));
-                      }
-                    },
-                    color: AppTheme.textPrimaryColor,
-                    backgroundColor: AppTheme.transparentBackground,
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: (ScrollNotification scrollInfo) {
-                        // Check if user has scrolled to the bottom
-                        final isNearBottom = scrollInfo.metrics.pixels >=
-                            scrollInfo.metrics.maxScrollExtent - 200;
-                        final isAtBottom = scrollInfo.metrics.pixels >=
-                            scrollInfo.metrics.maxScrollExtent;
-                        final isNotScrollable =
-                            scrollInfo.metrics.maxScrollExtent <= 0;
+    return ColoredBox(
+      color: ui.bg,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          top: false,
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: BlocListener<InfluencersBloc, InfluencersState>(
+              listener: (context, state) {
+                if (state is InfluencersLoaded || state is InfluencersError) {
+                  setState(() => _isLoadingMore = false);
+                }
+              },
+              child: BlocBuilder<LanguageBloc, LanguageState>(
+                builder: (context, languageState) {
+                  final topInset = MediaQuery.paddingOf(context).top;
 
-                        if (isNearBottom || isAtBottom || isNotScrollable) {
-                          final currentState =
-                              context.read<InfluencersBloc>().state;
-                          if (currentState is InfluencersLoaded &&
-                              currentState.influencers.length <
-                                  currentState.total &&
-                              !_isLoadingMore) {
-                            setState(() {
-                              _isLoadingMore = true;
-                            });
-
-                            // Create filters for pagination
-                            List<FilterModel> filters =
-                                List.from(currentState.currentFilters);
-                            final pageFilterIndex = filters
-                                .indexWhere((filter) => filter.key == 'page');
-                            if (pageFilterIndex != -1) {
-                              filters[pageFilterIndex] =
-                                  filters[pageFilterIndex].copyWith(
-                                value:
-                                    (currentState.currentPage + 1).toString(),
-                                enabled: true,
-                              );
-                            } else {
-                              filters.add(FilterModel(
-                                key: 'page',
-                                value:
-                                    (currentState.currentPage + 1).toString(),
-                                description: 'Page number',
-                                enabled: true,
-                                equals: true,
-                                uuid: DateTime.now()
-                                    .millisecondsSinceEpoch
-                                    .toString(),
-                              ));
-                            }
-                            context
-                                .read<InfluencersBloc>()
-                                .add(FilterInfluencers(filters: filters));
+                  return ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      overscroll: false,
+                    ),
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        final currentState =
+                            context.read<InfluencersBloc>().state;
+                        if (currentState is InfluencersLoaded) {
+                          final filters = List<FilterModel>.from(
+                              currentState.currentFilters);
+                          final pageFilterIndex =
+                              filters.indexWhere((f) => f.key == 'page');
+                          if (pageFilterIndex != -1) {
+                            filters[pageFilterIndex] =
+                                filters[pageFilterIndex].copyWith(
+                              value: '1',
+                              enabled: true,
+                            );
                           }
-                        }
-                        return false;
-                      },
-                      child: CustomScrollView(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          // Header
-                          BlocBuilder<InfluencersBloc, InfluencersState>(
-                            builder: (context, state) {
-                              return SliverToBoxAdapter(
-                                child: _buildHeader(state),
+                          context
+                              .read<InfluencersBloc>()
+                              .add(FilterInfluencers(filters: filters));
+                        } else {
+                          context.read<InfluencersBloc>().add(
+                                FilterInfluencers(filters: _defaultFilters()),
                               );
-                            },
+                        }
+                      },
+                      color: Colors.white,
+                      backgroundColor: SalonUiTheme.blueUpper,
+                      displacement: topInset + 52,
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: _onScrollNotification,
+                        child: CustomScrollView(
+                          controller: _scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: ClampingScrollPhysics(),
                           ),
-
-                          // Motivational Banner
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: MotivationalBanner(
-                                text: AppTranslations.getString(
-                                    context, 'select_ambassadors_message'),
+                          slivers: [
+                            BlocBuilder<InfluencersBloc, InfluencersState>(
+                              builder: (context, state) {
+                                return SliverToBoxAdapter(
+                                  child: _buildHeader(state),
+                                );
+                              },
+                            ),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                                child: MotivationalBanner(
+                                  text: AppTranslations.getString(
+                                    context,
+                                    'select_ambassadors_message',
+                                  ),
+                                  icon: LucideIcons.lightbulb,
+                                  backgroundColor: ui.bannerFill,
+                                  textColor: ui.textPrimary,
+                                  fontWeight: FontWeight.w400,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SliverToBoxAdapter(
-                            child: SizedBox(height: 16),
-                          ),
-
-                          // Content based on state
-                          BlocBuilder<InfluencersBloc, InfluencersState>(
-                            builder: (context, state) {
-                              print('🎨 === BLOC BUILDER REBUILD ===');
-                              print('🎨 State Type: ${state.runtimeType}');
-                              if (state is InfluencersLoaded) {
-                                print(
-                                    '🎨 Influencers Count: ${state.influencers.length}');
-                                print(
-                                    '🎨 Current Search: ${state.currentFilters.where((f) => f.key == 'search' && f.enabled).map((f) => f.value).join(', ')}');
-                              }
-
-                              if (state is InfluencersLoading) {
-                                return _buildShimmerSliver();
-                              } else if (state is InfluencersError) {
-                                // Check if it's a 403 Forbidden error (account not active)
-                                final isAccountNotActive = state.error
-                                        .toLowerCase()
-                                        .contains('forbidden') ||
-                                    state.error.toLowerCase().contains('403') ||
-                                    (state.details != null &&
-                                        state.details
-                                            .toString()
-                                            .toLowerCase()
-                                            .contains('forbidden'));
-
-                                if (isAccountNotActive) {
-                                  return SliverToBoxAdapter(
-                                    child: SizedBox(
-                                      height: 300,
-                                      child: Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(24.0),
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.account_circle_outlined,
-                                                size: 80,
-                                                color: AppTheme.greenColor,
-                                              ),
-                                              const SizedBox(height: 24),
-                                              Text(
-                                                AppTranslations.getString(
-                                                    context,
-                                                    'account_not_active'),
-                                                style: AppTheme.applyPoppins(
-                                                    const TextStyle(
-                                                  color:
-                                                      AppTheme.textPrimaryColor,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                )),
-                                              ),
-                                              const SizedBox(height: 12),
-                                              Text(
-                                                AppTranslations.getString(
-                                                    context,
-                                                    'account_not_active'),
-                                                style: AppTheme.applyPoppins(
-                                                    TextStyle(
-                                                  color: AppTheme.greenColor,
-                                                  fontSize: 16,
-                                                )),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  return SliverToBoxAdapter(
-                                    child: Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(32.0),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              Icons.wifi_off,
-                                              size: 64,
-                                              color: Colors.orange,
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Text(
-                                              AppTranslations.getString(context,
-                                                  'connection_problem'),
-                                              style: TextStyle(
-                                                color:
-                                                    AppTheme.textPrimaryColor,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              AppTranslations.getString(context,
-                                                  'check_internet_connection'),
-                                              style: TextStyle(
-                                                color: Colors.orange,
-                                                fontSize: 16,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 24),
-                                            ElevatedButton.icon(
-                                              onPressed: () {
-                                                final currentState = context
-                                                    .read<InfluencersBloc>()
-                                                    .state;
-                                                if (currentState
-                                                    is InfluencersLoaded) {
-                                                  context
-                                                      .read<InfluencersBloc>()
-                                                      .add(LoadInfluencers(
-                                                        zone: currentState
-                                                            .currentZone,
-                                                        sortOrder: currentState
-                                                            .currentSortOrder,
-                                                      ));
-                                                } else {
-                                                  context
-                                                      .read<InfluencersBloc>()
-                                                      .add(LoadInfluencers());
-                                                }
-                                              },
-                                              icon: const Icon(Icons.refresh),
-                                              label: Text(
-                                                  AppTranslations.getString(
-                                                      context, 'retry')),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppTheme.accentColor,
-                                                foregroundColor:
-                                                    AppTheme.primaryColor,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 24,
-                                                  vertical: 12,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 24),
+                            ),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  AppTranslations.getString(
+                                      context, 'influencers'),
+                                  style: TextStyle(
+                                    color: ui.textPrimary,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 16),
+                            ),
+                            BlocBuilder<InfluencersBloc, InfluencersState>(
+                              builder: (context, state) {
+                                if (state is InfluencersLoading) {
+                                  return _buildShimmerSliver();
                                 }
-                              } else if (state is InfluencersLoaded) {
-                                if (state.influencers.isEmpty) {
-                                  return SliverToBoxAdapter(
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.people_outline,
-                                            color: AppTheme.textSecondaryColor,
-                                            size: 48,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Text(
-                                            state.currentSearch != null
-                                                ? '${AppTranslations.getString(context, 'no_influencers_found_for')} "${state.currentSearch}"'
-                                                : AppTranslations.getString(
-                                                    context,
-                                                    'no_influencers_available'),
-                                            style: const TextStyle(
-                                              color:
-                                                  AppTheme.textSecondaryColor,
-                                              fontSize: 16,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
+                                if (state is InfluencersError) {
+                                  return _buildErrorSliver(state);
                                 }
-                                return _buildInfluencersListSliver(
-                                    state.influencers);
-                              } else {
+                                if (state is InfluencersLoaded) {
+                                  if (state.influencers.isEmpty) {
+                                    return _buildEmptySliver(state);
+                                  }
+                                  return _buildInfluencersListSliver(
+                                      state.influencers);
+                                }
                                 return SliverToBoxAdapter(
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: AppTheme.accentColor,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        color: ui.textPrimary,
+                                      ),
                                     ),
                                   ),
                                 );
-                              }
-                            },
-                          ),
-                        ],
+                              },
+                            ),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 96),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  bool _onScrollNotification(ScrollNotification scrollInfo) {
+    final isNearBottom =
+        scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200;
+    final isAtBottom =
+        scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent;
+    final isNotScrollable = scrollInfo.metrics.maxScrollExtent <= 0;
+
+    if (isNearBottom || isAtBottom || isNotScrollable) {
+      final currentState = context.read<InfluencersBloc>().state;
+      if (currentState is InfluencersLoaded &&
+          currentState.influencers.length < currentState.total &&
+          !_isLoadingMore) {
+        setState(() => _isLoadingMore = true);
+        final filters = List<FilterModel>.from(currentState.currentFilters);
+        final pageFilterIndex =
+            filters.indexWhere((filter) => filter.key == 'page');
+        if (pageFilterIndex != -1) {
+          filters[pageFilterIndex] = filters[pageFilterIndex].copyWith(
+            value: (currentState.currentPage + 1).toString(),
+            enabled: true,
+          );
+        } else {
+          filters.add(FilterModel(
+            key: 'page',
+            value: (currentState.currentPage + 1).toString(),
+            description: 'Page number',
+            enabled: true,
+            equals: true,
+            uuid: DateTime.now().millisecondsSinceEpoch.toString(),
+          ));
+        }
+        context
+            .read<InfluencersBloc>()
+            .add(FilterInfluencers(filters: filters));
+      }
+    }
+    return false;
+  }
+
+  Widget _buildErrorSliver(InfluencersError state) {
+    final ui = SalonUiTheme.of(context);
+    final isAccountNotActive =
+        state.error.toLowerCase().contains('forbidden') ||
+            state.error.toLowerCase().contains('403') ||
+            (state.details != null &&
+                state.details.toString().toLowerCase().contains('forbidden'));
+
+    if (isAccountNotActive) {
+      return SliverToBoxAdapter(
+        child: SizedBox(
+          height: 300,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.account_circle_outlined,
+                    size: 80,
+                    color: AppTheme.greenColor,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    AppTranslations.getString(context, 'account_not_active'),
+                    style: TextStyle(
+                      color: ui.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverToBoxAdapter(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              const Icon(Icons.wifi_off, size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              Text(
+                AppTranslations.getString(context, 'connection_problem'),
+                style: TextStyle(
+                  color: ui.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.read<InfluencersBloc>().add(LoadInfluencers());
+                },
+                icon: const Icon(Icons.refresh),
+                label: Text(AppTranslations.getString(context, 'retry')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptySliver(InfluencersLoaded state) {
+    return SliverToBoxAdapter(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.people_outline,
+                color: AppTheme.textSecondaryColor,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                state.currentSearch != null
+                    ? '${AppTranslations.getString(context, 'no_influencers_found_for')} "${state.currentSearch}"'
+                    : AppTranslations.getString(
+                        context, 'no_influencers_available'),
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildHeader(InfluencersState state) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title
-          Text(
-            AppTranslations.getString(context, 'influencers'),
-            style: const TextStyle(
-              color: AppTheme.textPrimaryColor,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
+    final ui = SalonUiTheme.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ui.headerGradient,
+              stops: ui.headerStops,
             ),
           ),
-          const SizedBox(height: 20),
-
-          // Search Bar and Filter
-          Row(
+          padding: EdgeInsets.fromLTRB(16, topInset + 6, 16, 0),
+          child: Column(
             children: [
-              Expanded(
-                child: Container(
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: AppTheme.transparentBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.textPrimaryColor,
-                      width: 1,
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/images/Konected beauty - Logo white.png',
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const SalonSettingsScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: SalonUiTheme.profileBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _profileInitial,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
-                  child: TextField(
-                    controller: searchController,
-                    onChanged: _onSearchChanged,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimaryColor,
-                      fontSize: 16,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: AppTranslations.getString(context, 'search'),
-                      hintStyle: const TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 16,
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.search,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _hasActiveZoneFilter(state)
-                      ? AppTheme.textPrimaryColor
-                      : AppTheme.transparentBackground,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppTheme.textPrimaryColor,
-                    width: 1,
-                  ),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.filter_list,
-                    color: _hasActiveZoneFilter(state)
-                        ? AppTheme.primaryColor
-                        : AppTheme.textPrimaryColor,
-                    size: 20,
-                  ),
-                  onPressed: _showFilterScreen,
-                ),
-              ),
-              if (_hasActiveZoneFilter(state)) ...[
-                const SizedBox(width: 8),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.red.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.clear,
-                      color: Colors.red,
-                    ),
-                    onPressed: _clearFilters,
-                  ),
-                ),
-              ],
+              const SizedBox(height: 64),
             ],
           ),
-        ],
+        ),
+        ColoredBox(
+          color: ui.bg,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        _SalonInfluencersUi.searchRadius,
+                      ),
+                      border: Border.all(
+                        color: ui.borderSubtle,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: searchController,
+                      style: TextStyle(
+                        color: ui.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: AppTranslations.getString(
+                          context,
+                          'search_influencers',
+                        ),
+                        hintStyle: TextStyle(
+                          color: ui.textSecondary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        prefixIcon: Icon(
+                          LucideIcons.search,
+                          color: ui.textSecondary,
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _buildHeaderIconButton(
+                  icon: LucideIcons.listFilter,
+                  isActive: _hasActiveZoneFilter(state),
+                  onTap: _showFilterScreen,
+                ),
+                if (_hasActiveZoneFilter(state)) ...[
+                  const SizedBox(width: 8),
+                  _buildHeaderIconButton(
+                    icon: LucideIcons.x,
+                    onTap: _clearFilters,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    final ui = SalonUiTheme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: isActive ? ui.card : Colors.transparent,
+          borderRadius: BorderRadius.circular(_SalonInfluencersUi.buttonRadius),
+          border: Border.all(
+            color: ui.borderSubtle,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: ui.textPrimary,
+          size: 22,
+        ),
       ),
     );
   }
@@ -819,7 +836,7 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
             final influencer = influencers[index];
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index < influencers.length - 1 ? 16.0 : 0.0,
+                bottom: index < influencers.length - 1 ? 12.0 : 0.0,
               ),
               child: _buildInfluencerCard(influencer),
             );
@@ -831,6 +848,12 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
   }
 
   Widget _buildInfluencerCard(Map<String, dynamic> influencer) {
+    final ui = SalonUiTheme.of(context);
+    final pseudo = influencer['profile']?['pseudo'] ?? 'unknown';
+    final zone = influencer['profile']?['zone'] ?? 'Unknown';
+    final rating = influencer['averageRating']?.toStringAsFixed(1) ?? '0.0';
+    final pictureUrl = influencer['profile']?['profilePicture']?.toString();
+
     return GestureDetector(
       onTap: () {
         final influencerId = influencer['id'];
@@ -845,170 +868,130 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
               ),
             ),
           );
-        } else {
-          print('❌ Influencer ID is null, cannot navigate to detail screen');
         }
       },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          color: ui.cardAlt,
+          borderRadius: BorderRadius.circular(_SalonInfluencersUi.cardRadius),
           border: Border.all(
-            color: Colors.white.withOpacity(0.6),
+            color: ui.cardBorder,
             width: 1,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Top Row: Image + Username + Zone
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Profile Picture
-                ClipOval(
-                  child: influencer['profile']?['profilePicture'] != null
-                      ? Image.network(
-                          influencer['profile']['profilePicture'],
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 40,
-                              height: 40,
-                              color:
-                                  AppTheme.textSecondaryColor.withOpacity(0.3),
-                              child: const Icon(
-                                Icons.person,
-                                color: AppTheme.textSecondaryColor,
-                                size: 20,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          width: 40,
-                          height: 40,
-                          color: AppTheme.textSecondaryColor.withOpacity(0.3),
-                          child: const Icon(
-                            Icons.person,
-                            color: AppTheme.textPrimaryColor,
-                            size: 20,
-                          ),
+            SizedBox(
+              width: 64,
+              height: 72,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.topCenter,
+                children: [
+                  Positioned(
+                    top: 0,
+                    child: ClipOval(
+                      child: pictureUrl != null && pictureUrl.isNotEmpty
+                          ? Image.network(
+                              pictureUrl,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _avatarPlaceholder();
+                              },
+                            )
+                          : _avatarPlaceholder(),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
                         ),
-                ),
-                const SizedBox(width: 10),
-
-                // Username + Rating + Zone
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Username
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '@${influencer['profile']?['pseudo'] ?? 'unknown'}',
-                            style: const TextStyle(
-                              color: AppTheme.textPrimaryColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                        decoration: BoxDecoration(
+                          color: ui.isDark
+                              ? Colors.black.withValues(alpha: 0.78)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: ui.isDark
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : ui.cardBorder,
+                            width: 1,
+                          ),
+                          boxShadow: ui.isDark
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              rating,
+                              style: TextStyle(
+                                color: ui.isDark
+                                    ? Colors.white
+                                    : ui.textPrimary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                height: 1.1,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFC107),
+                              size: 11,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-
-                      // Rating + Zone Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Rating (left side)
-                          Row(
-                            children: [
-                              Text(
-                                '${influencer['averageRating']?.toStringAsFixed(1) ?? '0.0'}',
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimaryColor,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.star,
-                                color: AppTheme.textSecondaryColor,
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                          // Zone (right side)
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on,
-                                color: AppTheme.textSecondaryColor,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                influencer['profile']?['zone'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimaryColor,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-
-            const SizedBox(height: 8),
-
-            // Description with "See more"
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final text = influencer['profile']?['bio'] ?? '';
-                final seeMore =
-                    "...${AppTranslations.getString(context, 'see_more')}     "; // 5 spaces
-
-                return Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: text,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontSize: 13,
-                          height: 1.3,
-                        ),
-                      ),
-                      TextSpan(
-                        text: seeMore,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '@$pseudo',
+                    style: TextStyle(
+                      color: ui.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                );
-              },
+                  const SizedBox(height: 4),
+                  Text(
+                    zone,
+                    style: TextStyle(
+                      color: ui.textSecondary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1016,30 +999,22 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     );
   }
 
-  void _showContactSupportDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppTranslations.getString(context, 'contact_support')),
-          content: Text(
-            '${AppTranslations.getString(context, 'activate_salon_account_message')}'
-            '📧 Email: support@konnectedbeauty.com\n'
-            '📱 Phone: +1 (555) 123-4567\n\n'
-            '${AppTranslations.getString(context, 'support_help_message')}',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(AppTranslations.getString(context, 'close')),
-            ),
-          ],
-        );
-      },
+  Widget _avatarPlaceholder() {
+    return Container(
+      width: 64,
+      height: 64,
+      color: const Color(0xFF2C2C2E),
+      child: const Icon(
+        Icons.person,
+        color: Colors.white54,
+        size: 28,
+      ),
     );
   }
 
   Widget _buildShimmerSliver() {
+    final ui = SalonUiTheme.of(context);
+
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       sliver: SliverList(
@@ -1047,12 +1022,12 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
           (context, index) {
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index < 4 ? 16.0 : 0.0,
+                bottom: index < 4 ? 12.0 : 0.0,
               ),
               child: Shimmer.fromColors(
-                baseColor: Colors.grey[800]!,
-                highlightColor: Colors.grey[600]!,
-                child: _buildShimmerInfluencerCard(),
+                baseColor: ui.isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                highlightColor: ui.isDark ? Colors.grey[600]! : Colors.grey[100]!,
+                child: _buildShimmerInfluencerCard(ui),
               ),
             );
           },
@@ -1062,138 +1037,89 @@ class _InfluencersScreenState extends State<InfluencersScreen> {
     );
   }
 
-  Widget _buildShimmerInfluencerCard() {
+  Widget _buildShimmerInfluencerCard(SalonUiTheme ui) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        color: ui.cardAlt,
+        borderRadius: BorderRadius.circular(_SalonInfluencersUi.cardRadius),
         border: Border.all(
-          color: Colors.white.withOpacity(0.6),
+          color: ui.cardBorder,
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Top Row: Image + Username + Zone (matching actual card layout)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Shimmer Profile Picture
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  shape: BoxShape.circle,
+          SizedBox(
+            width: 64,
+            height: 72,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2C2C2E),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-
-              // Username + Rating + Zone
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Username row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          height: 16,
-                          width: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[700],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: 12,
+                        width: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[700],
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Rating + Zone Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Rating (left side)
-                        Row(
-                          children: [
-                            Container(
-                              height: 13,
-                              width: 30,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[700],
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[700],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 2),
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[700],
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        // Zone (right side)
-                        Row(
-                          children: [
-                            Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[700],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Container(
-                              height: 13,
-                              width: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[700],
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-
-          const SizedBox(height: 8),
-
-          // Description shimmer (matching actual bio layout)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 13,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(6),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 17,
+                  width: 140,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                height: 13,
-                width: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(6),
+                const SizedBox(height: 8),
+                Container(
+                  height: 15,
+                  width: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

@@ -177,7 +177,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   Widget _buildContent() {
     return DefaultTextStyle(
-      style: AppTheme.globalText, // Poppins font via Google Fonts
+      style: AppTheme.globalText, // Montserrat font via Google Fonts
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

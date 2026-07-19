@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/api/influencers_service.dart';
+import '../bloc_error_helper.dart';
 import 'campaigns_event.dart';
 import 'campaigns_state.dart';
 
@@ -178,12 +179,12 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to load campaigns: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to load campaigns',
+            message: BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Exception in _onLoadCampaigns: $e');
-      emit(CampaignsError(message: 'Error loading campaigns: $e'));
+    } catch (e, st) {
+      emit(CampaignsError(
+          message: BlocErrorHelper.messageFrom(e, st, 'loadCampaigns')));
     }
   }
 
@@ -262,12 +263,12 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to load more campaigns: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to load more campaigns',
+            message: BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Exception in _onLoadMoreCampaigns: $e');
-      emit(CampaignsError(message: 'Error loading more campaigns: $e'));
+    } catch (e, st) {
+      emit(CampaignsError(
+          message: BlocErrorHelper.messageFrom(e, st, 'loadMoreCampaigns')));
     }
   }
 
@@ -320,7 +321,8 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       print('🔍 === END REFRESH CAMPAIGNS BLOC RESULT ===');
 
       if (result['success'] == true) {
-        final campaigns = List<Map<String, dynamic>>.from(result['data'] ?? []);
+        final campaigns =
+            List<Map<String, dynamic>>.from(result['data'] ?? []);
         final currentPage =
             int.tryParse(result['currentPage']?.toString() ?? '1') ?? 1;
         final totalPages =
@@ -346,12 +348,12 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to refresh campaigns: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to refresh campaigns',
+            message: BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Exception in _onRefreshCampaigns: $e');
-      emit(CampaignsError(message: 'Error refreshing campaigns: $e'));
+    } catch (e, st) {
+      emit(CampaignsError(
+          message: BlocErrorHelper.messageFrom(e, st, 'refreshCampaigns')));
     }
   }
 
@@ -380,12 +382,12 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
       } else {
         print('❌ Failed to delete campaign: ${result['message']}');
         emit(CampaignsError(
-            message: result['message'] ?? 'Failed to delete campaign',
+            message: BlocErrorHelper.messageFromApiMap(result),
             statusCode: result['statusCode']));
       }
-    } catch (e) {
-      print('❌ Exception in _onDeleteCampaign: $e');
-      emit(CampaignsError(message: 'Error deleting campaign: $e'));
+    } catch (e, st) {
+      emit(CampaignsError(
+          message: BlocErrorHelper.messageFrom(e, st, 'deleteCampaign')));
     }
   }
 
@@ -468,9 +470,9 @@ class CampaignsBloc extends Bloc<CampaignsEvent, CampaignsState> {
         total: total,
         hasMore: false, // We fetched everything
       ));
-    } catch (e) {
-      print('❌ Error in multi-page fetch: $e');
-      emit(CampaignsError(message: 'Error fetching all campaigns: $e'));
+    } catch (e, st) {
+      emit(CampaignsError(
+          message: BlocErrorHelper.messageFrom(e, st, 'fetchAllCampaigns')));
     }
   }
 }

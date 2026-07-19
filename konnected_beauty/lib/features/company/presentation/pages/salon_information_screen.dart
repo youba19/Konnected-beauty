@@ -6,8 +6,11 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/salon_ui_theme.dart';
+import '../../../../core/bloc/theme/theme_bloc.dart';
 import '../../../../core/translations/app_translations.dart';
 import '../../../../core/bloc/salon_info/salon_info_bloc.dart';
 import '../../../../core/utils/validators.dart';
@@ -15,6 +18,11 @@ import '../../../../widgets/common/top_notification_banner.dart';
 import '../../../../widgets/forms/custom_text_field.dart';
 import '../../../../widgets/forms/custom_dropdown.dart';
 import 'image_preview_screen.dart';
+
+abstract final class _SalonInfoUi {
+  static const double buttonSize = 48;
+  static const double buttonRadius = 14;
+}
 
 class SalonInformationScreen extends StatefulWidget {
   const SalonInformationScreen({super.key});
@@ -426,31 +434,42 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
   }
 
   // Shimmer loading widgets
-  Widget _buildShimmerTextField() {
+  (Color, Color) _shimmerColors(SalonUiTheme ui) {
+    if (ui.isDark) {
+      return (const Color(0xFF2A2A2A), const Color(0xFF3A3A3A));
+    }
+    return (const Color(0xFFE5E7EB), const Color(0xFFF3F4F6));
+  }
+
+  Widget _buildShimmerTextField([SalonUiTheme? theme]) {
+    final ui = theme ?? SalonUiTheme.of(context);
+    final (base, highlight) = _shimmerColors(ui);
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF2A2A2A),
-      highlightColor: const Color(0xFF3A3A3A),
+      baseColor: base,
+      highlightColor: highlight,
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A),
+          color: highlight,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF3A3A3A)),
+          border: Border.all(color: ui.cardBorder),
         ),
       ),
     );
   }
 
-  Widget _buildShimmerDropdown() {
+  Widget _buildShimmerDropdown([SalonUiTheme? theme]) {
+    final ui = theme ?? SalonUiTheme.of(context);
+    final (base, highlight) = _shimmerColors(ui);
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF2A2A2A),
-      highlightColor: const Color(0xFF3A3A3A),
+      baseColor: base,
+      highlightColor: highlight,
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A),
+          color: highlight,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF3A3A3A)),
+          border: Border.all(color: ui.cardBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -459,13 +478,13 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
               margin: const EdgeInsets.only(left: 16),
               height: 16,
               width: 100,
-              color: const Color(0xFF3A3A3A),
+              color: base,
             ),
             Container(
               margin: const EdgeInsets.only(right: 16),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_drop_down,
-                color: Color(0xFF3A3A3A),
+                color: base,
               ),
             ),
           ],
@@ -474,28 +493,27 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     );
   }
 
-  Widget _buildShimmerImageSection() {
+  Widget _buildShimmerImageSection([SalonUiTheme? theme]) {
+    final ui = theme ?? SalonUiTheme.of(context);
+    final (base, highlight) = _shimmerColors(ui);
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF2A2A2A),
-      highlightColor: const Color(0xFF3A3A3A),
+      baseColor: base,
+      highlightColor: highlight,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title shimmer
           Container(
             height: 16,
             width: 120,
-            color: const Color(0xFF3A3A3A),
+            color: highlight,
           ),
           const SizedBox(height: 16),
-          // Image count shimmer
           Container(
             height: 14,
             width: 60,
-            color: const Color(0xFF3A3A3A),
+            color: highlight,
           ),
           const SizedBox(height: 8),
-          // Image list shimmer
           SizedBox(
             height: 40,
             child: ListView.builder(
@@ -507,7 +525,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                   height: 32,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3A3A3A),
+                    color: highlight,
                     borderRadius: BorderRadius.circular(20),
                   ),
                 );
@@ -520,53 +538,50 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
   }
 
   Widget _buildPictureLoadingShimmer() {
+    final ui = SalonUiTheme.of(context);
+    final (base, highlight) = _shimmerColors(ui);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
-        const Text(
+        Text(
           'Salon Pictures',
           style: TextStyle(
-            color: AppTheme.textPrimaryColor,
+            color: ui.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 16),
-
-        // Loading message with shimmer count
         Shimmer.fromColors(
-          baseColor: const Color(0xFF2A2A2A),
-          highlightColor: const Color(0xFF3A3A3A),
+          baseColor: base,
+          highlightColor: highlight,
           child: Container(
             height: 14,
             width: 150,
             decoration: BoxDecoration(
-              color: const Color(0xFF3A3A3A),
+              color: highlight,
               borderRadius: BorderRadius.circular(4),
             ),
           ),
         ),
         const SizedBox(height: 8),
-
-        // Converting pictures shimmer with animation
         SizedBox(
           height: 40,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: 5, // Show more shimmer items during loading
+            itemCount: 5,
             itemBuilder: (context, index) {
               return Shimmer.fromColors(
-                baseColor: const Color(0xFF2A2A2A),
-                highlightColor: const Color(0xFF3A3A3A),
+                baseColor: base,
+                highlightColor: highlight,
                 child: Container(
                   width: 120,
                   height: 32,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3A3A3A),
+                    color: highlight,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF4A4A4A)),
+                    border: Border.all(color: ui.cardBorder),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -575,7 +590,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5A5A5A),
+                          color: base,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -584,7 +599,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                         height: 8,
                         width: 60,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5A5A5A),
+                          color: base,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -595,26 +610,23 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
             },
           ),
         ),
-
         const SizedBox(height: 8),
-
-        // Progress text shimmer
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.download,
-              color: Color(0xFF3A3A3A),
+              color: ui.textMuted,
               size: 16,
             ),
             const SizedBox(width: 8),
             Shimmer.fromColors(
-              baseColor: const Color(0xFF2A2A2A),
-              highlightColor: const Color(0xFF3A3A3A),
+              baseColor: base,
+              highlightColor: highlight,
               child: Container(
                 height: 12,
                 width: 140,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3A3A3A),
+                  color: highlight,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -625,63 +637,58 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     );
   }
 
-  Widget _buildShimmerButton() {
+  Widget _buildShimmerButton([SalonUiTheme? theme]) {
+    final ui = theme ?? SalonUiTheme.of(context);
+    final (base, highlight) = _shimmerColors(ui);
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF2A2A2A),
-      highlightColor: const Color(0xFF3A3A3A),
+      baseColor: base,
+      highlightColor: highlight,
       child: Container(
         width: double.infinity,
         height: 56,
         decoration: BoxDecoration(
-          color: const Color(0xFF3A3A3A),
+          color: highlight,
           borderRadius: BorderRadius.circular(12),
         ),
       ),
     );
   }
 
-  Widget _buildSalonPicturesShimmer() {
+  Widget _buildSalonPicturesShimmer(SalonUiTheme ui) {
+    final (base, highlight) = _shimmerColors(ui);
+
     return Shimmer.fromColors(
-      baseColor: const Color(0xFF2A2A2A),
-      highlightColor: const Color(0xFF3A3A3A),
+      baseColor: base,
+      highlightColor: highlight,
       child: SizedBox(
         height: 200,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
-          itemCount: 3, // Show 3 shimmer items
+          itemCount: 3,
           itemBuilder: (context, index) {
             return Container(
               width: 150,
               margin: const EdgeInsets.only(right: 16),
               child: Column(
                 children: [
-                  // Image shimmer
                   Expanded(
                     child: Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3A3A3A),
+                        color: highlight,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 1,
-                        ),
+                        border: Border.all(color: ui.cardBorder, width: 1),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Picture name shimmer
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3A3A3A),
+                      color: highlight,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
-                      ),
+                      border: Border.all(color: ui.cardBorder, width: 1),
                     ),
                     child: Row(
                       children: [
@@ -689,7 +696,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                           child: Container(
                             height: 12,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3A3A3A),
+                              color: highlight,
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
@@ -699,7 +706,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                           width: 16,
                           height: 16,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3A3A3A),
+                            color: highlight,
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
@@ -715,7 +722,10 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     );
   }
 
-  Widget _buildShimmerContent() {
+  Widget _buildShimmerContent([SalonUiTheme? theme]) {
+    final ui = theme ?? SalonUiTheme.of(context);
+    final (base, highlight) = _shimmerColors(ui);
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(
@@ -727,98 +737,84 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header shimmer (back button)
           Shimmer.fromColors(
-            baseColor: const Color(0xFF2A2A2A),
-            highlightColor: const Color(0xFF3A3A3A),
+            baseColor: base,
+            highlightColor: highlight,
             child: Container(
-              width: 24,
-              height: 24,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF3A3A3A),
-                borderRadius: BorderRadius.circular(4),
+                color: highlight,
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
           const SizedBox(height: 24),
-
-          // Form fields shimmer
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Salon Name
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 height: 16,
                 width: 100,
-                color: const Color(0xFF3A3A3A),
+                color: highlight,
               ),
-              _buildShimmerTextField(),
+              _buildShimmerTextField(ui),
               const SizedBox(height: 16),
-
-              // Salon Address
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 height: 16,
                 width: 120,
-                color: const Color(0xFF3A3A3A),
+                color: highlight,
               ),
-              _buildShimmerTextField(),
+              _buildShimmerTextField(ui),
               const SizedBox(height: 16),
-
-              // Activity Domain
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 height: 16,
                 width: 110,
-                color: const Color(0xFF3A3A3A),
+                color: highlight,
               ),
-              _buildShimmerTextField(),
+              _buildShimmerTextField(ui),
               const SizedBox(height: 16),
-
-              // Opening Hour
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 height: 16,
                 width: 100,
-                color: const Color(0xFF3A3A3A),
+                color: highlight,
               ),
-              _buildShimmerDropdown(),
+              _buildShimmerDropdown(ui),
               const SizedBox(height: 16),
-
-              // Closing Hour
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 height: 16,
                 width: 100,
-                color: const Color(0xFF3A3A3A),
+                color: highlight,
               ),
-              _buildShimmerDropdown(),
+              _buildShimmerDropdown(ui),
               const SizedBox(height: 16),
-
-              // Description
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 height: 16,
                 width: 80,
-                color: const Color(0xFF3A3A3A),
+                color: highlight,
               ),
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF3A3A3A)),
+              Shimmer.fromColors(
+                baseColor: base,
+                highlightColor: highlight,
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: highlight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: ui.cardBorder),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Images section
-              _buildShimmerImageSection(),
+              _buildShimmerImageSection(ui),
               const SizedBox(height: 40),
-
-              // Save button
-              _buildShimmerButton(),
+              _buildShimmerButton(ui),
               const SizedBox(height: 66),
             ],
           ),
@@ -829,132 +825,157 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Force dark mode for salon - wrap in Theme with dark brightness
-    return Theme(
-      data: ThemeData.dark(),
-      child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [
-                Color(0xFF1F1E1E),
-                Color(0xFF3B3B3B),
+    return BlocBuilder<ThemeBloc, ThemeState>(
+      builder: (context, themeState) {
+        final ui = SalonUiTheme.from(themeState.brightness);
+        final topInset = MediaQuery.paddingOf(context).top;
+
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: ui.systemOverlay,
+          child: Scaffold(
+            backgroundColor: ui.bg,
+            body: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: topInset + 220,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: ui.fullSheetGradient,
+                        stops: ui.fullSheetStops,
+                      ),
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: BlocConsumer<SalonInfoBloc, SalonInfoState>(
+                      listener: (context, state) {
+                        if (state is SalonInfoLoaded) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) async {
+                            await _populateControllers(
+                                state.salonInfo, state.salonProfile);
+                          });
+                        } else if (state is SalonInfoUpdated) {
+                          TopNotificationService.showSuccess(
+                            context: context,
+                            message: "Salon information updated successfully",
+                          );
+                          _refreshImageLists();
+                          Navigator.of(context).pop();
+                        } else if (state is SalonProfileUpdated) {
+                          print(
+                              '✅ Profile update completed - notification already shown');
+                          _refreshImageLists();
+                        } else if (state is SalonInfoError) {
+                          TopNotificationService.showError(
+                            context: context,
+                            message: state.error,
+                          );
+                        }
+                      },
+                      builder: (context, state) {
+                        if (state is SalonInfoLoading) {
+                          return _buildShimmerContent(ui);
+                        }
+
+                        return SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.only(
+                            left: 20,
+                            top: 8,
+                            right: 20,
+                            bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(ui),
+                              const SizedBox(height: 22),
+                              _buildSalonInformationSection(ui),
+                              const SizedBox(height: 40),
+                              _buildSaveButton(ui),
+                              const SizedBox(height: 16),
+                              const SizedBox(height: 50),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          child: SafeArea(
-            child: GestureDetector(
-              onTap: () {
-                // Close keyboard when tapping outside text fields
-                FocusScope.of(context).unfocus();
-              },
-              child: BlocConsumer<SalonInfoBloc, SalonInfoState>(
-                listener: (context, state) {
-                  if (state is SalonInfoLoaded) {
-                    // Schedule the async operation
-                    WidgetsBinding.instance.addPostFrameCallback((_) async {
-                      await _populateControllers(
-                          state.salonInfo, state.salonProfile);
-                    });
-                  } else if (state is SalonInfoUpdated) {
-                    // Show one summary notification for all updates
-                    TopNotificationService.showSuccess(
-                      context: context,
-                      message: "Salon information updated successfully",
-                    );
-                    _refreshImageLists(); // Refresh image lists after successful update
-
-                    // Navigate back to settings screen after successful update
-                    Navigator.of(context).pop();
-                  } else if (state is SalonProfileUpdated) {
-                    // Don't show notification for profile update - already shown for info update
-                    print(
-                        '✅ Profile update completed - notification already shown');
-                    _refreshImageLists(); // Refresh image lists after successful update
-                  } else if (state is SalonInfoError) {
-                    TopNotificationService.showError(
-                      context: context,
-                      message: state.error,
-                    );
-                  }
-                },
-                builder: (context, state) {
-                  if (state is SalonInfoLoading) {
-                    return _buildShimmerContent();
-                  }
-
-                  return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.only(
-                      left: 24.0,
-                      top: 24.0,
-                      right: 24.0,
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 24),
-                        _buildSalonInformationSection(),
-                        const SizedBox(height: 40),
-                        _buildSaveButton(),
-                        const SizedBox(height: 16),
-                        const SizedBox(height: 50),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader() {
-    return IconButton(
-      onPressed: () => Navigator.of(context).pop(),
-      icon: const Icon(
-        LucideIcons.arrowLeft,
-        color: AppTheme.textPrimaryColor,
-        size: 24,
-      ),
-    );
-  }
-
-  Widget _buildSalonInformationSection() {
+  Widget _buildHeader(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Salon Information Section (3rd step)
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Container(
+            width: _SalonInfoUi.buttonSize,
+            height: _SalonInfoUi.buttonSize,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  ui.buttonFillTop,
+                  ui.buttonFillBottom,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(_SalonInfoUi.buttonRadius),
+              border: ui.isDark
+                  ? null
+                  : Border.all(color: ui.cardBorder, width: 1),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              LucideIcons.arrowLeft,
+              color: ui.buttonIcon,
+              size: 22,
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
         Row(
           children: [
-            const Icon(
+            Icon(
               LucideIcons.store,
-              color: AppTheme.textPrimaryColor,
-              size: 20,
+              color: ui.textPrimary,
+              size: 22,
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                AppTranslations.getString(context, 'salon_information'),
-                style: const TextStyle(
-                  color: AppTheme.textPrimaryColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+            const SizedBox(width: 10),
+            Text(
+              AppTranslations.getString(context, 'salon_information'),
+              style: TextStyle(
+                color: ui.textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+      ],
+    );
+  }
 
+  Widget _buildSalonInformationSection(SalonUiTheme ui) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         // Salon Name
         CustomTextField(
           label: AppTranslations.getString(context, 'salon_name'),
@@ -988,11 +1009,7 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
         ),
         const SizedBox(height: 20),
 
-        // Salon Profile Section (4th step)
-
-        // Saloon Pictures Section
-
-        _buildSalonPicturesSection(),
+        _buildSalonPicturesSection(ui),
 
         const SizedBox(height: 24),
 
@@ -1054,19 +1071,19 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(SalonUiTheme ui) {
     return BlocBuilder<SalonInfoBloc, SalonInfoState>(
       builder: (context, state) {
         final isLoading =
             state is SalonInfoUpdating || state is SalonProfileUpdating;
 
-        return Container(
+        return SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed: isLoading ? null : _saveSalonInformation,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppTheme.primaryColor,
+              backgroundColor: ui.primaryButtonBg,
+              foregroundColor: ui.primaryButtonFg,
               elevation: 2,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               shape: RoundedRectangleBorder(
@@ -1074,19 +1091,20 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
               ),
             ),
             child: isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        ui.primaryButtonFg,
+                      ),
                     ),
                   )
                 : Text(
                     AppTranslations.getString(context, 'save_edits'),
-                    style: const TextStyle(
-                      color: AppTheme.primaryColor,
+                    style: TextStyle(
+                      color: ui.primaryButtonFg,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1257,50 +1275,47 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
         ));
   }
 
-  Widget _buildSalonPicturesSection() {
+  Widget _buildSalonPicturesSection(SalonUiTheme ui) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
         Text(
           AppTranslations.getString(context, 'salon_pictures'),
-          style: const TextStyle(
-            color: AppTheme.textPrimaryColor,
+          style: TextStyle(
+            color: ui.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 10),
-
-        // Upload Area
         GestureDetector(
           onTap: _isLoadingImages ? null : _pickImages,
           child: Container(
             width: double.infinity,
             height: 50,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
+              color: ui.card,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
+                color: ui.cardBorder,
                 width: 1,
               ),
             ),
             child: Center(
               child: _isLoadingImages
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(ui.textPrimary),
                       ),
                     )
                   : Text(
                       AppTranslations.getString(
                           context, 'upload_salon_pictures'),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: ui.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1309,10 +1324,8 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Show shimmer when loading pictures, otherwise show pictures grid
         if (_isLoadingPictures) ...[
-          _buildSalonPicturesShimmer(),
+          _buildSalonPicturesShimmer(ui),
         ] else if (_existingPictureFiles.isNotEmpty ||
             _uploadedImages.isNotEmpty) ...[
           SizedBox(
@@ -1321,13 +1334,10 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
               scrollDirection: Axis.horizontal,
               itemCount: _existingPictureFiles.length + _uploadedImages.length,
               itemBuilder: (context, index) {
-                // Determine if this is an existing picture or new image
                 if (index < _existingPictureFiles.length) {
-                  // Existing picture
                   final pictureData = _existingPictureData[index];
                   String imageName = 'PictureName';
 
-                  // Extract meaningful name from original URL
                   final originalUrl = pictureData['url'] as String?;
                   if (originalUrl != null && originalUrl.isNotEmpty) {
                     final urlParts = originalUrl.split('/');
@@ -1341,190 +1351,126 @@ class _SalonInformationScreenState extends State<SalonInformationScreen> {
                     }
                   }
 
-                  return Container(
-                    width: 150,
-                    margin: const EdgeInsets.only(right: 16),
-                    child: Column(
-                      children: [
-                        // Image
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _previewImages(index),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2A2A2A),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  _existingPictureFiles[index],
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: const Color(0xFF2A2A2A),
-                                      child: const Icon(
-                                        Icons.image,
-                                        color: Colors.white54,
-                                        size: 40,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Picture Name and Delete Button
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  imageName,
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => _removeExistingPicture(index),
-                                child: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                  size: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  // New uploaded image
-                  final newImageIndex = index - _existingPictureFiles.length;
-                  final imageFile = _uploadedImages[newImageIndex];
-
-                  String imageName = 'PictureName';
-                  final fileName = imageFile.path.split('/').last;
-                  if (fileName.contains('image_picker_')) {
-                    final extension = fileName.split('.').last;
-                    imageName = 'Image ${newImageIndex + 1}.$extension';
-                  } else if (fileName.isNotEmpty) {
-                    imageName = fileName;
-                  }
-
-                  return Container(
-                    width: 150,
-                    margin: const EdgeInsets.only(right: 16),
-                    child: Column(
-                      children: [
-                        // Image
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _previewImages(index),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2A2A2A),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  imageFile,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: const Color(0xFF2A2A2A),
-                                      child: const Icon(
-                                        Icons.image,
-                                        color: Colors.white54,
-                                        size: 40,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Picture Name and Delete Button
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  imageName,
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => _removeImage(newImageIndex),
-                                child: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                  size: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  return _buildPictureCard(
+                    ui: ui,
+                    imageFile: _existingPictureFiles[index],
+                    imageName: imageName,
+                    index: index,
+                    onDelete: () => _removeExistingPicture(index),
                   );
                 }
+
+                final newImageIndex = index - _existingPictureFiles.length;
+                final imageFile = _uploadedImages[newImageIndex];
+
+                String imageName = 'PictureName';
+                final fileName = imageFile.path.split('/').last;
+                if (fileName.contains('image_picker_')) {
+                  final extension = fileName.split('.').last;
+                  imageName = 'Image ${newImageIndex + 1}.$extension';
+                } else if (fileName.isNotEmpty) {
+                  imageName = fileName;
+                }
+
+                return _buildPictureCard(
+                  ui: ui,
+                  imageFile: imageFile,
+                  imageName: imageName,
+                  index: index,
+                  onDelete: () => _removeImage(newImageIndex),
+                );
               },
             ),
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildPictureCard({
+    required SalonUiTheme ui,
+    required File imageFile,
+    required String imageName,
+    required int index,
+    required VoidCallback onDelete,
+  }) {
+    return Container(
+      width: 150,
+      margin: const EdgeInsets.only(right: 16),
+      child: Column(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _previewImages(index),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: ui.card,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: ui.cardBorder,
+                    width: 1,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    imageFile,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: ui.card,
+                        child: Icon(
+                          Icons.image,
+                          color: ui.textMuted,
+                          size: 40,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: ui.card,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: ui.cardBorder,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    imageName,
+                    style: TextStyle(
+                      color: ui.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onDelete,
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

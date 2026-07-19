@@ -4,6 +4,7 @@ import '../../services/api/influencer_auth_service.dart';
 import '../../services/api/http_interceptor.dart';
 import '../../services/storage/token_storage_service.dart';
 import '../../services/firebase_notification_service.dart';
+import '../bloc_error_helper.dart';
 
 // Events
 abstract class LoginEvent {}
@@ -243,10 +244,13 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         print('🔢 Status Code: ${result['statusCode']}');
         print('❌ === END LOGIN FAILED ===');
 
-        emit(LoginError(state, result['message'] ?? 'Login failed'));
+        emit(LoginError(
+          state,
+          BlocErrorHelper.messageFromApiMap(result),
+        ));
       }
-    } catch (e) {
-      emit(LoginError(state, 'Network error: ${e.toString()}'));
+    } catch (e, st) {
+      emit(LoginError(state, BlocErrorHelper.messageFrom(e, st, 'login')));
     }
   }
 
